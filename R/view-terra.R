@@ -44,7 +44,7 @@
 #' @return A view, as for [view()].
 #' @seealso [view_crs()] for the default view CRS.
 #' @name view-terra
-#' @examplesIf requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE)
+#' @examplesIf requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
 #' r <- terra::rast(system.file("extdata", "polar_lonlat.tif", package = "aobcore"))
 #' v <- view(r, palette = "ocean")
 #' v$scene$view$crs

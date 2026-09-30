@@ -1,6 +1,12 @@
+# terra, and gdalraster whose GDAL can resolve EPSG codes (aobcore plans
+# tiles with it). Some binary builds of gdalraster (CRAN's macOS one, for
+# now) cannot find their PROJ database; skip there, as aobcore's tests do,
+# since that is an installation problem.
 skip_if_no_terra <- function() {
   skip_if_not_installed("terra")
   skip_if_not_installed("gdalraster")
+  ok <- !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
+  skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
 }
 
 extdata <- function(f) system.file("extdata", f, package = "aobcore")
@@ -171,7 +177,7 @@ test_that("SpatRaster arguments are checked", {
 })
 
 test_that("view() draws a SpatVector through the sf path", {
-  skip_if_no_terra()
+  skip_if_not_installed("terra")
   skip_if_not_installed("sf")
   p <- terra::vect(c("POLYGON ((-40 -80, 40 -80, 40 -70, -40 -70, -40 -80))",
                      "POLYGON ((100 -75, 120 -75, 120 -65, 100 -65, 100 -75))"),
@@ -188,7 +194,7 @@ test_that("view() draws a SpatVector through the sf path", {
 })
 
 test_that("view_crs() of terra data follows the same rule as sf", {
-  skip_if_no_terra()
+  skip_if_not_installed("terra")
   expect_identical(view_crs(terra::rast(extdata("polar_3031.tif"))), "EPSG:3031")
   north <- terra::rast(ncols = 10, nrows = 10, xmin = -180, xmax = 180, ymin = 60, ymax = 90,
                        crs = "OGC:CRS84")

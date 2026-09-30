@@ -114,7 +114,7 @@ A \code{SpatVector} is converted with \code{\link[sf:st_as_sf]{sf::st_as_sf()}} 
 is (see \code{\link[=view]{view()}}); it needs the 'sf' package.
 }
 \examples{
-\dontshow{if (requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+\dontshow{if (requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")) withAutoprint(\{ # examplesIf}
 r <- terra::rast(system.file("extdata", "polar_lonlat.tif", package = "aobcore"))
 v <- view(r, palette = "ocean")
 v$scene$view$crs
