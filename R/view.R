@@ -10,7 +10,9 @@
 #' Points, lines and polygons (single or multi) are drawn as one layer
 #' each. A mixed `GEOMETRY` or `GEOMETRYCOLLECTION` column is split into up
 #' to three layers, polygons at the bottom, then lines, then points. Empty
-#' geometries are dropped, as are Z and M values.
+#' geometries are dropped, as are Z and M values. The split layers share
+#' the view's name, with the kind appended to each label, as in
+#' `"mixed (polygons)"`.
 #'
 #' 'aobcore' does not reproject, so `x` is transformed to the view CRS here
 #' with [sf::st_transform()]. When `x` is in lon/lat and the view CRS
@@ -22,8 +24,10 @@
 #' legends and popups) follow in later versions.
 #'
 #' @param x A spatial object: an `sf` data frame or an `sfc` geometry column
-#'   (with the 'sf' package installed).
-#' @param ... Passed to methods.
+#'   (with the 'sf' package installed); a 'terra' object ([view-terra]); or
+#'   a list of them ([view-layers]).
+#' @param ... Not used by the `sf` and `sfc` methods: an argument caught
+#'   here (a misspelled one, say) is an error.
 #' @param crs The view CRS: anything [sf::st_crs()] and
 #'   [aobcore::scene_crs()] read, such as `"EPSG:3031"`, `3031` or a PROJ
 #'   string. `NULL` (the default) uses [view_crs()].
@@ -45,10 +49,13 @@
 #' @param theme `"auto"` follows the browser's light or dark preference;
 #'   `"light"` or `"dark"` fixes it.
 #' @return A view: a list of class `"aob_view"` with the `scene` (an
-#'   [aobcore::scene()]) and the `file` it was written to. Printing it opens
+#'   [aobcore::scene()]), the `file` it was written to, its `name` (the
+#'   page title), `theme`, and `extents`, each layer's extent in the view
+#'   CRS (from which the initial view is set). Add to it with
+#'   [view_add()]. Printing it opens
 #'   the page when the session is interactive.
 #' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
-#'   rasters and vectors.
+#'   rasters and vectors; [view-layers] for several layers in one view.
 #' @export
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
 #' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
@@ -68,8 +75,7 @@ view <- function(x, ...) {
 
 #' @export
 view.default <- function(x, ...) {
-  stop("view() has no method for class ", paste(class(x), collapse = "/"),
-       "; it draws sf and sfc objects, and terra SpatRaster and SpatVector objects.", call. = FALSE)
+  stop(no_method_message(x), call. = FALSE)
 }
 
 #' @rdname view
@@ -77,12 +83,14 @@ view.default <- function(x, ...) {
 view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                     stroke_width_px = NULL, radius_px = NULL, name = NULL,
                     file = NULL, theme = c("auto", "light", "dark")) {
+  check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
-  view_sfc(sf::st_geometry(x), crs = crs, densify = densify,
-           style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                        radius_px = radius_px),
-           name = name, file = file, theme = match.arg(theme))
+  theme <- match.arg(theme)
+  v <- new_view(crs %||% view_crs(x))
+  v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
+                  stroke_width_px = stroke_width_px, radius_px = radius_px)
+  finish_view(v, name, file, theme)
 }
 
 #' @rdname view
@@ -90,12 +98,14 @@ view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NU
 view.sfc <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                      stroke_width_px = NULL, radius_px = NULL, name = NULL,
                      file = NULL, theme = c("auto", "light", "dark")) {
+  check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
-  view_sfc(x, crs = crs, densify = densify,
-           style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                        radius_px = radius_px),
-           name = name, file = file, theme = match.arg(theme))
+  theme <- match.arg(theme)
+  v <- new_view(crs %||% view_crs(x))
+  v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
+                  stroke_width_px = stroke_width_px, radius_px = radius_px)
+  finish_view(v, name, file, theme)
 }
 
 #' @export
@@ -109,12 +119,57 @@ print.aob_view <- function(x, ...) {
 
 ## ---- internals -------------------------------------------------------------
 
-view_sfc <- function(g, crs, densify, style, name, file, theme) {
+## A view is built in three steps, shared by every method, view.list() and
+## view_add(): new_view() starts an empty scene in the view CRS,
+## add_layers() appends one object's layers (reprojected to that CRS), and
+## finish_view() sets the initial view and writes the page.
+
+## An unwritten view: an empty scene in `crs`, with the view's domain as
+## its bounds (aobcore::scene()'s default, decision 0005).
+new_view <- function(crs) {
+  structure(list(scene = aobcore::scene(aobcore::scene_crs(crs)), extents = list()),
+            class = "aob_view")
+}
+
+## Append x's layers to view v, above those already there. Methods: sf and
+## sfc here, SpatRaster and SpatVector in view-terra.R. Each returns v with
+## its scene extended and the layers' extents (view CRS units) recorded.
+add_layers <- function(x, v, name, ...) {
+  UseMethod("add_layers")
+}
+
+#' @export
+add_layers.default <- function(x, v, name, ...) {
+  stop(no_method_message(x), call. = FALSE)
+}
+
+#' @export
+add_layers.sf <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
+                          stroke_width_px = NULL, radius_px = NULL) {
+  check_dots(..., what = "sf data")
+  need_sf()
+  add_sfc(sf::st_geometry(x), v, name, densify,
+          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+                       radius_px = radius_px))
+}
+
+#' @export
+add_layers.sfc <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
+                           stroke_width_px = NULL, radius_px = NULL) {
+  check_dots(..., what = "sf data")
+  need_sf()
+  add_sfc(x, v, name, densify,
+          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+                       radius_px = radius_px))
+}
+
+add_sfc <- function(g, v, name, densify, style) {
   if (length(g) == 0L) stop("`x` has no geometries to view.", call. = FALSE)
   g <- g[!sf::st_is_empty(g)]
   if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
-  view <- if (is.null(crs)) view_crs(g) else crs
-  view <- aobcore::scene_crs(view)
+  s <- v$scene
+  view <- s$view$crs
+  warn_geographic_view(g, view)
   g <- to_view_crs(g, view, densify)
   lost <- sf::st_is_empty(g)
   if (all(lost)) {
@@ -127,24 +182,90 @@ view_sfc <- function(g, crs, densify, style, name, file, theme) {
     g <- g[!lost]
   }
 
-  s <- aobcore::scene(view)
-  base <- layer_id(name)
   parts <- split_kinds(g)
+  split <- length(parts) > 1L
+  base <- unique_id(layer_id(name), s, if (split) paste0("_", names(parts)) else "")
   for (kind in names(parts)) {
-    id <- if (length(parts) == 1L) base else paste0(base, "_", kind)
+    id <- if (split) paste0(base, "_", kind) else base
+    label <- if (split) paste0(name, " (", kind_label[[kind]], ")") else name
     geom <- wk::wk_set_crs(wk::as_wkb(parts[[kind]]), NULL)
     geom <- wk::wk_set_crs(geom, view)
-    args <- c(list(s, id, geom, label = name), layer_style(kind, style))
+    args <- c(list(s, id, geom, label = label), layer_style(kind, style))
     s <- do.call(aobcore::scene_add_vector, args)
+    v$extents[[id]] <- bbox_extent(parts[[kind]])
   }
-  write_view(s, name, file, theme)
+  v$scene <- s
+  v
 }
 
-## Write a scene's page and return the view.
-write_view <- function(s, name, file, theme) {
+kind_label <- list(polygon = "polygons", path = "lines", point = "points")
+
+## Set the initial view and the scene version, write the page, and return
+## the view.
+finish_view <- function(v, name, file, theme) {
+  s <- v$scene
+  s$view$extent <- view_extent(v$extents, s$view$bounds)
+  s$version <- aobcore::scene_spec_version(s)
   file <- file %||% tempfile("view-", fileext = ".html")
   aobcore::write_scene_html(s, file = file, title = name, theme = theme)
-  structure(list(scene = s, file = file, name = name), class = "aob_view")
+  structure(list(scene = s, file = file, name = name, theme = theme, extents = v$extents),
+            class = "aob_view")
+}
+
+## The initial view (decision 0005): the union of the layers' extents,
+## clipped to the view's bounds (the whole bounds when they do not meet),
+## or NULL (the renderer's default) when the union has no area.
+view_extent <- function(extents, bounds) {
+  e <- do.call(rbind, extents)
+  if (is.null(e)) return(NULL)
+  e <- e[apply(e, 1L, function(r) all(is.finite(r))), , drop = FALSE]
+  if (!nrow(e)) return(bounds)
+  u <- c(min(e[, 1]), max(e[, 2]), min(e[, 3]), max(e[, 4]))
+  ## A single point or a straight line along an axis has no area: leave the
+  ## initial view to the renderer rather than open on the whole domain.
+  if (!(u[1] < u[2] && u[3] < u[4])) return(NULL)
+  if (!is.null(bounds)) {
+    clip <- c(max(u[1], bounds[1]), min(u[2], bounds[2]), max(u[3], bounds[3]), min(u[4], bounds[4]))
+    ## Data wholly outside the domain: open on the domain.
+    u <- if (clip[1] < clip[2] && clip[3] < clip[4]) clip else bounds
+  }
+  as.numeric(u)
+}
+
+bbox_extent <- function(g) {
+  bb <- sf::st_bbox(g)
+  as.numeric(bb[c("xmin", "xmax", "ymin", "ymax")])
+}
+
+## A layer id from `base` that, with each of `suffixes`, is neither a layer
+## id nor a data id in scene s: base, else base_2, base_3, ...
+unique_id <- function(base, s, suffixes = "") {
+  taken <- c(names(s$data), vapply(s$layers, function(l) l$id, ""))
+  id <- base
+  i <- 1L
+  while (any(paste0(id, suffixes) %in% taken)) {
+    i <- i + 1L
+    id <- paste0(base, "_", i)
+  }
+  id
+}
+
+## Stop when a method's `...` caught arguments it does not use, such as a
+## misspelled one.
+check_dots <- function(..., what) {
+  if (...length() == 0L) return(invisible())
+  exprs <- as.list(substitute(list(...)))[-1L]
+  nms <- names(exprs) %||% rep("", length(exprs))
+  shown <- ifelse(nzchar(nms), paste0("`", nms, "`"),
+                  paste0("an unnamed argument (", vapply(exprs, deparse_name, ""), ")"))
+  stop("view() of ", what, " does not use ", paste(shown, collapse = ", "),
+       ". Is an argument misspelled?", call. = FALSE)
+}
+
+no_method_message <- function(x) {
+  paste0("view() has no method for class ", paste(class(x), collapse = "/"),
+         "; it draws sf and sfc objects, terra SpatRaster and SpatVector objects, ",
+         "and lists of them.")
 }
 
 ## Transform to the view CRS, densifying first (see ?view).
@@ -165,6 +286,21 @@ to_view_crs <- function(g, view, densify) {
     sf::st_crs(g) <- src
   }
   sf::st_transform(g, target)
+}
+
+## Decision 0004 rules out a per-coordinate transform of projected data into
+## a geographic view: nothing cuts it at the antimeridian or the poles.
+## (#9, item 2.) Warn, and say how to get a projected view.
+warn_geographic_view <- function(g, view) {
+  src <- sf::st_crs(g)
+  if (is.na(src) || isTRUE(sf::st_is_longlat(g))) return(invisible())
+  target <- tryCatch(sf::st_crs(as.character(view)), error = function(e) NULL)
+  if (is.null(target) || !isTRUE(target$IsGeographic)) return(invisible())
+  warning("`x` is in a projected CRS but the view CRS ", crs_text(view), " is geographic: ",
+          "its coordinates are transformed point by point, with nothing cut at the ",
+          "antimeridian or the poles, so lines and polygons that cross them are drawn wrongly. ",
+          "Use a projected view: pass `crs =`, or view(list(...)), which keeps the first ",
+          "projected CRS in the list.", call. = FALSE)
 }
 
 densify_step <- function(densify, longlat) {

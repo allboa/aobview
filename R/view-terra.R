@@ -32,7 +32,9 @@
 #' @inheritParams view
 #' @param x A 'terra' `SpatRaster` or `SpatVector`.
 #' @param ... For a `SpatRaster`, passed to [aobcore::cog_plan()]
-#'   (`max_tiles`, `max_stretch`, `tolerance`, ...).
+#'   (`max_tiles`, `max_stretch`, `tolerance`, ...). Not used for a
+#'   `SpatVector`: an argument caught there (a misspelled one, say) is an
+#'   error.
 #' @param layer The layer to draw through the palette (a number or name).
 #'   Giving it draws that layer even when `x` is a colour image.
 #' @param rgb `NULL` (colour when `x` is a Byte red, green, blue raster and
@@ -66,11 +68,49 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
   need_gdalraster()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
-  if (!nzchar(terra::crs(x))) {
-    stop("`x` has no CRS. Set one with terra::crs(x) <- \"EPSG:...\", or pass `crs` to view().",
-         call. = FALSE)
-  }
-  if (!terra::hasValues(x)) stop("`x` has no values to view.", call. = FALSE)
+  check_raster(x)
+  v <- new_view(crs %||% view_crs(x))
+  v <- add_layers(x, v, name, ..., layer = layer, rgb = rgb, palette = palette, range = range)
+  finish_view(v, name, file, theme)
+}
+
+#' @rdname view-terra
+#' @export
+view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
+                            stroke_width_px = NULL, radius_px = NULL, name = NULL,
+                            file = NULL, theme = c("auto", "light", "dark")) {
+  check_dots(..., what = "a SpatVector")
+  need_terra()
+  need_sf()
+  name <- name %||% deparse_name(substitute(x))
+  theme <- match.arg(theme)
+  check_terra_crs(x)
+  v <- new_view(crs %||% view_crs(x))
+  v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
+                  stroke_width_px = stroke_width_px, radius_px = radius_px)
+  finish_view(v, name, file, theme)
+}
+
+#' @export
+add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
+                                  stroke_width_px = NULL, radius_px = NULL) {
+  check_dots(..., what = "a SpatVector")
+  need_terra()
+  need_sf()
+  check_terra_crs(x)
+  add_sfc(sf::st_geometry(sf::st_as_sf(x)), v, name, densify,
+          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+                       radius_px = radius_px))
+}
+
+## `...` goes to aobcore::cog_plan(), which refuses arguments it does not
+## take.
+#' @export
+add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, palette = NULL,
+                                  range = NULL) {
+  need_terra()
+  need_gdalraster()
+  check_raster(x)
   if (!is.null(rgb) && !(isTRUE(rgb) || isFALSE(rgb))) {
     stop("`rgb` must be NULL, TRUE or FALSE.", call. = FALSE)
   }
@@ -108,36 +148,18 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
     }
   }
 
-  ## The page carries the temporary COG's planned tiles, so the file is
-  ## not needed once it is written.
+  ## scene_add_tiled_raster() copies the planned tiles' bytes into the
+  ## scene, so a temporary COG is not needed once the layer is added.
   if (!is.null(temp)) on.exit(unlink(temp$dsn), add = TRUE)
-  view <- aobcore::scene_crs(if (is.null(crs)) view_crs(x) else crs)
-  plan <- aobcore::cog_plan(cog, view, ...)
-  s <- aobcore::scene(view)
-  s <- aobcore::scene_add_tiled_raster(s, layer_id(name), plan,
+  s <- v$scene
+  plan <- aobcore::cog_plan(cog, s$view$crs, ...)
+  id <- unique_id(layer_id(name), s, c("", "_vertices", "_indices"))
+  s <- aobcore::scene_add_tiled_raster(s, id, plan,
                                        palette = palette %||% "viridis", range = range,
                                        rgb = if (colour) bands else FALSE, label = name)
-  extent <- plan_extent(s$layers[[length(s$layers)]]$plan)
-  if (!is.null(extent)) s$view$extent <- extent
-  write_view(s, name, file, theme)
-}
-
-#' @rdname view-terra
-#' @export
-view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                            stroke_width_px = NULL, radius_px = NULL, name = NULL,
-                            file = NULL, theme = c("auto", "light", "dark")) {
-  need_terra()
-  need_sf()
-  name <- name %||% deparse_name(substitute(x))
-  if (!nzchar(terra::crs(x))) {
-    stop("`x` has no CRS. Set one with terra::crs(x) <- \"EPSG:...\", or pass `crs` to view().",
-         call. = FALSE)
-  }
-  view_sfc(sf::st_geometry(sf::st_as_sf(x)), crs = crs, densify = densify,
-           style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                        radius_px = radius_px),
-           name = name, file = file, theme = match.arg(theme))
+  v$scene <- s
+  v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)
+  v
 }
 
 ## ---- internals -------------------------------------------------------------
@@ -317,6 +339,18 @@ plan_extent <- function(plan) {
   fp <- do.call(rbind, lapply(lv$tiles, `[[`, "footprint"))
   if (is.null(fp)) return(NULL)
   as.numeric(c(min(fp[, 1]), max(fp[, 2]), min(fp[, 3]), max(fp[, 4])))
+}
+
+check_raster <- function(x) {
+  check_terra_crs(x)
+  if (!terra::hasValues(x)) stop("`x` has no values to view.", call. = FALSE)
+}
+
+check_terra_crs <- function(x) {
+  if (!nzchar(terra::crs(x))) {
+    stop("`x` has no CRS. Set one with terra::crs(x) <- \"EPSG:...\", or pass `crs` to view().",
+         call. = FALSE)
+  }
 }
 
 need_terra <- function() {

@@ -75,6 +75,13 @@ if (requireNamespace("terra", quietly = TRUE)) {
   terra::RGB(img) <- 1:3
   view(img, file = file.path(out, "terra-rgb-in-3031.html"))
 
+  # The v1 target: a polar COG with vector overlays in EPSG:3031, in one
+  # call. The COG is in EPSG:3031 (so the view is), and the lon/lat
+  # coastline and stations are reprojected to it; list order is drawing
+  # order, the raster at the bottom.
+  view(list(sst = sst, coastline = coast, stations = stations),
+       file = file.path(out, "cog-with-overlays-in-3031.html"))
+
   # A SpatVector read by terra: the lon/lat coastline south of 40S.
   coastline <- terra::vect(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
   view(coastline, file = file.path(out, "terra-vector-in-3031.html"))
