@@ -7,12 +7,13 @@
 view_crs(x)
 }
 \arguments{
-\item{x}{An \code{sf} or \code{sfc} object.}
+\item{x}{An \code{sf} or \code{sfc} object, or a 'terra' \code{SpatRaster} or
+\code{SpatVector}.}
 }
 \value{
 A CRS for \code{\link[aobcore:scene]{aobcore::scene()}}: an \code{"authority:code"} string such
-as \code{"EPSG:3031"}, or the data's own \code{sf} \code{crs} object when it has no
-code.
+as \code{"EPSG:3031"}, or, when the data's CRS has no code, the \code{sf} \code{crs}
+object (for \code{sf} data) or its WKT (for 'terra' data).
 }
 \description{
 The CRS \code{\link[=view]{view()}} draws in when \code{crs} is not given. The project is polar
@@ -37,8 +38,11 @@ carree), which the scene spec allows. Web Mercator is not used: it
 cannot show the poles, and a tiled Mercator basemap is a non-goal.
 }
 
+For a raster the bounding box is the grid's extent, so a lon/lat grid
+from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.
+
 Data with no CRS is an error: set one first (for example
-\code{sf::st_set_crs()}), or pass \code{crs} to \code{\link[=view]{view()}}.
+\code{sf::st_set_crs()} or \verb{terra::crs<-}), or pass \code{crs} to \code{\link[=view]{view()}}.
 }
 \examples{
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}

@@ -6,7 +6,7 @@ Read the org agent brief first: [allboa/design AGENTS.md](https://github.com/all
 
 ## Status
 
-Early (phase 3). `view()` draws sf and sfc points, lines and polygons in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). terra, colour by attribute, legends, popups and several layers in one view are planned in the [issues](https://github.com/allboa/aobview/issues).
+Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Colour by attribute, legends, popups and several layers in one view are planned in the [issues](https://github.com/allboa/aobview/issues).
 
 ```r
 library(aobview)
@@ -19,7 +19,14 @@ v <- view(nc)                     # lon/lat elsewhere: drawn flat in its own CRS
 v$file                            # the page; printing v opens it
 ```
 
-`view()` returns a view with the `scene` and the `file` it wrote. Printing it in an interactive session opens the page in the IDE's viewer or the browser. The page needs no server and no network.
+```r
+r <- terra::rast(system.file("extdata", "polar_lonlat.tif", package = "aobcore"))
+view(r, palette = "ocean")        # lon/lat raster over the pole: drawn in EPSG:3031
+u <- terra::rast("/vsicurl/https://example.org/some.tif")
+view(u)                           # a remote COG: the page references it by URL
+```
+
+`view()` returns a view with the `scene` and the `file` it wrote. Printing it in an interactive session opens the page in the IDE's viewer or the browser. The page needs no server, and no network unless it references a remote COG.
 
 ### The view CRS
 
@@ -35,6 +42,12 @@ aobcore does not reproject, so aobview transforms with `sf::st_transform()`. Lon
 
 The cap over the pole is a lon/lat ring that runs up the 180 meridian to the pole, so its outline shows that edge.
 
+### terra
+
+A `SpatRaster` reaches the page as a Cloud Optimized GeoTIFF, planned into tiles by aobcore with meshes projected to the view CRS, so the raster is never resampled in R. A raster read unchanged from one COG uses that file: a remote COG is referenced by URL and the browser fetches its tiles by range request (the server must allow CORS), and a local one has its planned tiles embedded. Any other raster (in memory, computed, cropped, not tiled) is written to a temporary COG with `terra::writeRaster(filetype = "COG")` and embedded. Three or four Byte layers with red, green, blue (and alpha) colour interpretation draw as a colour image; otherwise one layer draws through a palette. A `SpatVector` goes through `sf::st_as_sf()` and the sf path.
+
+![A computed lon/lat SpatRaster in EPSG:3031, light](tools/screenshots/terra-lonlat-field-in-3031-light.png)
+
 `tools/write-views.R` writes the example pages; screenshots are taken with aobcore's `js/screenshots.mjs`.
 
 ## Install
@@ -44,4 +57,4 @@ The cap over the pole is a lon/lat ring that runs up the 180 meridian to the pol
 remotes::install_github("allboa/aobview")   # installs aobcore from GitHub too
 ```
 
-Imports: aobcore, wk and utils. sf is suggested: `view()` dispatches on its classes. A view CRS given with no authority code (a PROJ string, say) also needs gdalraster, which aobcore suggests.
+Imports: aobcore, wk and utils. sf and terra are suggested: `view()` dispatches on their classes (a `SpatVector` needs sf too). A `SpatRaster` needs gdalraster, for aobcore's COG reader. A view CRS given with no authority code (a PROJ string, say) also needs gdalraster, which aobcore suggests.

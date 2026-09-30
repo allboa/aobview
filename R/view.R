@@ -47,7 +47,8 @@
 #' @return A view: a list of class `"aob_view"` with the `scene` (an
 #'   [aobcore::scene()]) and the `file` it was written to. Printing it opens
 #'   the page when the session is interactive.
-#' @seealso [view_crs()] for the default view CRS.
+#' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
+#'   rasters and vectors.
 #' @export
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
 #' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
@@ -68,7 +69,7 @@ view <- function(x, ...) {
 #' @export
 view.default <- function(x, ...) {
   stop("view() has no method for class ", paste(class(x), collapse = "/"),
-       "; it draws sf and sfc objects.", call. = FALSE)
+       "; it draws sf and sfc objects, and terra SpatRaster and SpatVector objects.", call. = FALSE)
 }
 
 #' @rdname view
@@ -136,6 +137,11 @@ view_sfc <- function(g, crs, densify, style, name, file, theme) {
     args <- c(list(s, id, geom, label = name), layer_style(kind, style))
     s <- do.call(aobcore::scene_add_vector, args)
   }
+  write_view(s, name, file, theme)
+}
+
+## Write a scene's page and return the view.
+write_view <- function(s, name, file, theme) {
   file <- file %||% tempfile("view-", fileext = ".html")
   aobcore::write_scene_html(s, file = file, title = name, theme = theme)
   structure(list(scene = s, file = file, name = name), class = "aob_view")

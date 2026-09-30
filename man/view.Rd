@@ -114,5 +114,6 @@ v2
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=view_crs]{view_crs()}} for the default view CRS.
+\code{\link[=view_crs]{view_crs()}} for the default view CRS; \link{view-terra} for 'terra'
+rasters and vectors.
 }
