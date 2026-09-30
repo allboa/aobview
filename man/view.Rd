@@ -76,8 +76,8 @@ of \code{n} returning \code{n} colours, such as \code{\link[grDevices:hcl.colors
 \code{\link[=view_colours]{view_colours()}}. \code{NULL} is \code{"viridis"} for numbers and \code{"Tableau 10"}
 for levels.}
 
-\item{breaks}{With a numeric \code{zcol}: increasing break points that bin
-the values into classes, one colour each; see \code{\link[=view_colours]{view_colours()}}.}
+\item{breaks}{With a numeric `zcol`: increasing break points that bin
+the values into classes, one colour each; see [view_colours()].}
 
 \item{na_colour}{With \code{zcol}: the colour for \code{NA} values.}
 
@@ -127,7 +127,8 @@ per class with \code{breaks}), factors, character and logical values one
 colour per level; \code{NA} takes \code{na_colour}. The colours are computed in R
 by \code{\link[=view_colours]{view_colours()}} and travel to the page as one RGBA column beside the
 geometry; no other attribute does. With \code{zcol}, polygons get a grey
-outline (change it with \code{stroke}) and \code{fill} is not used.
+outline (change it with \code{stroke}); \code{fill}, and \code{stroke} for lines, are
+errors, since \code{zcol} sets those colours.
 }
 \examples{
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}

@@ -50,7 +50,7 @@
 view_colours <- function(values, palette = NULL, breaks = NULL, na_colour = "#999999") {
   na <- as_rgba(na_colour, "na_colour")
   n <- length(values)
-  out <- matrix(na, nrow = n, ncol = 4L, byrow = TRUE,
+  out <- matrix(rep(na, each = n), nrow = n, ncol = 4L,
                 dimnames = list(NULL, c("r", "g", "b", "a")))
   if (is.numeric(values) && !is.factor(values)) {
     key <- colour_numbers(values, palette, breaks, out)
@@ -109,7 +109,7 @@ colour_levels <- function(values, palette, out) {
   } else if (is.logical(values)) {
     c("FALSE", "TRUE")
   } else {
-    sort(unique(values[!is.na(values)]))
+    sort(unique(values[!is.na(values)]), method = "radix")
   }
   k <- length(levels)
   cols <- if (k) palette_rgba(palette %||% "Tableau 10", k, recycle = TRUE) else out[0, , drop = FALSE]
@@ -146,7 +146,10 @@ palette_rgba <- function(palette, n, recycle) {
       rgba <- round(ramp(if (n == 1L) 0.5 else seq(0, 1, length.out = n)))
     }
   }
-  rgba <- rgba[seq_len(n), , drop = FALSE]
+  ## More colours than asked for: the first n levels, or n spread evenly
+  ## along a continuous palette.
+  keep <- if (recycle || n == 1L) seq_len(n) else round(seq(1, nrow(rgba), length.out = n))
+  rgba <- rgba[keep, , drop = FALSE]
   storage.mode(rgba) <- "integer"
   dimnames(rgba) <- list(NULL, c("r", "g", "b", "a"))
   rgba

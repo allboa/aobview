@@ -161,3 +161,44 @@ test_that("zcol works through view_add() and for a SpatVector", {
                 file = tempfile(fileext = ".html"))
   expect_identical(blob_rgba(v, "tv"), plain_rgba(pol$z))
 })
+
+test_that("zcol colours stay with their rows when a row cannot be transformed", {
+  skip_if_not_installed("sf")
+  ortho <- "+proj=ortho +lat_0=-90 +lon_0=0 +datum=WGS84"
+  x <- sf::st_sf(z = c("a", "b", "c"),
+                 geometry = lonlat(list(sf::st_point(c(0, -70)), sf::st_point(c(0, 60)),
+                                        sf::st_point(c(90, -70)))))
+  res <- sf::st_transform(sf::st_geometry(x), ortho)
+  skip_if(!identical(sf::st_is_empty(res), c(FALSE, TRUE, FALSE)))
+  pal <- function(n) c("red", "green", "blue")[seq_len(n)]
+  expect_warning(v <- view(x, zcol = "z", palette = pal, crs = ortho,
+                           file = tempfile(fileext = ".html")), "1 of 3 geometries")
+  expect_identical(blob_rgba(v, "x"), plain_rgba(x$z, palette = pal)[c(1, 3), ])
+})
+
+test_that("zcol and a stroke for lines are refused together", {
+  skip_if_not_installed("sf")
+  lns <- sf::st_sf(z = 1, geometry = lonlat(list(sf::st_linestring(rbind(c(0, -60), c(90, -60))))))
+  expect_error(view(lns, zcol = "z", stroke = c(0, 0, 0, 255), file = tempfile()),
+               "`stroke` and `zcol`")
+})
+
+test_that("view_colours() edge cases: no values, long palettes, level order", {
+  e <- view_colours(numeric())
+  expect_identical(dim(e), c(0L, 4L))
+  expect_silent(view_colours(character()))
+  ## A palette function returning more than 256 colours is spread evenly,
+  ## so its last colour still colours the maximum.
+  long <- function(n) grDevices::grey(seq(0, 1, length.out = 1000))
+  m <- view_colours(c(0, 1), palette = long)
+  expect_identical(unname(m[2, ]), c(255L, 255L, 255L, 255L))
+  ## Character levels sort by code point, whatever the locale.
+  expect_identical(attr(view_colours(c("b", "B", "a", "A")), "key")$levels, c("A", "B", "a", "b"))
+})
+
+test_that("an unknown zcol lists at most ten columns", {
+  skip_if_not_installed("sf")
+  df <- as.data.frame(matrix(1, 1, 12, dimnames = list(NULL, paste0("c", 1:12))))
+  x <- sf::st_sf(df, geometry = lonlat(list(sf::st_point(c(0, -70)))))
+  expect_error(view(x, zcol = "nope", file = tempfile()), "\"c10\" and 2 more\\.$")
+})

@@ -94,8 +94,8 @@ ignored for lines.}
 \item{zcol}{The name of a column of \code{x} to colour features by, or \code{NULL}
 (the default) for one colour. Not for an \code{sfc}, which has no columns.}
 
-\item{breaks}{With a numeric \code{zcol}: increasing break points that bin
-the values into classes, one colour each; see \code{\link[=view_colours]{view_colours()}}.}
+\item{breaks}{With a numeric `zcol`: increasing break points that bin
+the values into classes, one colour each; see [view_colours()].}
 
 \item{na_colour}{With \code{zcol}: the colour for \code{NA} values.}
 }

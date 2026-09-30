@@ -14,11 +14,11 @@ BugReports: https://github.com/allboa/aobview/issues
 Imports:
     aobcore,
     grDevices,
+    nanoarrow,
     utils,
     wk
 Suggests:
     gdalraster,
-    nanoarrow,
     sf,
     terra,
     testthat (>= 3.0.0)

@@ -27,7 +27,8 @@
 #' colour per level; `NA` takes `na_colour`. The colours are computed in R
 #' by [view_colours()] and travel to the page as one RGBA column beside the
 #' geometry; no other attribute does. With `zcol`, polygons get a grey
-#' outline (change it with `stroke`) and `fill` is not used.
+#' outline (change it with `stroke`); `fill`, and `stroke` for lines, are
+#' errors, since `zcol` sets those colours.
 #'
 #' @param x A spatial object: an `sf` data frame or an `sfc` geometry column
 #'   (with the 'sf' package installed); a 'terra' object ([view-terra]); or
@@ -222,7 +223,8 @@ zcol_values <- function(x, zcol) {
     stop("`zcol` \"", zcol, "\" is not a column of `x`",
          if (length(cols)) paste0("; it has ", paste0("\"", utils::head(cols, 10L), "\"",
                                                       collapse = ", "),
-                                  if (length(cols) > 10L) ", ...")
+                                  if (length(cols) > 10L) paste0(" and ", length(cols) - 10L,
+                                                                 " more"))
          else "; it has no attribute columns",
          ".", call. = FALSE)
   }
@@ -280,9 +282,13 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL) {
 colour_column <- "color"
 
 ## A layer coloured by column: fill for polygons and points, stroke for
-## lines. Polygons get a grey outline unless `stroke` was given.
+## lines (so a `stroke` for lines is an error, as `fill` is for the rest).
+## Polygons get a grey outline unless `stroke` was given.
 zcol_style <- function(kind, out, style) {
   if (kind == "path") {
+    if (!is.null(style$stroke)) {
+      stop("`stroke` and `zcol` both set the colour of lines; use one.", call. = FALSE)
+    }
     out$stroke <- colour_column
   } else {
     out$fill <- colour_column
