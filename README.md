@@ -6,7 +6,7 @@ Read the org agent brief first: [allboa/design AGENTS.md](https://github.com/all
 
 ## Status
 
-Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view. Colour by attribute, legends and popups are planned in the [issues](https://github.com/allboa/aobview/issues).
+Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, and vector features can be coloured by an attribute. Legends and popups are planned in the [issues](https://github.com/allboa/aobview/issues).
 
 ```r
 library(aobview)
@@ -41,6 +41,22 @@ view(sst) |> view_add(coast, stroke = c(40, 40, 40, 255))   # the same view CRS,
 A list draws in list order, first at the bottom; its names become layer labels and (made valid and unique) layer ids. The view CRS is `crs =`, or the first projected CRS in the list, or, when everything is in lon/lat, the rule below applied to the combined extent. `view_add()` keeps the view's CRS, so it gives the same scene as the list only when the first object's view CRS is the list's (for example, a projected first object); it warns when that puts projected vectors into a geographic view. Every object is reprojected to it: vectors in R, rasters through aobcore's tile planner. The initial view is the layers' combined extent, clipped to the view's domain.
 
 ![A polar COG with the lon/lat coastline and stations in EPSG:3031, light](tools/screenshots/cog-with-overlays-in-3031-light.png)
+
+### Colour by attribute
+
+`zcol` names a column whose values colour each feature: the fill of polygons and points, the stroke of lines. Numbers take a continuous palette over their range (or classes with `breaks =`); factor, character and logical columns take one colour per level. `NA` takes `na_colour`. `palette` is a name from `grDevices::hcl.pals()` or `grDevices::palette.pals()`, or a function of `n` such as `hcl.colors`.
+
+```r
+view(nc, zcol = "BIR74", palette = "YlOrRd")
+view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
+view(coast) |> view_add(stations, zcol = "operator", palette = "Set 1")
+```
+
+Colours are computed in R by `view_colours()`, which returns the RGBA matrix, and travel to the page as one per-feature RGBA column beside the geometry; no other attribute goes with them.
+
+![Lon/lat sectors coloured by a value in EPSG:3031, the polar cap's missing value in grey, light](tools/screenshots/zcol-numeric-in-3031-light.png)
+
+![Sectors by a character column and stations by operator, over the coastline, in EPSG:3031, dark](tools/screenshots/zcol-categorical-in-3031-dark.png)
 
 ### The view CRS
 

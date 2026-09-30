@@ -23,8 +23,8 @@ spatial object (or a list of them) to add.}
 
 \item{...}{For \code{view()} of a list, nothing (per-layer arguments go to
 \code{view_add()}). For \code{view_add()}, the arguments \code{\link[=view]{view()}} or
-\link{view-terra} take for \code{x}'s class, such as \code{fill} for \code{sf} data or
-\code{palette} for a \code{SpatRaster}.}
+\link{view-terra} take for \code{x}'s class, such as \code{fill} or \code{zcol} for \code{sf}
+data or \code{palette} for a \code{SpatRaster}.}
 
 \item{crs}{The view CRS, as for \code{\link[=view]{view()}}. \code{NULL} uses \code{\link[=view_crs]{view_crs()}} of
 the list.}
@@ -81,8 +81,9 @@ clipped to the view's domain (\code{\link[aobcore:crs_domain]{aobcore::crs_domai
 scene's \code{view.bounds}, allboa/design decision 0005). The scene's spec
 version is the highest any of its layers or its view needs.
 
-For a style of your own on one layer, start with \code{\link[=view]{view()}} of it or add it
-with \code{view_add()}, which take each kind's arguments.
+For a style of your own on one layer, such as colour by attribute
+(\code{zcol}), start with \code{\link[=view]{view()}} of it or add it with \code{view_add()}, which
+take each kind's arguments.
 }
 \examples{
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
@@ -95,6 +96,10 @@ vapply(v$scene$layers, function(l) l$id, "")
 
 v2 <- view_add(view(coast), stations, fill = c(220, 60, 40, 255))
 v2$scene$layers[[2]]$fill
+
+sites <- sf::st_sf(base = c("Casey", "Davis"), geometry = stations)
+v3 <- view_add(view(coast), sites, zcol = "base")
+v3$scene$layers[[2]]$fill
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("sf", quietly = TRUE) && requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")) withAutoprint(\{ # examplesIf}
 sst <- terra::rast(system.file("extdata", "polar_3031.tif", package = "aobcore"))

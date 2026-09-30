@@ -35,15 +35,16 @@
 #' scene's `view.bounds`, allboa/design decision 0005). The scene's spec
 #' version is the highest any of its layers or its view needs.
 #'
-#' For a style of your own on one layer, start with [view()] of it or add it
-#' with `view_add()`, which take each kind's arguments.
+#' For a style of your own on one layer, such as colour by attribute
+#' (`zcol`), start with [view()] of it or add it with `view_add()`, which
+#' take each kind's arguments.
 #'
 #' @param x For `view()`, a list of spatial objects. For `view_add()`, one
 #'   spatial object (or a list of them) to add.
 #' @param ... For `view()` of a list, nothing (per-layer arguments go to
 #'   `view_add()`). For `view_add()`, the arguments [view()] or
-#'   [view-terra] take for `x`'s class, such as `fill` for `sf` data or
-#'   `palette` for a `SpatRaster`.
+#'   [view-terra] take for `x`'s class, such as `fill` or `zcol` for `sf`
+#'   data or `palette` for a `SpatRaster`.
 #' @param crs The view CRS, as for [view()]. `NULL` uses [view_crs()] of
 #'   the list.
 #' @param name The page title. For a list, defaults to the layer labels
@@ -67,6 +68,10 @@
 #'
 #' v2 <- view_add(view(coast), stations, fill = c(220, 60, 40, 255))
 #' v2$scene$layers[[2]]$fill
+#'
+#' sites <- sf::st_sf(base = c("Casey", "Davis"), geometry = stations)
+#' v3 <- view_add(view(coast), sites, zcol = "base")
+#' v3$scene$layers[[2]]$fill
 #' @examplesIf requireNamespace("sf", quietly = TRUE) && requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
 #' sst <- terra::rast(system.file("extdata", "polar_3031.tif", package = "aobcore"))
 #' v3 <- view(list(sst = sst, coast = coast))

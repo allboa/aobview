@@ -28,6 +28,10 @@
   stroke = NULL,
   stroke_width_px = NULL,
   radius_px = NULL,
+  zcol = NULL,
+  palette = NULL,
+  breaks = NULL,
+  na_colour = "#999999",
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark")
@@ -53,8 +57,11 @@ neither \code{layer} nor \code{palette} is given), \code{TRUE} to draw a colour 
 of the layers \code{terra::RGB()} names (layers 1 to 3, and 4 as alpha,
 when it names none), or \code{FALSE} for the palette.}
 
-\item{palette}{A palette name the renderer knows: \code{"viridis"} (the
-default), \code{"ocean"}, \code{"ice"} or \code{"gray"}.}
+\item{palette}{For a \code{SpatRaster}, a palette name the renderer knows:
+\code{"viridis"} (the default), \code{"ocean"}, \code{"ice"} or \code{"gray"}. For a
+\code{SpatVector} with \code{zcol}, a palette as for \code{\link[=view]{view()}}: a name from
+\code{\link[grDevices:hcl.pals]{grDevices::hcl.pals()}} or \code{\link[grDevices:palette.pals]{grDevices::palette.pals()}}, or a function
+of \code{n}.}
 
 \item{range}{\code{c(low, high)}: the values at the ends of the palette. By
 default the range of the COG's coarsest level. For a colour image of a
@@ -83,6 +90,14 @@ ignored for lines.}
 \item{stroke_width_px}{Line or outline width in pixels.}
 
 \item{radius_px}{Point radius in pixels.}
+
+\item{zcol}{The name of a column of \code{x} to colour features by, or \code{NULL}
+(the default) for one colour. Not for an \code{sfc}, which has no columns.}
+
+\item{breaks}{With a numeric \code{zcol}: increasing break points that bin
+the values into classes, one colour each; see \code{\link[=view_colours]{view_colours()}}.}
+
+\item{na_colour}{With \code{zcol}: the colour for \code{NA} values.}
 }
 \value{
 A view, as for \code{\link[=view]{view()}}.
@@ -116,7 +131,8 @@ one layer (\code{layer}, the first by default) is drawn through a palette over
 the range of its values.
 
 A \code{SpatVector} is converted with \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and drawn as \code{sf} data
-is (see \code{\link[=view]{view()}}); it needs the 'sf' package.
+is (see \code{\link[=view]{view()}}), coloured by an attribute with \code{zcol}; it needs the
+'sf' package.
 }
 \examples{
 \dontshow{if (requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")) withAutoprint(\{ # examplesIf}
