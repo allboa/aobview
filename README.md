@@ -10,11 +10,11 @@ Early (phase 3). `view()` draws sf and sfc points, lines and polygons in their o
 
 ```r
 library(aobview)
-coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
+coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"), quiet = TRUE)
 view(coast)                       # lon/lat south of 40S: drawn in EPSG:3031
 view(coast, crs = "+proj=laea +lat_0=-90 +lon_0=140 +datum=WGS84")
 
-nc <- sf::read_sf(system.file("shape", "nc.shp", package = "sf"))
+nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 v <- view(nc)                     # lon/lat elsewhere: drawn flat in its own CRS
 v$file                            # the page; printing v opens it
 ```

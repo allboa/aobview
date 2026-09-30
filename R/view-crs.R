@@ -28,10 +28,10 @@
 #'   code.
 #' @export
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
-#' coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson",
-#'                                  package = "aobcore"))
+#' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
+#'                                  package = "aobcore"), quiet = TRUE)
 #' view_crs(coast)
-#' nc <- sf::read_sf(system.file("shape", "nc.shp", package = "sf"))
+#' nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 #' view_crs(nc)
 view_crs <- function(x) {
   need_sf()

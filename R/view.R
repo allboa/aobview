@@ -50,13 +50,13 @@
 #' @seealso [view_crs()] for the default view CRS.
 #' @export
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
-#' coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson",
-#'                                  package = "aobcore"))
+#' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
+#'                                  package = "aobcore"), quiet = TRUE)
 #' v <- view(coast)
 #' v$scene$view$crs
 #' file.exists(v$file)
 #'
-#' nc <- sf::read_sf(system.file("shape", "nc.shp", package = "sf"))
+#' nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 #' v2 <- view(nc, crs = "EPSG:26717", fill = c(200, 120, 40, 160))
 #' \dontrun{
 #' v2

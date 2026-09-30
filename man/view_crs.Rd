@@ -42,10 +42,10 @@ Data with no CRS is an error: set one first (for example
 }
 \examples{
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson",
-                                 package = "aobcore"))
+coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
+                                 package = "aobcore"), quiet = TRUE)
 view_crs(coast)
-nc <- sf::read_sf(system.file("shape", "nc.shp", package = "sf"))
+nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 view_crs(nc)
 \dontshow{\}) # examplesIf}
 }

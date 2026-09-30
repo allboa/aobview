@@ -30,7 +30,7 @@ sectors <- st_sf(
 cap <- st_sf(name = "cap", geometry = st_sfc(sector(-180, 180, -90, -78), crs = "OGC:CRS84"))
 polys <- rbind(sectors, cap)
 
-coast <- read_sf(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
+coast <- st_read(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"), quiet = TRUE)
 stations <- st_sf(
   name = c("Casey", "Davis", "Mawson", "McMurdo", "Rothera", "South Pole"),
   geometry = st_sfc(lapply(list(c(110.53, -66.28), c(77.97, -68.58), c(62.87, -67.6),
@@ -43,5 +43,5 @@ view(polys, file = file.path(out, "polygons-lonlat-in-3031.html"))
 view(mixed, file = file.path(out, "mixed-lonlat-in-3031.html"))
 view(mixed, crs = "+proj=laea +lat_0=-90 +lon_0=140 +datum=WGS84",
      file = file.path(out, "mixed-lonlat-in-laea.html"))
-nc <- read_sf(system.file("shape", "nc.shp", package = "sf"))
+nc <- st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 view(nc, file = file.path(out, "nc-own-crs.html"))

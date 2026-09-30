@@ -10,7 +10,7 @@ test_that("lon/lat data south of 40S is viewed in EPSG:3031", {
   skip_if_not_installed("sf")
   expect_identical(view_crs(lonlat(ring(-180, 180, -90, -60))), "EPSG:3031")
   expect_identical(view_crs(lonlat(ring(60, 80, -55, -40))), "EPSG:3031")
-  coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
+  coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"), quiet = TRUE)
   expect_identical(view_crs(coast), "EPSG:3031")
 })
 
@@ -23,7 +23,7 @@ test_that("other lon/lat data keeps its own CRS", {
   skip_if_not_installed("sf")
   expect_identical(view_crs(lonlat(ring(-180, 180, -90, -30))), "OGC:CRS84")
   expect_identical(view_crs(lonlat(ring(0, 10, 45, 59))), "OGC:CRS84")
-  nc <- sf::read_sf(system.file("shape", "nc.shp", package = "sf"))
+  nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
   expect_identical(view_crs(nc), "EPSG:4267")
 })
 

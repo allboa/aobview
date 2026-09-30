@@ -71,7 +71,7 @@ test_that("crs = overrides the default, in any form sf and aobcore read", {
   skip_if_not_installed("sf")
   x <- lonlat(list(ring(-40, 40, -80, -70)))
   expect_identical(view(x, crs = 3413, file = tempfile(fileext = ".html"))$scene$view$crs, "EPSG:3413")
-  nc <- sf::read_sf(system.file("shape", "nc.shp", package = "sf"))
+  nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
   ## NAD27 / UTM 17N: the same datum as nc, so PROJ needs no datum grid.
   v <- view(nc, crs = "EPSG:26717", file = tempfile(fileext = ".html"))
   expect_identical(v$scene$view$crs, "EPSG:26717")
