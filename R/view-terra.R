@@ -7,20 +7,22 @@
 #' them to the scene. The raster is never resampled in R; reprojection
 #' happens in the mesh.
 #'
-#' **Which COG.** When `x` is read unchanged from one tiled GeoTIFF (a COG),
-#' local or remote (an `http(s)` URL or a `/vsicurl/` path), that file is
-#' used. A remote COG is referenced by URL and the browser fetches its tiles
+#' **Which COG.** When `x` is read unchanged from one tiled GeoTIFF with
+#' overviews (a COG, or an image small enough for one tile), local or
+#' remote (an `http(s)` URL or a `/vsicurl/` path), that file is used. A remote COG is referenced by URL and the browser fetches its tiles
 #' by HTTP range requests (the server must allow them, and CORS): the page
 #' carries the recipe, not the data. A local COG's planned tiles are
 #' embedded in the page. Anything else (a raster in memory, a file that is
-#' not tiled, several sources, or a computed, cropped or windowed raster) is
+#' striped or has no overviews, several sources, a computed, cropped or
+#' windowed raster, or one given another `terra::NAflag()`) is
 #' written to a temporary COG with `terra::writeRaster(filetype = "COG")`,
 #' whose planned tiles are embedded, so the page opens from disk with no
-#' server.
+#' server. The temporary COG is deleted once the page is written.
 #'
 #' **Colour or palette.** A raster of 3 or 4 layers with values 0 to 255
-#' (Byte) and colour interpretation red, green, blue (and alpha), from the
-#' file or set with `terra::RGB()`, is drawn as a colour image. Otherwise
+#' (Byte) and colour interpretation red, green, blue (and alpha), set with
+#' `terra::RGB()` (in its order) or else from the file, is drawn as a
+#' colour image. Otherwise
 #' one layer (`layer`, the first by default) is drawn through a palette over
 #' the range of its values.
 #'
@@ -34,8 +36,9 @@
 #' @param layer The layer to draw through the palette (a number or name).
 #'   Giving it draws that layer even when `x` is a colour image.
 #' @param rgb `NULL` (colour when `x` is a Byte red, green, blue raster and
-#'   neither `layer` nor `palette` is given), `TRUE` to draw layers 1 to 3
-#'   (and 4 as alpha) as a colour image, or `FALSE` for the palette.
+#'   neither `layer` nor `palette` is given), `TRUE` to draw a colour image
+#'   of the layers `terra::RGB()` names (layers 1 to 3, and 4 as alpha,
+#'   when it names none), or `FALSE` for the palette.
 #' @param palette A palette name the renderer knows: `"viridis"` (the
 #'   default), `"ocean"`, `"ice"` or `"gray"`.
 #' @param range `c(low, high)`: the values at the ends of the palette. By
@@ -83,21 +86,21 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
   colour <- if (!is.null(rgb)) rgb else {
     is.null(layer) && is.null(palette) && raster_is_rgb(x, src)
   }
+  temp <- NULL
   if (colour) {
-    bands <- seq_len(terra::nlyr(x))
+    ## Layers in red, green, blue (alpha) order.
+    ord <- rgb_order(x, src)
     if (!is.null(src) && identical(src$cog$planar, "interleaved")) {
       cog <- src$cog
-      bands <- src$bands
+      bands <- src$bands[ord]
     } else {
-      ## In terra::RGB()'s order: red, green, blue (and alpha).
-      if (terra::has.RGB(x) && setequal(terra::RGB(x), bands)) x <- x[[terra::RGB(x)]]
-      cog <- raster_temp_cog(x, rgb = TRUE)
+      cog <- temp <- raster_temp_cog(x[[ord]], rgb = TRUE)
       bands <- seq_len(cog$samples_per_pixel)
     }
   } else {
     i <- raster_layer(x, layer)
     cog <- if (is.null(src)) {
-      raster_temp_cog(x[[i]], rgb = FALSE)
+      temp <- raster_temp_cog(x[[i]], rgb = FALSE)
     } else if (src$bands[i] == src$cog$band) {
       src$cog
     } else {
@@ -105,6 +108,9 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
     }
   }
 
+  ## The page carries the temporary COG's planned tiles, so the file is
+  ## not needed once it is written.
+  if (!is.null(temp)) on.exit(unlink(temp$dsn), add = TRUE)
   view <- aobcore::scene_crs(if (is.null(crs)) view_crs(x) else crs)
   plan <- aobcore::cog_plan(cog, view, ...)
   s <- aobcore::scene(view)
@@ -138,16 +144,40 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, str
 
 ## The COG `x` is read from, unchanged, as list(dsn, bands, cog), or NULL.
 ## `x` qualifies when all its layers come from one file GDAL gives tile
-## offsets for, and its grid, CRS and scaling are the file's: a cropped,
-## windowed or rescaled raster, or one with values in memory, does not.
+## offsets for, that file is cloud optimized enough to plan (see
+## cog_ready()), and its grid, CRS, scaling and no-data value are the
+## file's: a cropped, windowed, rescaled or re-flagged raster, or one with
+## values in memory, does not.
 raster_cog_source <- function(x) {
   if (any(terra::inMemory(x))) return(NULL)
   src <- terra::sources(x, bands = TRUE)
   if (!nrow(src) || length(unique(src$sid)) != 1L || !nzchar(src$source[1])) return(NULL)
   dsn <- raster_dsn(src$source[1])
   cog <- tryCatch(aobcore::cog_info(dsn, band = src$bands[1]), error = function(e) NULL)
-  if (is.null(cog) || !same_grid(x, cog)) return(NULL)
+  if (is.null(cog) || !cog_ready(cog) || !same_grid(x, cog) || !same_nodata(x, cog)) {
+    return(NULL)
+  }
   list(dsn = dsn, bands = as.integer(src$bands), cog = cog)
+}
+
+## Can a tile plan use this file as it is? Its full-resolution image must
+## fit in one tile, or be tiled (not striped: a strip is as wide as the
+## image) and have overviews. Otherwise a plan has one level of many
+## full-width strips or tiles, and the page carries every one.
+cog_ready <- function(cog) {
+  l0 <- cog$levels[[1]]
+  if (all(l0$tile_size >= l0$dim)) return(TRUE)
+  l0$tile_size[1] < l0$dim[1] && length(cog$levels) > 1L
+}
+
+## Does x treat as missing what the file does? terra::NAflag() is NaN
+## unless it was set on x, and a flag other than the file's no-data value
+## makes cells missing that the file (and so the page) would draw.
+same_nodata <- function(x, cog) {
+  flag <- terra::NAflag(x)
+  flag <- flag[!is.nan(flag)]
+  if (!length(flag)) return(TRUE)
+  !is.null(cog$nodata) && !is.nan(cog$nodata) && all(flag == cog$nodata)
 }
 
 ## A terra source as a dsn for aobcore::cog_info(). terra gives a remote
@@ -177,17 +207,40 @@ same_grid <- function(x, cog) {
 }
 
 ## Is x a colour image: 3 or 4 Byte layers, red, green, blue (and alpha),
-## by the file's colour interpretation or terra::RGB()?
+## by terra::RGB() or, without it, the file's colour interpretation?
 raster_is_rgb <- function(x, src = NULL) {
   nl <- terra::nlyr(x)
   if (!nl %in% 3:4) return(FALSE)
+  byte <- if (!is.null(src)) identical(src$cog$levels[[1]]$encoding$dtype, "uint8") else
+    is_byte(x)
+  if (!byte) return(FALSE)
+  if (!is.null(rgb_layers(x))) return(TRUE)
   want <- c("Red", "Green", "Blue", "Alpha")[seq_len(nl)]
-  if (!is.null(src)) {
-    return(identical(unname(src$cog$color_interp[src$bands]), want) &&
-             identical(src$cog$levels[[1]]$encoding$dtype, "uint8"))
+  !is.null(src) && identical(unname(src$cog$color_interp[src$bands]), want)
+}
+
+## The layers terra::RGB() names, red, green, blue (and alpha), or NULL.
+rgb_layers <- function(x) {
+  if (!terra::has.RGB(x)) return(NULL)
+  i <- as.integer(terra::RGB(x))
+  if (!length(i) %in% 3:4 || anyNA(i) || anyDuplicated(i) || any(i < 1L | i > terra::nlyr(x))) {
+    return(NULL)
   }
-  if (!terra::has.RGB(x) || !setequal(terra::RGB(x), seq_len(nl))) return(FALSE)
-  is_byte(x)
+  i
+}
+
+## x's layers in red, green, blue (alpha) order: terra::RGB()'s, with the
+## remaining layer of four as alpha when the file says it is; else the
+## layers as they are.
+rgb_order <- function(x, src = NULL) {
+  i <- rgb_layers(x)
+  if (is.null(i)) return(seq_len(terra::nlyr(x)))
+  rest <- setdiff(seq_len(terra::nlyr(x)), i)
+  if (length(i) == 3L && length(rest) == 1L && !is.null(src) &&
+      identical(unname(src$cog$color_interp[src$bands[rest]]), "Alpha")) {
+    i <- c(i, rest)
+  }
+  i
 }
 
 ## Are all of x's values whole numbers from 0 to 255?

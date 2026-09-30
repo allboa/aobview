@@ -46,6 +46,8 @@ The cap over the pole is a lon/lat ring that runs up the 180 meridian to the pol
 
 A `SpatRaster` reaches the page as a Cloud Optimized GeoTIFF, planned into tiles by aobcore with meshes projected to the view CRS, so the raster is never resampled in R. A raster read unchanged from one COG uses that file: a remote COG is referenced by URL and the browser fetches its tiles by range request (the server must allow CORS), and a local one has its planned tiles embedded. Any other raster (in memory, computed, cropped, not tiled) is written to a temporary COG with `terra::writeRaster(filetype = "COG")` and embedded. Three or four Byte layers with red, green, blue (and alpha) colour interpretation draw as a colour image; otherwise one layer draws through a palette. A `SpatVector` goes through `sf::st_as_sf()` and the sf path.
 
+Raster views need gdalraster with a working PROJ database, since aobcore plans tiles with it. On macOS, CRAN's gdalraster binary currently cannot find its `proj.db` ("GDAL cannot resolve the CRS EPSG:3031"); gdalraster from conda-forge works.
+
 ![A computed lon/lat SpatRaster in EPSG:3031, light](tools/screenshots/terra-lonlat-field-in-3031-light.png)
 
 `tools/write-views.R` writes the example pages; screenshots are taken with aobcore's `js/screenshots.mjs`.

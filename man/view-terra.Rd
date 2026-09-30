@@ -47,8 +47,9 @@ string. \code{NULL} (the default) uses \code{\link[=view_crs]{view_crs()}}.}
 Giving it draws that layer even when \code{x} is a colour image.}
 
 \item{rgb}{\code{NULL} (colour when \code{x} is a Byte red, green, blue raster and
-neither \code{layer} nor \code{palette} is given), \code{TRUE} to draw layers 1 to 3
-(and 4 as alpha) as a colour image, or \code{FALSE} for the palette.}
+neither \code{layer} nor \code{palette} is given), \code{TRUE} to draw a colour image
+of the layers \code{terra::RGB()} names (layers 1 to 3, and 4 as alpha,
+when it names none), or \code{FALSE} for the palette.}
 
 \item{palette}{A palette name the renderer knows: \code{"viridis"} (the
 default), \code{"ocean"}, \code{"ice"} or \code{"gray"}.}
@@ -93,20 +94,22 @@ them to the scene. The raster is never resampled in R; reprojection
 happens in the mesh.
 }
 \details{
-\strong{Which COG.} When \code{x} is read unchanged from one tiled GeoTIFF (a COG),
-local or remote (an \code{http(s)} URL or a \verb{/vsicurl/} path), that file is
-used. A remote COG is referenced by URL and the browser fetches its tiles
+\strong{Which COG.} When \code{x} is read unchanged from one tiled GeoTIFF with
+overviews (a COG, or an image small enough for one tile), local or
+remote (an \code{http(s)} URL or a \verb{/vsicurl/} path), that file is used. A remote COG is referenced by URL and the browser fetches its tiles
 by HTTP range requests (the server must allow them, and CORS): the page
 carries the recipe, not the data. A local COG's planned tiles are
 embedded in the page. Anything else (a raster in memory, a file that is
-not tiled, several sources, or a computed, cropped or windowed raster) is
+striped or has no overviews, several sources, a computed, cropped or
+windowed raster, or one given another \code{terra::NAflag()}) is
 written to a temporary COG with \code{terra::writeRaster(filetype = "COG")},
 whose planned tiles are embedded, so the page opens from disk with no
-server.
+server. The temporary COG is deleted once the page is written.
 
 \strong{Colour or palette.} A raster of 3 or 4 layers with values 0 to 255
-(Byte) and colour interpretation red, green, blue (and alpha), from the
-file or set with \code{terra::RGB()}, is drawn as a colour image. Otherwise
+(Byte) and colour interpretation red, green, blue (and alpha), set with
+\code{terra::RGB()} (in its order) or else from the file, is drawn as a
+colour image. Otherwise
 one layer (\code{layer}, the first by default) is drawn through a palette over
 the range of its values.
 

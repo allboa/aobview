@@ -9,6 +9,22 @@ skip_if_no_terra <- function() {
   skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
 }
 
+# Run view() and return the cell values of the temporary COG it wrote (the
+# file itself is deleted once the page is written).
+temp_cog_values <- function(expr) {
+  seen <- new.env()
+  real <- raster_temp_cog
+  local_mocked_bindings(raster_temp_cog = function(x, rgb) {
+    cog <- real(x, rgb)
+    seen$dsn <- cog$dsn
+    seen$values <- terra::values(terra::rast(cog$dsn))
+    cog
+  }, .env = parent.frame())
+  force(expr)
+  expect_false(file.exists(seen$dsn))
+  seen$values
+}
+
 extdata <- function(f) system.file("extdata", f, package = "aobcore")
 html <- function() tempfile(fileext = ".html")
 page_text <- function(v) paste(readLines(v$file, warn = FALSE), collapse = "\n")
@@ -142,10 +158,9 @@ test_that("RGB layers in another order are drawn red, green, blue", {
                    ymax = 1e6, crs = "EPSG:3031",
                    vals = c(rep(0, 100), rep(100, 100), rep(255, 100)))
   terra::RGB(x) <- c(3, 2, 1)
-  v <- view(x, file = html())
-  cog <- aobcore::cog_info(file.path(tempdir(), v$scene$data$x$url))
-  r <- terra::rast(cog$dsn)
-  expect_identical(unname(terra::global(r, "max")$max), c(255, 100, 0))
+  vals <- temp_cog_values(v <- view(x, file = html()))
+  expect_equal(unname(vals[1, ]), c(255, 100, 0))
+  expect_identical(v$scene$layers[[1]]$rgb, list(bands = 1:3))
 })
 
 test_that("an RGBA COG file draws in colour with its alpha band", {
@@ -218,9 +233,76 @@ test_that("missing cells of an RGB SpatRaster become transparent, and white stay
   vals[101] <- NA
   x <- terra::rast(x, vals = vals)
   terra::RGB(x) <- 1:3
-  v <- view(x, file = html())
+  vals <- temp_cog_values(v <- view(x, file = html()))
   expect_identical(v$scene$layers[[1]]$rgb, list(bands = 1:3, alpha = 4L))
-  r <- terra::rast(file.path(tempdir(), v$scene$data$x$url))
-  expect_equal(unname(terra::values(r)[1, ]), c(255, 0, 255, 0))
-  expect_equal(unname(terra::values(r)[2, ]), c(255, 255, 255, 255))
+  expect_equal(unname(vals[1, ]), c(255, 0, 255, 0))
+  expect_equal(unname(vals[2, ]), c(255, 255, 255, 255))
+})
+
+test_that("a raster given another NAflag than its file's is not taken from the file", {
+  skip_if_no_terra()
+  i <- terra::rast(ncols = 100, nrows = 100, xmin = 0, xmax = 1e5, ymin = -1e5, ymax = 0,
+                   crs = "EPSG:3031", vals = rep(1:10, 1000))
+  f <- tempfile(fileext = ".tif")
+  terra::writeRaster(i, f, filetype = "COG", datatype = "INT2S", NAflag = -9999)
+  j <- terra::rast(f)
+  expect_false(is.null(raster_cog_source(j)))
+  terra::NAflag(j) <- -9999
+  expect_false(is.null(raster_cog_source(j)))
+  terra::NAflag(j) <- 5
+  expect_null(raster_cog_source(j))
+  vals <- temp_cog_values(v <- view(j, file = html()))
+  expect_match(v$scene$data$j$url, "^view-")
+  expect_true(all(is.na(vals[i[] == 5])))
+  expect_identical(v$scene$layers[[1]]$palette$range, c(1, 10))
+})
+
+test_that("terra::RGB() chooses the bands of a file-backed raster", {
+  skip_if_no_terra()
+  set.seed(2)
+  x <- terra::rast(nrows = 50, ncols = 50, nlyrs = 3, xmin = -2e6, xmax = 2e6, ymin = -2e6,
+                   ymax = 2e6, crs = "EPSG:3031", vals = sample(0:255, 7500, TRUE))
+  f <- tempfile(fileext = ".tif")
+  terra::writeRaster(x, f, filetype = "COG", datatype = "INT1U",
+                     gdal = interleave_pixel())
+  ## No colour interpretation in the file: a palette, until RGB() says so.
+  y <- terra::rast(f)
+  expect_false(is.null(view(y, file = html())$scene$layers[[1]]$palette))
+  terra::RGB(y) <- 1:3
+  v <- view(y, file = html())
+  expect_identical(v$scene$layers[[1]]$rgb, list(bands = 1:3))
+  expect_identical(v$scene$data$y$url, basename(f))
+  terra::RGB(y) <- c(2, 3, 1)
+  expect_identical(view(y, file = html())$scene$layers[[1]]$rgb, list(bands = c(2L, 3L, 1L)))
+  ## RGB() overrides the file's own colour interpretation.
+  z <- terra::rast(extdata("polar_rgba.tif"))
+  terra::RGB(z) <- c(3, 2, 1, 4)
+  v <- view(z, file = html())
+  expect_identical(v$scene$layers[[1]]$rgb, list(bands = c(3L, 2L, 1L), alpha = 4L))
+  expect_identical(v$scene$data$z$url, "polar_rgba.tif")
+  ## Three layers named: the fourth stays alpha when the file says so.
+  terra::RGB(z) <- c(3, 2, 1)
+  expect_identical(view(z, file = html())$scene$layers[[1]]$rgb,
+                   list(bands = c(3L, 2L, 1L), alpha = 4L))
+})
+
+test_that("a striped file, or a tiled one without overviews, is rewritten as a COG", {
+  skip_if_no_terra()
+  m <- terra::rast(ncols = 600, nrows = 600, xmin = -3e6, xmax = 3e6, ymin = -3e6, ymax = 3e6,
+                   crs = "EPSG:3031", vals = seq_len(360000))
+  striped <- tempfile(fileext = ".tif")
+  terra::writeRaster(m, striped, gdal = "TILED=NO")
+  s <- terra::rast(striped)
+  expect_null(raster_cog_source(s))
+  v <- view(s, file = html())
+  expect_match(v$scene$data$s$url, "^view-")
+  expect_gt(length(v$scene$layers[[1]]$plan$levels), 1L)
+  tiled <- tempfile(fileext = ".tif")
+  terra::writeRaster(m, tiled, gdal = c("TILED=YES", "BLOCKXSIZE=256", "BLOCKYSIZE=256"))
+  expect_null(raster_cog_source(terra::rast(tiled)))
+  ## An image that fits in one tile needs no overviews.
+  small <- tempfile(fileext = ".tif")
+  terra::writeRaster(terra::aggregate(m, 6), small,
+                     gdal = c("TILED=YES", "BLOCKXSIZE=128", "BLOCKYSIZE=128"))
+  expect_false(is.null(raster_cog_source(terra::rast(small))))
 })
