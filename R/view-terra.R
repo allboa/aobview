@@ -225,15 +225,22 @@ raster_temp_cog <- function(x, rgb) {
         x <- c(terra::ifel(is.na(rgb3), 0, rgb3), alpha)
       }
       terra::writeRaster(x, f, filetype = "COG", datatype = "INT1U", NAflag = NA,
-                         gdal = "INTERLEAVE=PIXEL")
+                         gdal = interleave_pixel())
     } else {
       terra::writeRaster(x, f, filetype = "COG", datatype = "FLT4S",
-                         gdal = "INTERLEAVE=PIXEL")
+                         gdal = interleave_pixel())
     }
   } else {
     terra::writeRaster(x, f, filetype = "COG")
   }
   aobcore::cog_info(f)
+}
+
+## GDAL's COG driver takes INTERLEAVE from 3.11 (and there copies terra's
+## band interleaved in-memory stage unless told); before, it is always pixel
+## interleaved and warns about the option.
+interleave_pixel <- function() {
+  if (utils::compareVersion(terra::gdal(), "3.11") >= 0) "INTERLEAVE=PIXEL" else character()
 }
 
 raster_layer <- function(x, layer) {

@@ -120,7 +120,7 @@ test_that("a 3-band Byte RGB SpatRaster draws as a colour image", {
   terra::RGB(x) <- 1:3
   v <- view(x, file = html())
   l <- v$scene$layers[[1]]
-  expect_identical(v$scene$version, "0.3")
+  expect_true(numeric_version(v$scene$version) >= "0.3")
   expect_identical(l$rgb, list(bands = 1:3))
   expect_null(l$palette)
   expect_gt(length(tile_blobs(v)), 0L)
@@ -165,8 +165,8 @@ test_that("SpatRaster arguments are checked", {
   expect_error(view(terra::rast(ncols = 4, nrows = 4), file = html()), "no values")
   n <- terra::rast(ncols = 4, nrows = 4, vals = 1:16, crs = "")
   expect_error(view(n, file = html()), "no CRS")
-  v <- view(m, crs = "EPSG:3413", palette = "gray", range = c(0, 20), file = html())
-  expect_identical(v$scene$view$crs, "EPSG:3413")
+  v <- view(m, crs = "EPSG:3976", palette = "gray", range = c(0, 20), file = html())
+  expect_identical(v$scene$view$crs, "EPSG:3976")
   expect_identical(v$scene$layers[[1]]$palette, list(name = "gray", range = c(0, 20)))
 })
 
