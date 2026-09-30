@@ -164,14 +164,18 @@ test_that("zcol works through view_add() and for a SpatVector", {
 
 test_that("zcol colours stay with their rows when a row cannot be transformed", {
   skip_if_not_installed("sf")
-  ortho <- "+proj=ortho +lat_0=-90 +lon_0=0 +datum=WGS84"
+  ## The South Pole is the antipode of North Pole Lambert azimuthal equal
+  ## area's centre, so PROJ cannot transform it. (An authority code, not a
+  ## PROJ string: with macOS CRAN gdalraster's missing proj.db a PROJ string
+  ## view CRS crashes R in aobcore::crs_domain().)
+  laea <- "ESRI:102017"
   x <- sf::st_sf(z = c("a", "b", "c"),
-                 geometry = lonlat(list(sf::st_point(c(0, -70)), sf::st_point(c(0, 60)),
-                                        sf::st_point(c(90, -70)))))
-  res <- sf::st_transform(sf::st_geometry(x), ortho)
+                 geometry = lonlat(list(sf::st_point(c(0, 60)), sf::st_point(c(0, -90)),
+                                        sf::st_point(c(90, 70)))))
+  res <- sf::st_transform(sf::st_geometry(x), laea)
   skip_if(!identical(sf::st_is_empty(res), c(FALSE, TRUE, FALSE)))
   pal <- function(n) c("red", "green", "blue")[seq_len(n)]
-  expect_warning(v <- view(x, zcol = "z", palette = pal, crs = ortho,
+  expect_warning(v <- view(x, zcol = "z", palette = pal, crs = laea,
                            file = tempfile(fileext = ".html")), "1 of 3 geometries")
   expect_identical(blob_rgba(v, "x"), plain_rgba(x$z, palette = pal)[c(1, 3), ])
 })
