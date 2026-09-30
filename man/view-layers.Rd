@@ -48,8 +48,13 @@ A view, as for \code{\link[=view]{view()}}.
 \code{view()} of a list draws each element as one or more layers of a single
 scene, in one view CRS, in list order: the first element at the bottom.
 \code{view_add()} adds a layer to a view already made, on top, and writes a
-new page, so \code{view(a) |> view_add(b)} gives the same scene as
-\code{view(list(a = a, b = b))}.
+new page. \code{view(a) |> view_add(b)} gives the same scene as
+\code{view(list(a = a, b = b))} when the two have the same view CRS, that is
+when \code{view_crs(a)} equals \code{view_crs(list(a, b))}, as it does whenever \code{a}
+is projected, or \code{a} and \code{b} are both lon/lat south of 40S (or both north
+of 60N). Otherwise they differ: \code{view_add()} keeps \code{a}'s view CRS, while
+the list's CRS is chosen from every element (below). Pass \verb{crs =} to
+either form to fix it.
 }
 \details{
 Elements may be \code{sf} or \code{sfc} objects and 'terra' \code{SpatRaster} or
@@ -61,7 +66,10 @@ densified first), rasters by \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}
 \strong{View CRS.} \code{crs} when given; otherwise \code{\link[=view_crs]{view_crs()}} of the whole list:
 the CRS of the first element with a projected CRS, or, when every element
 is in lon/lat, the lon/lat rule applied once to their combined latitude
-range. \code{view_add()} keeps the view's CRS and reprojects \code{x} to it.
+range. \code{view_add()} keeps the view's CRS and reprojects \code{x} to it; it
+warns when that puts projected vector data into a geographic view
+(decision 0004 rules out that per-coordinate transform), and a \code{crs}
+argument to it is an error.
 
 \strong{Names.} List names become layer labels and, made valid and unique,
 layer ids. An unnamed element takes the expression that gave it in a

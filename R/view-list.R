@@ -3,8 +3,13 @@
 #' `view()` of a list draws each element as one or more layers of a single
 #' scene, in one view CRS, in list order: the first element at the bottom.
 #' `view_add()` adds a layer to a view already made, on top, and writes a
-#' new page, so `view(a) |> view_add(b)` gives the same scene as
-#' `view(list(a = a, b = b))`.
+#' new page. `view(a) |> view_add(b)` gives the same scene as
+#' `view(list(a = a, b = b))` when the two have the same view CRS, that is
+#' when `view_crs(a)` equals `view_crs(list(a, b))`, as it does whenever `a`
+#' is projected, or `a` and `b` are both lon/lat south of 40S (or both north
+#' of 60N). Otherwise they differ: `view_add()` keeps `a`'s view CRS, while
+#' the list's CRS is chosen from every element (below). Pass `crs =` to
+#' either form to fix it.
 #'
 #' Elements may be `sf` or `sfc` objects and 'terra' `SpatRaster` or
 #' `SpatVector` objects, in any mix of CRSs. Each is drawn as [view()] or
@@ -15,7 +20,10 @@
 #' **View CRS.** `crs` when given; otherwise [view_crs()] of the whole list:
 #' the CRS of the first element with a projected CRS, or, when every element
 #' is in lon/lat, the lon/lat rule applied once to their combined latitude
-#' range. `view_add()` keeps the view's CRS and reprojects `x` to it.
+#' range. `view_add()` keeps the view's CRS and reprojects `x` to it; it
+#' warns when that puts projected vector data into a geographic view
+#' (decision 0004 rules out that per-coordinate transform), and a `crs`
+#' argument to it is an error.
 #'
 #' **Names.** List names become layer labels and, made valid and unique,
 #' layer ids. An unnamed element takes the expression that gave it in a
@@ -82,6 +90,10 @@ view.list <- function(x, ..., crs = NULL, name = NULL, file = NULL,
 view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL) {
   if (!inherits(v, "aob_view") || is.null(v$scene)) {
     stop("`v` must be a view from view().", call. = FALSE)
+  }
+  if ("crs" %in% names(match.call(expand.dots = FALSE)$...)) {
+    stop("view_add() keeps the view's CRS, which is fixed once the view is made; ",
+         "to choose one, use view(list(...), crs = ).", call. = FALSE)
   }
   theme <- match.arg(theme %||% v$theme %||% "auto", c("auto", "light", "dark"))
   if (is_plain_list(x)) {

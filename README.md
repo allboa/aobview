@@ -35,10 +35,10 @@ The v1 target, a polar COG with vector overlays in EPSG:3031, in one call:
 ```r
 sst <- terra::rast(system.file("extdata", "polar_3031.tif", package = "aobcore"))
 view(list(sst = sst, coastline = coast))   # one scene in EPSG:3031, sst at the bottom
-view(sst) |> view_add(coast, stroke = c(40, 40, 40, 255))   # the same scene, with a style
+view(sst) |> view_add(coast, stroke = c(40, 40, 40, 255))   # the same view CRS, with a style
 ```
 
-A list draws in list order, first at the bottom; its names become layer labels and (made valid and unique) layer ids. The view CRS is `crs =`, or the first projected CRS in the list, or, when everything is in lon/lat, the rule below applied to the combined extent. `view_add()` keeps the view's CRS. Every object is reprojected to it: vectors in R, rasters through aobcore's tile planner. The initial view is the layers' combined extent, clipped to the view's domain.
+A list draws in list order, first at the bottom; its names become layer labels and (made valid and unique) layer ids. The view CRS is `crs =`, or the first projected CRS in the list, or, when everything is in lon/lat, the rule below applied to the combined extent. `view_add()` keeps the view's CRS, so it gives the same scene as the list only when the first object's view CRS is the list's (for example, a projected first object); it warns when that puts projected vectors into a geographic view. Every object is reprojected to it: vectors in R, rasters through aobcore's tile planner. The initial view is the layers' combined extent, clipped to the view's domain.
 
 ![A polar COG with the lon/lat coastline and stations in EPSG:3031, light](tools/screenshots/cog-with-overlays-in-3031-light.png)
 

@@ -197,3 +197,52 @@ test_that("list and add arguments are checked", {
   expect_error(view_add(v, x, fil = c(1, 2, 3, 4)), "`fil`")
   expect_error(view_add(v, 1:3), "no method")
 })
+
+test_that("view_add() and the list form differ when the first object's view CRS is not the list's", {
+  skip_if_not_installed("sf")
+  ## A lon/lat first object, then projected data: the list keeps the
+  ## projected CRS; view_add() keeps nc's geographic CRS, and warns.
+  nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
+  p3031 <- sf::st_sfc(sf::st_linestring(rbind(c(0, 0), c(1e6, 1e6))), crs = "EPSG:3031")
+  expect_identical(view(list(nc = nc, p3031 = p3031), file = html())$scene$view$crs, "EPSG:3031")
+  expect_warning(v <- view_add(view(nc, file = html()), p3031, file = html()),
+                 "geographic.*crs =")
+  expect_identical(v$scene$view$crs, "EPSG:4267")
+  ## Two lon/lat objects: the list applies the rule to both, view_add() to
+  ## the first alone.
+  south <- lonlat(list(ring(0, 10, -80, -70)))
+  mid <- lonlat(list(ring(0, 10, -30, -20)))
+  a <- view(list(south = south, mid = mid), file = html())
+  b <- view_add(view(south, file = html()), mid, file = html())
+  expect_identical(a$scene$view$crs, "OGC:CRS84")
+  expect_identical(b$scene$view$crs, "EPSG:3031")
+  expect_false(identical(a$scene, b$scene))
+  ## Projected data in a geographic view warns on the single view too.
+  expect_warning(view(p3031, crs = "OGC:CRS84", file = html()), "geographic")
+  expect_no_warning(view(south, crs = "OGC:CRS84", file = html()))
+})
+
+test_that("view_add() refuses a crs", {
+  skip_if_not_installed("sf")
+  v <- view(track(), file = html())
+  expect_error(view_add(v, land(), crs = 3031), "view\\(list\\(...\\), crs = \\)")
+})
+
+test_that("data with no area leaves the initial view to the renderer", {
+  skip_if_not_installed("sf")
+  flat <- sf::st_sfc(sf::st_linestring(rbind(c(0, 1e6), c(2e6, 1e6))), crs = "EPSG:3031")
+  pt <- sf::st_sfc(sf::st_point(c(5e5, 5e5)), crs = "EPSG:3031")
+  expect_null(view(flat, file = html())$scene$view$extent)
+  expect_null(view(pt, file = html())$scene$view$extent)
+  ## Together they have an area, and it is the view.
+  expect_equal(view(list(flat = flat, pt = pt), file = html())$scene$view$extent,
+               c(0, 2e6, 5e5, 1e6))
+  ## Unit checks of the rule: no area gives NULL, not the bounds; data
+  ## wholly outside the bounds gives the bounds; otherwise the clip.
+  b <- c(-10, 10, -10, 10)
+  expect_null(view_extent(list(c(0, 2, 1, 1)), b))
+  expect_null(view_extent(list(c(3, 3, 3, 3)), b))
+  expect_identical(view_extent(list(c(20, 30, 20, 30)), b), b)
+  expect_identical(view_extent(list(c(-5, 50, 0, 1)), b), c(-5, 10, 0, 1))
+  expect_identical(view_extent(list(c(-5, 5, 0, 0), c(0, 0, -2, 2)), NULL), c(-5, 5, -2, 2))
+})

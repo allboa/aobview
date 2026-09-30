@@ -169,6 +169,7 @@ add_sfc <- function(g, v, name, densify, style) {
   if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
   s <- v$scene
   view <- s$view$crs
+  warn_geographic_view(g, view)
   g <- to_view_crs(g, view, densify)
   lost <- sf::st_is_empty(g)
   if (all(lost)) {
@@ -220,11 +221,14 @@ view_extent <- function(extents, bounds) {
   e <- e[apply(e, 1L, function(r) all(is.finite(r))), , drop = FALSE]
   if (!nrow(e)) return(bounds)
   u <- c(min(e[, 1]), max(e[, 2]), min(e[, 3]), max(e[, 4]))
+  ## A single point or a straight line along an axis has no area: leave the
+  ## initial view to the renderer rather than open on the whole domain.
+  if (!(u[1] < u[2] && u[3] < u[4])) return(NULL)
   if (!is.null(bounds)) {
     clip <- c(max(u[1], bounds[1]), min(u[2], bounds[2]), max(u[3], bounds[3]), min(u[4], bounds[4]))
+    ## Data wholly outside the domain: open on the domain.
     u <- if (clip[1] < clip[2] && clip[3] < clip[4]) clip else bounds
   }
-  if (!(u[1] < u[2] && u[3] < u[4])) return(NULL)
   as.numeric(u)
 }
 
@@ -282,6 +286,21 @@ to_view_crs <- function(g, view, densify) {
     sf::st_crs(g) <- src
   }
   sf::st_transform(g, target)
+}
+
+## Decision 0004 rules out a per-coordinate transform of projected data into
+## a geographic view: nothing cuts it at the antimeridian or the poles.
+## (#9, item 2.) Warn, and say how to get a projected view.
+warn_geographic_view <- function(g, view) {
+  src <- sf::st_crs(g)
+  if (is.na(src) || isTRUE(sf::st_is_longlat(g))) return(invisible())
+  target <- tryCatch(sf::st_crs(as.character(view)), error = function(e) NULL)
+  if (is.null(target) || !isTRUE(target$IsGeographic)) return(invisible())
+  warning("`x` is in a projected CRS but the view CRS ", crs_text(view), " is geographic: ",
+          "its coordinates are transformed point by point, with nothing cut at the ",
+          "antimeridian or the poles, so lines and polygons that cross them are drawn wrongly. ",
+          "Use a projected view: pass `crs =`, or view(list(...)), which keeps the first ",
+          "projected CRS in the list.", call. = FALSE)
 }
 
 densify_step <- function(densify, longlat) {
