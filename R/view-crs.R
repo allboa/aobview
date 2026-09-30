@@ -19,13 +19,17 @@
 #'    carree), which the scene spec allows. Web Mercator is not used: it
 #'    cannot show the poles, and a tiled Mercator basemap is a non-goal.
 #'
-#' Data with no CRS is an error: set one first (for example
-#' `sf::st_set_crs()`), or pass `crs` to [view()].
+#' For a raster the bounding box is the grid's extent, so a lon/lat grid
+#' from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.
 #'
-#' @param x An `sf` or `sfc` object.
+#' Data with no CRS is an error: set one first (for example
+#' `sf::st_set_crs()` or `terra::crs<-`), or pass `crs` to [view()].
+#'
+#' @param x An `sf` or `sfc` object, or a 'terra' `SpatRaster` or
+#'   `SpatVector`.
 #' @return A CRS for [aobcore::scene()]: an `"authority:code"` string such
-#'   as `"EPSG:3031"`, or the data's own `sf` `crs` object when it has no
-#'   code.
+#'   as `"EPSG:3031"`, or, when the data's CRS has no code, the `sf` `crs`
+#'   object (for `sf` data) or its WKT (for 'terra' data).
 #' @export
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
 #' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
@@ -34,6 +38,11 @@
 #' nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 #' view_crs(nc)
 view_crs <- function(x) {
+  UseMethod("view_crs")
+}
+
+#' @export
+view_crs.default <- function(x) {
   need_sf()
   crs <- sf::st_crs(x)
   if (is.na(crs)) {
@@ -42,10 +51,34 @@ view_crs <- function(x) {
   }
   if (!isTRUE(sf::st_is_longlat(x))) return(sf_crs_code(crs))
   bb <- sf::st_bbox(x)
-  if (anyNA(bb)) return(sf_crs_code(crs))
-  if (bb[["ymax"]] <= south_limit) return("EPSG:3031")
-  if (bb[["ymin"]] >= north_limit) return("EPSG:3413")
-  sf_crs_code(crs)
+  lonlat_view_crs(bb[["ymin"]], bb[["ymax"]]) %||% sf_crs_code(crs)
+}
+
+#' @export
+view_crs.SpatRaster <- function(x) terra_view_crs(x)
+
+#' @export
+view_crs.SpatVector <- function(x) terra_view_crs(x)
+
+terra_view_crs <- function(x) {
+  need_terra()
+  if (!nzchar(terra::crs(x))) {
+    stop("`x` has no CRS. Set one with terra::crs(x) <- \"EPSG:...\", or pass `crs` to view().",
+         call. = FALSE)
+  }
+  own <- terra_crs_code(x)
+  if (!isTRUE(terra::is.lonlat(x))) return(own)
+  e <- as.vector(terra::ext(x))
+  lonlat_view_crs(e[["ymin"]], e[["ymax"]]) %||% own
+}
+
+## The polar view for lon/lat data between latitudes ymin and ymax, or NULL
+## to keep the data's own CRS (rules 2 to 4 above).
+lonlat_view_crs <- function(ymin, ymax) {
+  if (anyNA(c(ymin, ymax))) return(NULL)
+  if (ymax <= south_limit) return("EPSG:3031")
+  if (ymin >= north_limit) return("EPSG:3413")
+  NULL
 }
 
 south_limit <- -40
@@ -60,4 +93,15 @@ sf_crs_code <- function(crs) {
     return(code)
   }
   crs
+}
+
+## A terra object's CRS as "authority:code" when it has one, else its WKT.
+terra_crs_code <- function(x) {
+  d <- terra::crs(x, describe = TRUE)
+  auth <- d$authority[1]
+  code <- d$code[1]
+  if (!is.na(auth) && !is.na(code) && nzchar(auth) && nzchar(code)) {
+    return(paste0(auth, ":", code))
+  }
+  terra::crs(x)
 }

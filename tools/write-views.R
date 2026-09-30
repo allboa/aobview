@@ -45,3 +45,37 @@ view(mixed, crs = "+proj=laea +lat_0=-90 +lon_0=140 +datum=WGS84",
      file = file.path(out, "mixed-lonlat-in-laea.html"))
 nc <- st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 view(nc, file = file.path(out, "nc-own-crs.html"))
+
+# terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
+# for a raster already in 3031).
+if (requireNamespace("terra", quietly = TRUE)) {
+  # A computed lon/lat field over the South Pole, 1 degree, 90S to 40S: in
+  # memory, so written to a temporary COG whose tiles are embedded.
+  field <- terra::rast(ncols = 360, nrows = 50, xmin = -180, xmax = 180, ymin = -90, ymax = -40,
+                       crs = "OGC:CRS84")
+  xy <- terra::xyFromCell(field, seq_len(terra::ncell(field)))
+  terra::values(field) <- cos(xy[, 2] * pi / 25) + 0.5 * sin(xy[, 1] * pi / 30)
+  view(field, palette = "ocean", file = file.path(out, "terra-lonlat-field-in-3031.html"))
+
+  # A SpatRaster read from a local COG in EPSG:3031: that COG, embedded.
+  sst <- terra::rast(system.file("extdata", "polar_3031.tif", package = "aobcore"))
+  view(sst, file = file.path(out, "terra-cog-file-in-3031.html"))
+
+  # A 3-band Byte RGB SpatRaster in memory, with a hole of missing cells,
+  # drawn as a colour image (the hole transparent).
+  img <- terra::rast(nrows = 200, ncols = 200, nlyrs = 3, xmin = -3e6, xmax = 3e6,
+                     ymin = -3e6, ymax = 3e6, crs = "EPSG:3031")
+  xy <- terra::xyFromCell(img, seq_len(terra::ncell(img)))
+  r <- round(255 * (xy[, 1] + 3e6) / 6e6)
+  g <- round(255 * (xy[, 2] + 3e6) / 6e6)
+  b <- ifelse(sqrt(rowSums(xy^2)) < 1.5e6, 255, 60)
+  hole <- sqrt((xy[, 1] - 1.5e6)^2 + (xy[, 2] - 1.5e6)^2) < 6e5
+  r[hole] <- NA
+  terra::values(img) <- cbind(r, g, b)
+  terra::RGB(img) <- 1:3
+  view(img, file = file.path(out, "terra-rgb-in-3031.html"))
+
+  # A SpatVector read by terra: the lon/lat coastline south of 40S.
+  coastline <- terra::vect(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
+  view(coastline, file = file.path(out, "terra-vector-in-3031.html"))
+}
