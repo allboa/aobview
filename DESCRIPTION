@@ -1,0 +1,27 @@
+Package: aobview
+Title: View 'sf' and 'terra' Data in Their Own Coordinate Reference System
+Version: 0.0.0.9000
+Authors@R:
+    person("Michael", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre"))
+Description: A convenience front end for 'allonboard' map scenes: 'view(x)'
+    draws spatial objects in a self-contained HTML page, in their own
+    coordinate reference system or a polar view chosen for them, through
+    the lean core package 'aobcore'. This is an early skeleton; the package
+    name is a placeholder.
+License: MIT + file LICENSE
+URL: https://github.com/allboa/aobview
+BugReports: https://github.com/allboa/aobview/issues
+Imports:
+    aobcore,
+    utils,
+    wk
+Suggests:
+    nanoarrow,
+    sf,
+    testthat (>= 3.0.0)
+Remotes:
+    allboa/aobcore
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0
