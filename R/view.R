@@ -20,8 +20,15 @@
 #' `densify` degrees, 0.25 by default), so an edge along a parallel curves
 #' as it should in a polar view instead of cutting across it.
 #'
-#' Only the geometry travels to the page for now; attributes (for colour,
-#' legends and popups) follow in later versions.
+#' **Colour by attribute.** `zcol` names a column of `x` whose values
+#' colour each feature: the fill of polygons and points, the stroke of
+#' lines. Numbers take a continuous palette over their range (or one colour
+#' per class with `breaks`), factors, character and logical values one
+#' colour per level; `NA` takes `na_colour`. The colours are computed in R
+#' by [view_colours()] and travel to the page as one RGBA column beside the
+#' geometry; no other attribute does. With `zcol`, polygons get a grey
+#' outline (change it with `stroke`); `fill`, and `stroke` for lines, are
+#' errors, since `zcol` sets those colours.
 #'
 #' @param x A spatial object: an `sf` data frame or an `sfc` geometry column
 #'   (with the 'sf' package installed); a 'terra' object ([view-terra]); or
@@ -40,6 +47,16 @@
 #'   keeps the defaults: a translucent blue fill with a blue outline for
 #'   polygons, blue lines, and blue points with a white outline. `fill` is
 #'   ignored for lines.
+#' @param zcol The name of a column of `x` to colour features by, or `NULL`
+#'   (the default) for one colour. Not for an `sfc`, which has no columns.
+#' @param palette With `zcol`: a palette name (from
+#'   [grDevices::hcl.pals()] or [grDevices::palette.pals()]) or a function
+#'   of `n` returning `n` colours, such as [grDevices::hcl.colors()]; see
+#'   [view_colours()]. `NULL` is `"viridis"` for numbers and `"Tableau 10"`
+#'   for levels.
+#' @param breaks With a numeric `zcol`: increasing break points that bin
+#'   the values into classes, one colour each; see [view_colours()].
+#' @param na_colour With `zcol`: the colour for `NA` values.
 #' @param stroke_width_px Line or outline width in pixels.
 #' @param radius_px Point radius in pixels.
 #' @param name The layer name, shown as the page title. Defaults to the
@@ -66,8 +83,11 @@
 #'
 #' nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 #' v2 <- view(nc, crs = "EPSG:26717", fill = c(200, 120, 40, 160))
+#' v3 <- view(nc, zcol = "BIR74", palette = "YlOrRd")
+#' v4 <- view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
 #' \dontrun{
 #' v2
+#' v3
 #' }
 view <- function(x, ...) {
   UseMethod("view")
@@ -81,15 +101,17 @@ view.default <- function(x, ...) {
 #' @rdname view
 #' @export
 view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                    stroke_width_px = NULL, radius_px = NULL, name = NULL,
-                    file = NULL, theme = c("auto", "light", "dark")) {
+                    stroke_width_px = NULL, radius_px = NULL, zcol = NULL, palette = NULL,
+                    breaks = NULL, na_colour = "#999999", name = NULL, file = NULL,
+                    theme = c("auto", "light", "dark")) {
   check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
   v <- new_view(crs %||% view_crs(x))
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
-                  stroke_width_px = stroke_width_px, radius_px = radius_px)
+                  stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
+                  palette = palette, breaks = breaks, na_colour = na_colour)
   finish_view(v, name, file, theme)
 }
 
@@ -98,6 +120,7 @@ view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NU
 view.sfc <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                      stroke_width_px = NULL, radius_px = NULL, name = NULL,
                      file = NULL, theme = c("auto", "light", "dark")) {
+  no_zcol_for_sfc(...)
   check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
@@ -145,17 +168,20 @@ add_layers.default <- function(x, v, name, ...) {
 
 #' @export
 add_layers.sf <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
-                          stroke_width_px = NULL, radius_px = NULL) {
+                          stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+                          palette = NULL, breaks = NULL, na_colour = "#999999") {
   check_dots(..., what = "sf data")
   need_sf()
-  add_sfc(sf::st_geometry(x), v, name, densify,
-          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                       radius_px = radius_px))
+  add_sf(x, v, name, densify,
+         style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+                      radius_px = radius_px),
+         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour)
 }
 
 #' @export
 add_layers.sfc <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
                            stroke_width_px = NULL, radius_px = NULL) {
+  no_zcol_for_sfc(...)
   check_dots(..., what = "sf data")
   need_sf()
   add_sfc(x, v, name, densify,
@@ -163,9 +189,56 @@ add_layers.sfc <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke 
                        radius_px = radius_px))
 }
 
-add_sfc <- function(g, v, name, densify, style) {
+## An sf data frame's layers: its geometry, coloured by column `zcol` when
+## given. Shared by the sf and SpatVector methods.
+add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, breaks = NULL,
+                   na_colour = "#999999") {
+  rgba <- NULL
+  if (!is.null(zcol)) {
+    values <- zcol_values(x, zcol)
+    if (!is.null(style$fill)) {
+      stop("`fill` and `zcol` both set the fill colour; use one.", call. = FALSE)
+    }
+    rgba <- view_colours(values, palette = palette, breaks = breaks, na_colour = na_colour)
+  } else if (!is.null(palette) || !is.null(breaks)) {
+    stop("`palette` and `breaks` colour a column: give `zcol` too.", call. = FALSE)
+  }
+  add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba)
+}
+
+no_zcol_for_sfc <- function(...) {
+  if ("zcol" %in% names(list(...))) {
+    stop("`zcol` needs a column to colour by; an sfc has none. Use an sf data frame.",
+         call. = FALSE)
+  }
+}
+
+## The values of column `zcol` of x (sf, or any data frame).
+zcol_values <- function(x, zcol) {
+  if (!is.character(zcol) || length(zcol) != 1L || is.na(zcol) || !nzchar(zcol)) {
+    stop("`zcol` must be the name of one column.", call. = FALSE)
+  }
+  cols <- setdiff(names(x), attr(x, "sf_column"))
+  if (!zcol %in% cols) {
+    stop("`zcol` \"", zcol, "\" is not a column of `x`",
+         if (length(cols)) paste0("; it has ", paste0("\"", utils::head(cols, 10L), "\"",
+                                                      collapse = ", "),
+                                  if (length(cols) > 10L) paste0(" and ", length(cols) - 10L,
+                                                                 " more"))
+         else "; it has no attribute columns",
+         ".", call. = FALSE)
+  }
+  x[[zcol]]
+}
+
+## `rgba`, when given, is an n x 4 matrix of colours, one row per element
+## of g, carried beside the geometry as the layer's colour column.
+add_sfc <- function(g, v, name, densify, style, rgba = NULL) {
   if (length(g) == 0L) stop("`x` has no geometries to view.", call. = FALSE)
-  g <- g[!sf::st_is_empty(g)]
+  rows <- seq_along(g)
+  keep <- !sf::st_is_empty(g)
+  g <- g[keep]
+  rows <- rows[keep]
   if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
   s <- v$scene
   view <- s$view$crs
@@ -180,22 +253,84 @@ add_sfc <- function(g, v, name, densify, style) {
     warning(sum(lost), " of ", length(g), " geometries could not be transformed to the ",
             "view CRS ", crs_text(view), " and are left out.", call. = FALSE)
     g <- g[!lost]
+    rows <- rows[!lost]
   }
 
-  parts <- split_kinds(g)
-  split <- length(parts) > 1L
-  base <- unique_id(layer_id(name), s, if (split) paste0("_", names(parts)) else "")
+  split <- split_kinds(g)
+  parts <- split$parts
+  multi <- length(parts) > 1L
+  base <- unique_id(layer_id(name), s, if (multi) paste0("_", names(parts)) else "")
   for (kind in names(parts)) {
-    id <- if (split) paste0(base, "_", kind) else base
-    label <- if (split) paste0(name, " (", kind_label[[kind]], ")") else name
+    id <- if (multi) paste0(base, "_", kind) else base
+    label <- if (multi) paste0(name, " (", kind_label[[kind]], ")") else name
     geom <- wk::wk_set_crs(wk::as_wkb(parts[[kind]]), NULL)
     geom <- wk::wk_set_crs(geom, view)
-    args <- c(list(s, id, geom, label = label), layer_style(kind, style))
+    style_k <- layer_style(kind, style)
+    if (!is.null(rgba)) {
+      geom <- rgba_stream(geom, view, rgba[rows[split$rows[[kind]]], , drop = FALSE])
+      style_k <- zcol_style(kind, style_k, style)
+    }
+    args <- c(list(s, id, geom, label = label), style_k)
     s <- do.call(aobcore::scene_add_vector, args)
     v$extents[[id]] <- bbox_extent(parts[[kind]])
   }
   v$scene <- s
   v
+}
+
+## The column of per-feature colours in a layer's data.
+colour_column <- "color"
+
+## A layer coloured by column: fill for polygons and points, stroke for
+## lines (so a `stroke` for lines is an error, as `fill` is for the rest).
+## Polygons get a grey outline unless `stroke` was given.
+zcol_style <- function(kind, out, style) {
+  if (kind == "path") {
+    if (!is.null(style$stroke)) {
+      stop("`stroke` and `zcol` both set the colour of lines; use one.", call. = FALSE)
+    }
+    out$stroke <- colour_column
+  } else {
+    out$fill <- colour_column
+    if (kind == "polygon" && is.null(style$stroke)) out$stroke <- zcol_outline
+  }
+  out
+}
+
+zcol_outline <- c(128L, 128L, 128L, 200L)
+
+## A native GeoArrow stream of geom (already in the view CRS) with an RGBA
+## column, FixedSizeList<uint8, 4>, one row per feature (scene spec 0.1).
+rgba_stream <- function(geom, view, rgba) {
+  stream <- aobcore::vector_stream(geom, view)
+  schema <- stream$get_schema()
+  batches <- nanoarrow::collect_array_stream(stream, validate = FALSE)
+  geom_col <- names(schema$children)[1L]
+  fields <- list(schema$children[[1L]], nanoarrow::na_fixed_size_list(nanoarrow::na_uint8(), 4L))
+  names(fields) <- c(geom_col, colour_column)
+  out_schema <- nanoarrow::na_struct(fields)
+  start <- 0L
+  arrays <- lapply(batches, function(b) {
+    i <- start + seq_len(b$length)
+    start <<- start + b$length
+    children <- list(b$children[[1L]], rgba_array(rgba[i, , drop = FALSE]))
+    names(children) <- c(geom_col, colour_column)
+    nanoarrow::nanoarrow_array_modify(nanoarrow::nanoarrow_array_init(out_schema),
+                                      list(length = b$length, children = children))
+  })
+  nanoarrow::basic_array_stream(arrays)
+}
+
+## A FixedSizeList<uint8, 4> array from an n x 4 integer matrix.
+rgba_array <- function(m) {
+  child <- nanoarrow::nanoarrow_array_modify(
+    nanoarrow::nanoarrow_array_init(nanoarrow::na_uint8()),
+    list(length = length(m), buffers = list(NULL, nanoarrow::as_nanoarrow_buffer(as.raw(t(m)))))
+  )
+  nanoarrow::nanoarrow_array_modify(
+    nanoarrow::nanoarrow_array_init(nanoarrow::na_fixed_size_list(nanoarrow::na_uint8(), 4L)),
+    list(length = nrow(m), children = list(child))
+  )
 }
 
 kind_label <- list(polygon = "polygons", path = "lines", point = "points")
@@ -313,23 +448,33 @@ densify_step <- function(densify, longlat) {
 }
 
 ## Split geometry into point, line and polygon parts, bottom to top.
+## Returns the parts and, for each, the index into g of each part's row (a
+## collection's members share its row).
 split_kinds <- function(g) {
+  rows <- seq_along(g)
   type <- as.character(sf::st_geometry_type(g, by_geometry = TRUE))
   if (any(type == "GEOMETRYCOLLECTION")) {
-    gc <- g[type == "GEOMETRYCOLLECTION"]
-    rest <- g[type != "GEOMETRYCOLLECTION"]
+    is_gc <- type == "GEOMETRYCOLLECTION"
+    gc <- sf::st_sf(.row = rows[is_gc], geometry = g[is_gc])
     parts <- lapply(c("POLYGON", "LINESTRING", "POINT"), function(t) {
       suppressWarnings(sf::st_collection_extract(gc, t))
     })
-    g <- do.call(c, c(list(rest), parts))
-    g <- g[!sf::st_is_empty(g)]
+    g <- do.call(c, c(list(g[!is_gc]), lapply(parts, sf::st_geometry)))
+    rows <- c(rows[!is_gc], unlist(lapply(parts, function(p) p$.row)))
+    keep <- !sf::st_is_empty(g)
+    g <- g[keep]
+    rows <- rows[keep]
     type <- as.character(sf::st_geometry_type(g, by_geometry = TRUE))
   }
   kinds <- c(polygon = "POLYGON", path = "LINESTRING", point = "POINT")
   out <- list()
+  out_rows <- list()
   for (k in names(kinds)) {
     keep <- type %in% c(kinds[[k]], paste0("MULTI", kinds[[k]]))
-    if (any(keep)) out[[k]] <- g[keep]
+    if (any(keep)) {
+      out[[k]] <- g[keep]
+      out_rows[[k]] <- rows[keep]
+    }
   }
   other <- setdiff(unique(type), c(kinds, paste0("MULTI", kinds)))
   if (length(other)) {
@@ -337,7 +482,7 @@ split_kinds <- function(g) {
          paste(other, collapse = ", "), ". Convert those first (for example sf::st_cast()).",
          call. = FALSE)
   }
-  out
+  list(parts = out, rows = out_rows)
 }
 
 default_blue <- c(51L, 102L, 204L)

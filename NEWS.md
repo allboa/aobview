@@ -20,3 +20,11 @@
   layers draw as a colour image, others one layer through a palette. A
   `SpatVector` draws through the sf path. `view_crs()` has methods for
   both. terra and gdalraster are suggested (#3).
+* `view(x, zcol = )` colours `sf` and `SpatVector` features by an
+  attribute, also through `view_add()`: the fill of polygons and points,
+  the stroke of lines. Numbers take a continuous palette (or classes with
+  `breaks =`), factor, character and logical values one colour per level,
+  `NA` the `na_colour`. `palette` is a `grDevices` palette name or a
+  function of `n`. The colours are computed by the new `view_colours()`
+  and travel as one RGBA column (`FixedSizeList<uint8, 4>`) beside the
+  geometry (#5).

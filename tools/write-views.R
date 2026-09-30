@@ -46,6 +46,20 @@ view(mixed, crs = "+proj=laea +lat_0=-90 +lon_0=140 +datum=WGS84",
 nc <- st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 view(nc, file = file.path(out, "nc-own-crs.html"))
 
+# Colour by attribute (zcol), in EPSG:3031. Numeric: the sectors coloured
+# along a continuous palette by a value, with the polar cap's value missing
+# (drawn in the NA colour). Categorical: the sectors by a character column,
+# and the stations, over the coastline, by their operating country.
+polys$value <- c(seq(2, 12, by = 2), NA)
+view(polys, zcol = "value", palette = "YlGnBu",
+     file = file.path(out, "zcol-numeric-in-3031.html"))
+polys$sea <- c("Ross", "Amundsen", "Weddell", "Weddell", "Davis", "Ross", "polar")
+stations$operator <- c("Australia", "Australia", "Australia", "USA", "UK", "USA")
+view(polys, zcol = "sea", name = "sectors") |>
+  view_add(coast) |>
+  view_add(stations, zcol = "operator", palette = "Set 1", radius_px = 7,
+           file = file.path(out, "zcol-categorical-in-3031.html"))
+
 # terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
 # for a raster already in 3031).
 if (requireNamespace("terra", quietly = TRUE)) {

@@ -27,7 +27,8 @@
 #' the range of its values.
 #'
 #' A `SpatVector` is converted with [sf::st_as_sf()] and drawn as `sf` data
-#' is (see [view()]); it needs the 'sf' package.
+#' is (see [view()]), coloured by an attribute with `zcol`; it needs the
+#' 'sf' package.
 #'
 #' @inheritParams view
 #' @param x A 'terra' `SpatRaster` or `SpatVector`.
@@ -41,8 +42,11 @@
 #'   neither `layer` nor `palette` is given), `TRUE` to draw a colour image
 #'   of the layers `terra::RGB()` names (layers 1 to 3, and 4 as alpha,
 #'   when it names none), or `FALSE` for the palette.
-#' @param palette A palette name the renderer knows: `"viridis"` (the
-#'   default), `"ocean"`, `"ice"` or `"gray"`.
+#' @param palette For a `SpatRaster`, a palette name the renderer knows:
+#'   `"viridis"` (the default), `"ocean"`, `"ice"` or `"gray"`. For a
+#'   `SpatVector` with `zcol`, a palette as for [view()]: a name from
+#'   [grDevices::hcl.pals()] or [grDevices::palette.pals()], or a function
+#'   of `n`.
 #' @param range `c(low, high)`: the values at the ends of the palette. By
 #'   default the range of the COG's coarsest level. For a colour image of a
 #'   type other than Byte, the values drawn as zero and full intensity.
@@ -77,8 +81,9 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
 #' @rdname view-terra
 #' @export
 view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                            stroke_width_px = NULL, radius_px = NULL, name = NULL,
-                            file = NULL, theme = c("auto", "light", "dark")) {
+                            stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+                            palette = NULL, breaks = NULL, na_colour = "#999999",
+                            name = NULL, file = NULL, theme = c("auto", "light", "dark")) {
   check_dots(..., what = "a SpatVector")
   need_terra()
   need_sf()
@@ -87,20 +92,23 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, str
   check_terra_crs(x)
   v <- new_view(crs %||% view_crs(x))
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
-                  stroke_width_px = stroke_width_px, radius_px = radius_px)
+                  stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
+                  palette = palette, breaks = breaks, na_colour = na_colour)
   finish_view(v, name, file, theme)
 }
 
 #' @export
 add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
-                                  stroke_width_px = NULL, radius_px = NULL) {
+                                  stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+                                  palette = NULL, breaks = NULL, na_colour = "#999999") {
   check_dots(..., what = "a SpatVector")
   need_terra()
   need_sf()
   check_terra_crs(x)
-  add_sfc(sf::st_geometry(sf::st_as_sf(x)), v, name, densify,
-          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                       radius_px = radius_px))
+  add_sf(sf::st_as_sf(x), v, name, densify,
+         style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+                      radius_px = radius_px),
+         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour)
 }
 
 ## `...` goes to aobcore::cog_plan(), which refuses arguments it does not

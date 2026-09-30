@@ -17,6 +17,10 @@ view(x, ...)
   stroke = NULL,
   stroke_width_px = NULL,
   radius_px = NULL,
+  zcol = NULL,
+  palette = NULL,
+  breaks = NULL,
+  na_colour = "#999999",
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark")
@@ -63,6 +67,20 @@ ignored for lines.}
 
 \item{radius_px}{Point radius in pixels.}
 
+\item{zcol}{The name of a column of \code{x} to colour features by, or \code{NULL}
+(the default) for one colour. Not for an \code{sfc}, which has no columns.}
+
+\item{palette}{With \code{zcol}: a palette name (from
+\code{\link[grDevices:hcl.pals]{grDevices::hcl.pals()}} or \code{\link[grDevices:palette.pals]{grDevices::palette.pals()}}) or a function
+of \code{n} returning \code{n} colours, such as \code{\link[grDevices:hcl.colors]{grDevices::hcl.colors()}}; see
+\code{\link[=view_colours]{view_colours()}}. \code{NULL} is \code{"viridis"} for numbers and \code{"Tableau 10"}
+for levels.}
+
+\item{breaks}{With a numeric `zcol`: increasing break points that bin
+the values into classes, one colour each; see [view_colours()].}
+
+\item{na_colour}{With \code{zcol}: the colour for \code{NA} values.}
+
 \item{name}{The layer name, shown as the page title. Defaults to the
 expression passed as \code{x}.}
 
@@ -102,8 +120,15 @@ differs, lines and polygon edges are first densified in lon/lat (every
 \code{densify} degrees, 0.25 by default), so an edge along a parallel curves
 as it should in a polar view instead of cutting across it.
 
-Only the geometry travels to the page for now; attributes (for colour,
-legends and popups) follow in later versions.
+\strong{Colour by attribute.} \code{zcol} names a column of \code{x} whose values
+colour each feature: the fill of polygons and points, the stroke of
+lines. Numbers take a continuous palette over their range (or one colour
+per class with \code{breaks}), factors, character and logical values one
+colour per level; \code{NA} takes \code{na_colour}. The colours are computed in R
+by \code{\link[=view_colours]{view_colours()}} and travel to the page as one RGBA column beside the
+geometry; no other attribute does. With \code{zcol}, polygons get a grey
+outline (change it with \code{stroke}); \code{fill}, and \code{stroke} for lines, are
+errors, since \code{zcol} sets those colours.
 }
 \examples{
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
@@ -115,8 +140,11 @@ file.exists(v$file)
 
 nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 v2 <- view(nc, crs = "EPSG:26717", fill = c(200, 120, 40, 160))
+v3 <- view(nc, zcol = "BIR74", palette = "YlOrRd")
+v4 <- view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
 \dontrun{
 v2
+v3
 }
 \dontshow{\}) # examplesIf}
 }
