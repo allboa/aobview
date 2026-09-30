@@ -1,35 +1,3 @@
-# terra, and gdalraster whose GDAL can resolve EPSG codes (aobcore plans
-# tiles with it). Some binary builds of gdalraster (CRAN's macOS one, for
-# now) cannot find their PROJ database; skip there, as aobcore's tests do,
-# since that is an installation problem.
-skip_if_no_terra <- function() {
-  skip_if_not_installed("terra")
-  skip_if_not_installed("gdalraster")
-  ok <- !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
-  skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
-}
-
-# Run view() and return the cell values of the temporary COG it wrote (the
-# file itself is deleted once the page is written).
-temp_cog_values <- function(expr) {
-  seen <- new.env()
-  real <- raster_temp_cog
-  local_mocked_bindings(raster_temp_cog = function(x, rgb) {
-    cog <- real(x, rgb)
-    seen$dsn <- cog$dsn
-    seen$values <- terra::values(terra::rast(cog$dsn))
-    cog
-  }, .env = parent.frame())
-  force(expr)
-  expect_false(file.exists(seen$dsn))
-  seen$values
-}
-
-extdata <- function(f) system.file("extdata", f, package = "aobcore")
-html <- function() tempfile(fileext = ".html")
-page_text <- function(v) paste(readLines(v$file, warn = FALSE), collapse = "\n")
-tile_blobs <- function(v) grep("@", names(aobcore::scene_blobs(v$scene)), value = TRUE, fixed = TRUE)
-
 test_that("a projected SpatRaster from a local COG is drawn in its own CRS from that COG", {
   skip_if_no_terra()
   r <- terra::rast(extdata("polar_3031.tif"))
@@ -305,4 +273,11 @@ test_that("a striped file, or a tiled one without overviews, is rewritten as a C
   terra::writeRaster(terra::aggregate(m, 6), small,
                      gdal = c("TILED=YES", "BLOCKXSIZE=128", "BLOCKYSIZE=128"))
   expect_false(is.null(raster_cog_source(terra::rast(small))))
+})
+
+test_that("arguments a SpatVector does not use are an error", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  p <- terra::vect("POINT (0 -70)", crs = "OGC:CRS84")
+  expect_error(view(p, palette = "ocean", file = html()), "`palette`")
 })

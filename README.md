@@ -6,7 +6,7 @@ Read the org agent brief first: [allboa/design AGENTS.md](https://github.com/all
 
 ## Status
 
-Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Colour by attribute, legends, popups and several layers in one view are planned in the [issues](https://github.com/allboa/aobview/issues).
+Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view. Colour by attribute, legends and popups are planned in the [issues](https://github.com/allboa/aobview/issues).
 
 ```r
 library(aobview)
@@ -27,6 +27,20 @@ view(u)                           # a remote COG: the page references it by URL
 ```
 
 `view()` returns a view with the `scene` and the `file` it wrote. Printing it in an interactive session opens the page in the IDE's viewer or the browser. The page needs no server, and no network unless it references a remote COG.
+
+### Several layers
+
+The v1 target, a polar COG with vector overlays in EPSG:3031, in one call:
+
+```r
+sst <- terra::rast(system.file("extdata", "polar_3031.tif", package = "aobcore"))
+view(list(sst = sst, coastline = coast))   # one scene in EPSG:3031, sst at the bottom
+view(sst) |> view_add(coast, stroke = c(40, 40, 40, 255))   # the same scene, with a style
+```
+
+A list draws in list order, first at the bottom; its names become layer labels and (made valid and unique) layer ids. The view CRS is `crs =`, or the first projected CRS in the list, or, when everything is in lon/lat, the rule below applied to the combined extent. `view_add()` keeps the view's CRS. Every object is reprojected to it: vectors in R, rasters through aobcore's tile planner. The initial view is the layers' combined extent, clipped to the view's domain.
+
+![A polar COG with the lon/lat coastline and stations in EPSG:3031, light](tools/screenshots/cog-with-overlays-in-3031-light.png)
 
 ### The view CRS
 

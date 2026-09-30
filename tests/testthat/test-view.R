@@ -131,3 +131,22 @@ test_that("print shows the view and does not open it when not interactive", {
   v <- view(x, file = tempfile(fileext = ".html"))
   expect_output(print(v), "1 layer in EPSG:3031")
 })
+
+test_that("split layers are labelled by kind", {
+  skip_if_not_installed("sf")
+  m <- lonlat(list(sf::st_point(c(0, -70)), sf::st_linestring(rbind(c(0, -60), c(90, -60))),
+                   ring(-40, 40, -80, -70)))
+  v <- view(m, name = "mixed", file = tempfile(fileext = ".html"))
+  expect_identical(vapply(v$scene$layers, function(l) l$label, ""),
+                   c("mixed (polygons)", "mixed (lines)", "mixed (points)"))
+  one <- view(lonlat(list(sf::st_point(c(0, -70)))), name = "pts", file = tempfile(fileext = ".html"))
+  expect_identical(one$scene$layers[[1]]$label, "pts")
+})
+
+test_that("arguments caught by ... are an error, not ignored", {
+  skip_if_not_installed("sf")
+  x <- lonlat(list(sf::st_point(c(0, -70))))
+  expect_error(view(x, fil = c(1, 2, 3, 4), file = tempfile()), "does not use `fil`")
+  expect_error(view(sf::st_sf(geometry = x), strok = c(1, 2, 3, 4), file = tempfile()), "`strok`")
+  expect_error(view(x, c(1, 2, 3, 4), file = tempfile()), "unnamed argument \\(c\\(1, 2, 3, 4\\)\\)")
+})

@@ -22,11 +22,16 @@
 #' For a raster the bounding box is the grid's extent, so a lon/lat grid
 #' from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.
 #'
+#' For a list of objects (see [view-layers]) the rule is applied once to
+#' the whole list: the CRS of the first object with a projected CRS is kept;
+#' when every object is in lon/lat, rules 2 to 4 apply to their combined
+#' latitude range, and rule 4 keeps the first object's CRS.
+#'
 #' Data with no CRS is an error: set one first (for example
 #' `sf::st_set_crs()` or `terra::crs<-`), or pass `crs` to [view()].
 #'
-#' @param x An `sf` or `sfc` object, or a 'terra' `SpatRaster` or
-#'   `SpatVector`.
+#' @param x An `sf` or `sfc` object, a 'terra' `SpatRaster` or
+#'   `SpatVector`, or a list of them.
 #' @return A CRS for [aobcore::scene()]: an `"authority:code"` string such
 #'   as `"EPSG:3031"`, or, when the data's CRS has no code, the `sf` `crs`
 #'   object (for `sf` data) or its WKT (for 'terra' data).
@@ -42,34 +47,62 @@ view_crs <- function(x) {
 }
 
 #' @export
-view_crs.default <- function(x) {
+view_crs.default <- function(x) combined_view_crs(list(crs_facts(x)))
+
+#' @export
+view_crs.SpatRaster <- function(x) combined_view_crs(list(crs_facts(x)))
+
+#' @export
+view_crs.SpatVector <- function(x) combined_view_crs(list(crs_facts(x)))
+
+## What the view CRS rule needs to know of one object: its own CRS (as
+## view_crs() returns it), whether that is lon/lat, and the latitudes it
+## spans (lon/lat only).
+crs_facts <- function(x) {
+  UseMethod("crs_facts")
+}
+
+#' @export
+crs_facts.default <- function(x) {
   need_sf()
   crs <- sf::st_crs(x)
   if (is.na(crs)) {
     stop("`x` has no CRS. Set one with sf::st_set_crs(), or pass `crs` to view().",
          call. = FALSE)
   }
-  if (!isTRUE(sf::st_is_longlat(x))) return(sf_crs_code(crs))
-  bb <- sf::st_bbox(x)
-  lonlat_view_crs(bb[["ymin"]], bb[["ymax"]]) %||% sf_crs_code(crs)
+  lonlat <- isTRUE(sf::st_is_longlat(x))
+  bb <- if (lonlat) sf::st_bbox(x) else NULL
+  list(crs = sf_crs_code(crs), lonlat = lonlat,
+       ylim = if (lonlat) c(bb[["ymin"]], bb[["ymax"]]))
 }
 
 #' @export
-view_crs.SpatRaster <- function(x) terra_view_crs(x)
+crs_facts.SpatRaster <- function(x) terra_crs_facts(x)
 
 #' @export
-view_crs.SpatVector <- function(x) terra_view_crs(x)
+crs_facts.SpatVector <- function(x) terra_crs_facts(x)
 
-terra_view_crs <- function(x) {
+terra_crs_facts <- function(x) {
   need_terra()
   if (!nzchar(terra::crs(x))) {
     stop("`x` has no CRS. Set one with terra::crs(x) <- \"EPSG:...\", or pass `crs` to view().",
          call. = FALSE)
   }
-  own <- terra_crs_code(x)
-  if (!isTRUE(terra::is.lonlat(x))) return(own)
-  e <- as.vector(terra::ext(x))
-  lonlat_view_crs(e[["ymin"]], e[["ymax"]]) %||% own
+  lonlat <- isTRUE(terra::is.lonlat(x))
+  e <- if (lonlat) as.vector(terra::ext(x)) else NULL
+  list(crs = terra_crs_code(x), lonlat = lonlat,
+       ylim = if (lonlat) c(e[["ymin"]], e[["ymax"]]))
+}
+
+## The view CRS of several objects (rules 1 to 4 above): the first
+## projected CRS, else the lon/lat rule on the combined latitude range, else
+## the first object's own lon/lat CRS.
+combined_view_crs <- function(facts) {
+  for (f in facts) if (!f$lonlat) return(f$crs)
+  lat <- unlist(lapply(facts, function(f) f$ylim))
+  lat <- lat[is.finite(lat)]
+  polar <- if (length(lat)) lonlat_view_crs(min(lat), max(lat))
+  polar %||% facts[[1]]$crs
 }
 
 ## The polar view for lon/lat data between latitudes ymin and ymax, or NULL

@@ -37,7 +37,9 @@
 \item{x}{A 'terra' \code{SpatRaster} or \code{SpatVector}.}
 
 \item{...}{For a \code{SpatRaster}, passed to \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}
-(\code{max_tiles}, \code{max_stretch}, \code{tolerance}, ...).}
+(\code{max_tiles}, \code{max_stretch}, \code{tolerance}, ...). Not used for a
+\code{SpatVector}: an argument caught there (a misspelled one, say) is an
+error.}
 
 \item{crs}{The view CRS: anything \code{\link[sf:st_crs]{sf::st_crs()}} and
 \code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ

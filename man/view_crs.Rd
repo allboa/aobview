@@ -7,8 +7,8 @@
 view_crs(x)
 }
 \arguments{
-\item{x}{An \code{sf} or \code{sfc} object, or a 'terra' \code{SpatRaster} or
-\code{SpatVector}.}
+\item{x}{An \code{sf} or \code{sfc} object, a 'terra' \code{SpatRaster} or
+\code{SpatVector}, or a list of them.}
 }
 \value{
 A CRS for \code{\link[aobcore:scene]{aobcore::scene()}}: an \code{"authority:code"} string such
@@ -40,6 +40,11 @@ cannot show the poles, and a tiled Mercator basemap is a non-goal.
 
 For a raster the bounding box is the grid's extent, so a lon/lat grid
 from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.
+
+For a list of objects (see \link{view-layers}) the rule is applied once to
+the whole list: the CRS of the first object with a projected CRS is kept;
+when every object is in lon/lat, rules 2 to 4 apply to their combined
+latitude range, and rule 4 keeps the first object's CRS.
 
 Data with no CRS is an error: set one first (for example
 \code{sf::st_set_crs()} or \verb{terra::crs<-}), or pass \code{crs} to \code{\link[=view]{view()}}.

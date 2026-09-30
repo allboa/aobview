@@ -38,9 +38,11 @@ view(x, ...)
 }
 \arguments{
 \item{x}{A spatial object: an \code{sf} data frame or an \code{sfc} geometry column
-(with the 'sf' package installed).}
+(with the 'sf' package installed); a 'terra' object (\link{view-terra}); or
+a list of them (\link{view-layers}).}
 
-\item{...}{Passed to methods.}
+\item{...}{Not used by the \code{sf} and \code{sfc} methods: an argument caught
+here (a misspelled one, say) is an error.}
 
 \item{crs}{The view CRS: anything \code{\link[sf:st_crs]{sf::st_crs()}} and
 \code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ
@@ -72,7 +74,10 @@ session's temporary directory.}
 }
 \value{
 A view: a list of class \code{"aob_view"} with the \code{scene} (an
-\code{\link[aobcore:scene]{aobcore::scene()}}) and the \code{file} it was written to. Printing it opens
+\code{\link[aobcore:scene]{aobcore::scene()}}), the \code{file} it was written to, its \code{name} (the
+page title), \code{theme}, and \code{extents}, each layer's extent in the view
+CRS (from which the initial view is set). Add to it with
+\code{\link[=view_add]{view_add()}}. Printing it opens
 the page when the session is interactive.
 }
 \description{
@@ -87,7 +92,9 @@ no server and no network: the data travel in the page as native
 Points, lines and polygons (single or multi) are drawn as one layer
 each. A mixed \code{GEOMETRY} or \code{GEOMETRYCOLLECTION} column is split into up
 to three layers, polygons at the bottom, then lines, then points. Empty
-geometries are dropped, as are Z and M values.
+geometries are dropped, as are Z and M values. The split layers share
+the view's name, with the kind appended to each label, as in
+\code{"mixed (polygons)"}.
 
 'aobcore' does not reproject, so \code{x} is transformed to the view CRS here
 with \code{\link[sf:st_transform]{sf::st_transform()}}. When \code{x} is in lon/lat and the view CRS
@@ -115,5 +122,5 @@ v2
 }
 \seealso{
 \code{\link[=view_crs]{view_crs()}} for the default view CRS; \link{view-terra} for 'terra'
-rasters and vectors.
+rasters and vectors; \link{view-layers} for several layers in one view.
 }
