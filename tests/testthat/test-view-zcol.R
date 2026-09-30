@@ -78,8 +78,7 @@ test_that("zcol travels as an RGBA column: numeric, factor, character, logical",
   for (col in c("num", "fac", "chr", "lgl")) {
     v <- view(pol, zcol = col, file = tempfile(fileext = ".html"))
     expect_identical(v$scene$layers[[1]]$fill, list(column = "color"))
-    expect_identical(names(as.data.frame(nanoarrow::read_nanoarrow(
-      aobcore::scene_blobs(v$scene)$pol))), c("geometry", "color"))
+    expect_identical(blob_names(v, "pol"), c("geometry", "color"))
     expect_identical(blob_rgba(v, "pol"), plain_rgba(pol[[col]]), label = col)
   }
   ## NA values get the NA colour.
