@@ -47,7 +47,8 @@ when they appear are welcome.
 
 Read the brief first:
 [AGENTS.md](https://github.com/allboa/design/blob/main/AGENTS.md) in the
-design repository. Despite its name it applies to people too. In short:
+design repository. It is written for coding agents, and people are
+welcome to follow the same flow. In short:
 
 - Work starts from an issue with acceptance criteria; comment to claim it.
 - One issue, one branch, one pull request that says how the criteria were

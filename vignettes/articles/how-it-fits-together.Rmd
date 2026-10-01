@@ -57,9 +57,9 @@ else. gdalraster is the suggested producer for GDAL sources and COGs.
 
 [lonboard](https://developmentseed.org/lonboard/) puts deck.gl and
 GeoArrow behind a Python notebook widget, and it moves in step with the
-deck.gl-geoarrow and deck.gl-raster libraries this work builds on. It
-does not draw in a custom CRS today: layers are reprojected to
-longitude and latitude.
+deck.gl-geoarrow and deck.gl-raster libraries. It does not draw in a
+custom CRS today: layers are reprojected to longitude and latitude.
+aobcore's renderer uses plain deck.gl layers for now.
 
 allonboard keeps the door to that stack open. The scene spec is
 renderer-neutral, so an R front end could later share lonboard's
@@ -70,21 +70,22 @@ where Python users benefit too. A Python front end is not a goal of v1.
 
 ## Decisions so far
 
-The design repository records each decision, with its status:
+The design repository records each decision. Most are still proposed;
+an accepted one has been settled by the maintainer.
 
 - [0001](https://github.com/allboa/design/blob/main/decisions/0001-rasterlayer-3031.md):
   deck.gl-raster's RasterLayer draws in EPSG:3031; lon/lat over the pole
-  needs a fix.
+  needs a fix (proposed).
 - [0002](https://github.com/allboa/design/blob/main/decisions/0002-gdalraster-geoarrow.md):
-  gdalraster streams native GeoArrow from Arrow layers.
+  gdalraster streams native GeoArrow from Arrow layers only (proposed).
 - [0003](https://github.com/allboa/design/blob/main/decisions/0003-tiled-cog-polar.md):
-  tiled COGs reach a polar view as R-planned tiles (for v1).
+  tiled COGs reach a polar view as R-planned tiles, for v1 (accepted, gate A).
 - [0004](https://github.com/allboa/design/blob/main/decisions/0004-vector-reprojection.md):
-  GDAL reprojects what it reads; wk and PROJ for data already in R.
+  GDAL reprojects what it reads; wk and PROJ for data already in R (proposed).
 - [0005](https://github.com/allboa/design/blob/main/decisions/0005-view-domain.md):
-  a default view domain from the projection's centre.
+  a default view domain from the projection's centre (accepted).
 - [0006](https://github.com/allboa/design/blob/main/decisions/0006-local-server-transport.md):
-  a local server transport for large local data.
+  a local server transport for large local data (proposed).
 
 The full list is in the
 [decisions folder](https://github.com/allboa/design/tree/main/decisions).

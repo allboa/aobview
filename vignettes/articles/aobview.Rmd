@@ -11,7 +11,7 @@ show_view <- function(v, height = 480) {
   dir <- file.path(knitr::opts_knit$get("output.dir") %||% ".", "views")
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   name <- paste0(knitr::opts_current$get("label"), ".html")
-  file.copy(v$file, file.path(dir, name), overwrite = TRUE)
+  stopifnot(file.copy(v$file, file.path(dir, name), overwrite = TRUE))
   htmltools::tags$iframe(
     src = file.path("views", name), width = "100%", height = height,
     style = "border: 1px solid var(--bs-border-color); border-radius: 4px;",
@@ -119,12 +119,20 @@ or in-memory raster is embedded. This one is a small polar field in
 EPSG:3031 shipped with aobcore, with the coastline over it: the v1
 target of a polar raster with vector overlays, in one call.
 
-```{r raster, eval = requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE)}
+```{r raster-ok, include = FALSE}
+# Raster views need terra, and gdalraster with a PROJ database that resolves
+# EPSG:3031; skip the raster example rather than fail the article.
+raster_ok <- requireNamespace("terra", quietly = TRUE) &&
+  requireNamespace("gdalraster", quietly = TRUE) &&
+  !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
+```
+
+```{r raster, eval = raster_ok}
 sst <- terra::rast(system.file("extdata", "polar_3031.tif", package = "aobcore"))
 v <- view(list(sst = sst, coastline = coast))
 ```
 
-```{r raster-map, echo = FALSE, eval = exists("sst")}
+```{r raster-map, echo = FALSE, eval = raster_ok}
 show_view(v)
 ```
 
