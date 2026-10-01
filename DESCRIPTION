@@ -19,6 +19,7 @@ Imports:
     wk
 Suggests:
     gdalraster,
+    httpuv,
     sf,
     terra,
     testthat (>= 3.0.0)

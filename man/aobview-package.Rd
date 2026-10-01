@@ -11,6 +11,7 @@ A convenience front end for 'allonboard' map scenes: 'view(x)' draws spatial obj
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://allboa.github.io/aobview/}
   \item \url{https://github.com/allboa/aobview}
   \item Report bugs at \url{https://github.com/allboa/aobview/issues}
 }

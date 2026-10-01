@@ -12,10 +12,19 @@
   crs = NULL,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 
-view_add(v, x, ..., name = NULL, file = NULL, theme = NULL)
+view_add(
+  v,
+  x,
+  ...,
+  name = NULL,
+  file = NULL,
+  theme = NULL,
+  transport = getOption("aobview.transport", "auto")
+)
 }
 \arguments{
 \item{x}{For \code{view()}, a list of spatial objects. For \code{view_add()}, one
@@ -35,9 +44,15 @@ defaults to the expression passed as \code{x}; the page title becomes the
 view's name and this one, joined by a comma.}
 
 \item{file}{Path of the HTML file to write. Defaults to a new file in the
-session's temporary directory. \code{view_add()} leaves \code{v}'s page as it is.}
+session's temporary directory. \code{view_add()} leaves \code{v}'s page as it is.
+Not used by a served view (with a warning).}
 
 \item{theme}{As for \code{\link[=view]{view()}}. \code{view_add()} defaults to \code{v}'s theme.}
+
+\item{transport}{As for \code{\link[=view]{view()}}. For \code{view_add()}, how the new layers
+are carried: on a served view, \code{"embed"} embeds a new local COG's tiles
+(the server delivers them as blobs) and \code{"auto"} or \code{"serve"} serve its
+file; the view stays served either way.}
 
 \item{v}{A view from \code{\link[=view]{view()}} or \code{view_add()}.}
 }
@@ -48,7 +63,10 @@ A view, as for \code{\link[=view]{view()}}.
 \code{view()} of a list draws each element as one or more layers of a single
 scene, in one view CRS, in list order: the first element at the bottom.
 \code{view_add()} adds a layer to a view already made, on top, and writes a
-new page. \code{view(a) |> view_add(b)} gives the same scene as
+new page, or, for a served view (see Transport in \code{\link[=view]{view()}}), serves the
+new scene on the same server, at the same URL. An embedded view whose
+local raster tiles pass the threshold with the new layer becomes served
+(its earlier page stays on disk). \code{view(a) |> view_add(b)} gives the same scene as
 \code{view(list(a = a, b = b))} when the two have the same view CRS, that is
 when \code{view_crs(a)} equals \code{view_crs(list(a, b))}, as it does whenever \code{a}
 is projected, or \code{a} and \code{b} are both lon/lat south of 40S (or both north

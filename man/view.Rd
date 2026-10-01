@@ -25,7 +25,8 @@ view(x, ...)
   popup = TRUE,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 
 \method{view}{sfc}(
@@ -39,7 +40,8 @@ view(x, ...)
   radius_px = NULL,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 }
 \arguments{
@@ -94,18 +96,25 @@ show, and \code{FALSE} shows none. See Popups.}
 expression passed as \code{x}.}
 
 \item{file}{Path of the HTML file to write. Defaults to a new file in the
-session's temporary directory.}
+session's temporary directory.
+Not used by a served view (with a warning).}
 
 \item{theme}{\code{"auto"} follows the browser's light or dark preference;
 \code{"light"} or \code{"dark"} fixes it.}
+
+\item{transport}{\code{"auto"}, \code{"embed"} or \code{"serve"}: whether the view is
+written to a page or served from a local server (see Transport).
+Defaults to \code{getOption("aobview.transport", "auto")}.}
 }
 \value{
 A view: a list of class \code{"aob_view"} with the \code{scene} (an
-\code{\link[aobcore:scene]{aobcore::scene()}}), the \code{file} it was written to, its \code{name} (the
+\code{\link[aobcore:scene]{aobcore::scene()}}), the \code{file} it was written to (\code{NULL} when served),
+the \code{server} serving it (an \code{"aob_server"} from
+\code{\link[aobcore:serve_scene]{aobcore::serve_scene()}}, or \code{NULL} when embedded), its \code{name} (the
 page title), \code{theme}, and \code{extents}, each layer's extent in the view
 CRS (from which the initial view is set). Add to it with
 \code{\link[=view_add]{view_add()}}. Printing it opens
-the page when the session is interactive.
+the page (or the server's URL) when the session is interactive.
 }
 \description{
 Draws \code{x} in a self-contained HTML page, in the CRS chosen by
@@ -113,7 +122,8 @@ Draws \code{x} in a self-contained HTML page, in the CRS chosen by
 view in an interactive session opens the page in the IDE's viewer or the
 browser. The page is written by \code{\link[aobcore:write_scene_html]{aobcore::write_scene_html()}} and needs
 no server and no network: the data travel in the page as native
-'GeoArrow'.
+'GeoArrow'. A view with large local rasters is served from a local
+server instead (see Transport).
 }
 \details{
 Points, lines and polygons (single or multi) are drawn as one layer
@@ -159,6 +169,24 @@ are carried as they are; factors as their labels, \code{Date} as
 \code{"YYYY-MM-DD"}, \code{POSIXct} and \code{POSIXlt} as ISO 8601 text in UTC, and
 other atomic classes as their \code{as.character()} text. List, raw and matrix columns
 cannot be shown and are left out with a message.
+
+\strong{Transport.} A view is embedded (the page above, on disk) or served
+from a local HTTP server by \code{\link[aobcore:serve_scene]{aobcore::serve_scene()}}, which the browser
+reads a local COG from tile by tile instead of carrying its bytes in the
+page (allboa/design decision 0006). \code{transport = "embed"} always embeds,
+\code{"serve"} always serves (it needs the 'httpuv' package), and \code{"auto"}
+(the default, or \code{getOption("aobview.transport")}) embeds unless the
+view's local raster tiles, counted from each layer's tile plan before
+any byte is read, come to more than \code{getOption("aobview.embed_max")}
+bytes (32 MiB by default). Then, in an interactive session with 'httpuv'
+installed, that layer and any added later are served, with a message
+naming the size; otherwise the tiles are embedded with a warning. Vector
+data and remote COGs never make a view served by themselves. A served
+view keeps its server running until \code{v$server$stop()},
+\code{\link[aobcore:stop_scene_servers]{aobcore::stop_scene_servers()}} or the end of the R session; the server
+answers only while R is idle. A temporary COG (see \link{view-terra}) of a
+served layer is kept in \code{file.path(tempdir(), "aobview-cogs")} until
+the server stops.
 
 \strong{Spec version.} The scene is written at the lowest scene spec version
 that can express it (\code{\link[aobcore:scene_spec_version]{aobcore::scene_spec_version()}}): a view with no
