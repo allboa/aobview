@@ -90,6 +90,7 @@ server instead (see Transport).</p>
 <span>  <span class="va">...</span>,</span>
 <span>  crs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  densify <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  style <span class="op">=</span> <span class="st">"default"</span>,</span>
 <span>  fill <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  stroke <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  stroke_width_px <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -99,7 +100,7 @@ server instead (see Transport).</p>
 <span>  breaks <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  na_colour <span class="op">=</span> <span class="st">"#999999"</span>,</span>
 <span>  legend <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  popup <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  popup <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  theme <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"light"</span>, <span class="st">"dark"</span><span class="op">)</span>,</span>
@@ -112,6 +113,7 @@ server instead (see Transport).</p>
 <span>  <span class="va">...</span>,</span>
 <span>  crs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  densify <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  style <span class="op">=</span> <span class="st">"default"</span>,</span>
 <span>  fill <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  stroke <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  stroke_width_px <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -150,6 +152,12 @@ and polygon edges before they are transformed. <code>NULL</code> (the default)
 densifies lon/lat data every 0.25 degrees when the view CRS differs,
 and nothing else; <code>FALSE</code> or <code>0</code> never densifies; a number densifies
 whenever the view CRS differs from <code>x</code>'s.</p></dd>
+
+
+<dt id="arg-style">style<a class="anchor" aria-label="anchor" href="#arg-style"></a></dt>
+<dd><p><code>"default"</code> or <code>"minimal"</code>, the starting point that <code>fill</code>,
+<code>stroke</code>, <code>stroke_width_px</code> and <code>radius_px</code> change. See Minimal style
+in <code>view()</code>.</p></dd>
 
 
 <dt id="arg-fill-stroke">fill, stroke<a class="anchor" aria-label="anchor" href="#arg-fill-stroke"></a></dt>
@@ -195,9 +203,10 @@ colours, <code>FALSE</code> leaves it out. Without <code>zcol</code> there is no
 
 
 <dt id="arg-popup">popup<a class="anchor" aria-label="anchor" href="#arg-popup"></a></dt>
-<dd><p><code>TRUE</code> (the default) shows the attribute columns (the first
-20) for a selected feature, a character vector names the columns to
-show, and <code>FALSE</code> shows none. See Popups.</p></dd>
+<dd><p><code>TRUE</code> shows the attribute columns (the first 20) for a
+selected feature, a character vector names the columns to show, and
+<code>FALSE</code> shows none. See Popups. <code>NULL</code> (the default) is <code>TRUE</code>, or
+<code>FALSE</code> with <code>style = "minimal"</code>.</p></dd>
 
 
 <dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
@@ -278,6 +287,19 @@ are carried as they are; factors as their labels, <code>Date</code> as
 <code>"YYYY-MM-DD"</code>, <code>POSIXct</code> and <code>POSIXlt</code> as ISO 8601 text in UTC, and
 other atomic classes as their <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code> text. List, raw and matrix columns
 cannot be shown and are left out with a message.</p>
+<p><strong>Minimal style.</strong> <code>style = "minimal"</code> draws with the least the page
+carries and the renderer builds per feature, for exploring how much data
+a view can take (like <code>pch = "."</code> in base graphics): opaque one-pixel
+lines and polygon outlines, polygons not filled (so not triangulated),
+points as two-pixel dots with no outline, and no popup columns unless
+<code>popup</code> asks for them. Without <code>zcol</code>, each colour is one constant for
+the layer, not a value per feature. <code>fill</code>, <code>stroke</code>, <code>stroke_width_px</code>
+and <code>radius_px</code> still apply on top (a <code>fill</code> fills polygons again). With
+<code>zcol</code>, the column colours polygon outlines rather than fills. An
+unfilled polygon is selected (in a popup or from a served page) only by
+its outline, not by a click inside it; give <code>fill</code> for that. The geometry itself
+is unchanged: every vertex still travels in the page as 16 bytes (two
+doubles), plus a third for base64.</p>
 <p><strong>Transport.</strong> A view is embedded (the page above, on disk) or served
 from a local HTTP server by <code><a href="https://rdrr.io/pkg/aobcore/man/serve_scene.html" class="external-link">aobcore::serve_scene()</a></code>, which the browser
 reads a local COG from tile by tile instead of carrying its bytes in the
@@ -335,16 +357,27 @@ rasters and vectors; <a href="view-layers.html">view-layers</a> for several laye
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "BIR74"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="va">v6</span> <span class="op">&lt;-</span> <span class="fu">view</span><span class="op">(</span><span class="va">nc</span>, style <span class="op">=</span> <span class="st">"minimal"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">v6</span><span class="op">$</span><span class="va">scene</span><span class="op">$</span><span class="va">layers</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stroke"</span>, <span class="st">"stroke_width_px"</span>, <span class="st">"fill"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $stroke</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1]  51 102 204 255</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $stroke_width_px</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $&lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># CCAMLR statistical areas (simplified, illustrative; see the extdata</span></span></span>
 <span class="r-in"><span><span class="co"># README) in EPSG:6932, coloured by area with popups, viewed in EPSG:3031</span></span></span>
 <span class="r-in"><span><span class="va">areas</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_read.html" class="external-link">st_read</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"ccamlr_statistical_areas.geojson"</span>,</span></span>
 <span class="r-in"><span>                                 package <span class="op">=</span> <span class="st">"aobview"</span><span class="op">)</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">areas</span><span class="op">$</span><span class="va">area</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Area "</span>, <span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="va">areas</span><span class="op">$</span><span class="va">GAR_Long_Label</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">v6</span> <span class="op">&lt;-</span> <span class="fu">view</span><span class="op">(</span><span class="va">areas</span>, crs <span class="op">=</span> <span class="st">"EPSG:3031"</span>, zcol <span class="op">=</span> <span class="st">"area"</span>,</span></span>
+<span class="r-in"><span><span class="va">v7</span> <span class="op">&lt;-</span> <span class="fu">view</span><span class="op">(</span><span class="va">areas</span>, crs <span class="op">=</span> <span class="st">"EPSG:3031"</span>, zcol <span class="op">=</span> <span class="st">"area"</span>,</span></span>
 <span class="r-in"><span>           popup <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"GAR_Name"</span>, <span class="st">"GAR_Long_Label"</span>, <span class="st">"GAR_Start_Date"</span>, <span class="st">"GAR_Size"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">v6</span> <span class="op">&lt;-</span> <span class="fu"><a href="view-layers.html">view_add</a></span><span class="op">(</span><span class="va">v6</span>, <span class="va">coast</span>, popup <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">v6</span><span class="op">$</span><span class="va">scene</span><span class="op">$</span><span class="va">legends</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">classes</span>, <span class="kw">function</span><span class="op">(</span><span class="va">cl</span><span class="op">)</span> <span class="va">cl</span><span class="op">$</span><span class="va">label</span>, <span class="st">""</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">v7</span> <span class="op">&lt;-</span> <span class="fu"><a href="view-layers.html">view_add</a></span><span class="op">(</span><span class="va">v7</span>, <span class="va">coast</span>, popup <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">v7</span><span class="op">$</span><span class="va">scene</span><span class="op">$</span><span class="va">legends</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">classes</span>, <span class="kw">function</span><span class="op">(</span><span class="va">cl</span><span class="op">)</span> <span class="va">cl</span><span class="op">$</span><span class="va">label</span>, <span class="st">""</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Area 48" "Area 58" "Area 88"</span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="va">v2</span></span></span>

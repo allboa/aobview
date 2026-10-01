@@ -21,6 +21,7 @@ view(
   ...,
   crs = NULL,
   densify = NULL,
+  style = "default",
   fill = NULL,
   stroke = NULL,
   stroke_width_px = NULL,
@@ -30,7 +31,7 @@ view(
   breaks = NULL,
   na_colour = "#999999",
   legend = TRUE,
-  popup = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -43,6 +44,7 @@ view(
   ...,
   crs = NULL,
   densify = NULL,
+  style = "default",
   fill = NULL,
   stroke = NULL,
   stroke_width_px = NULL,
@@ -86,6 +88,12 @@ view(
   lon/lat data every 0.25 degrees when the view CRS differs, and nothing
   else; `FALSE` or `0` never densifies; a number densifies whenever the
   view CRS differs from `x`'s.
+
+- style:
+
+  `"default"` or `"minimal"`, the starting point that `fill`, `stroke`,
+  `stroke_width_px` and `radius_px` change. See Minimal style in
+  `view()`.
 
 - fill, stroke:
 
@@ -136,9 +144,10 @@ view(
 
 - popup:
 
-  `TRUE` (the default) shows the attribute columns (the first 20) for a
-  selected feature, a character vector names the columns to show, and
-  `FALSE` shows none. See Popups.
+  `TRUE` shows the attribute columns (the first 20) for a selected
+  feature, a character vector names the columns to show, and `FALSE`
+  shows none. See Popups. `NULL` (the default) is `TRUE`, or `FALSE`
+  with `style = "minimal"`.
 
 - name:
 
@@ -234,6 +243,20 @@ other atomic classes as their
 [`as.character()`](https://rdrr.io/r/base/character.html) text. List,
 raw and matrix columns cannot be shown and are left out with a message.
 
+**Minimal style.** `style = "minimal"` draws with the least the page
+carries and the renderer builds per feature, for exploring how much data
+a view can take (like `pch = "."` in base graphics): opaque one-pixel
+lines and polygon outlines, polygons not filled (so not triangulated),
+points as two-pixel dots with no outline, and no popup columns unless
+`popup` asks for them. Without `zcol`, each colour is one constant for
+the layer, not a value per feature. `fill`, `stroke`, `stroke_width_px`
+and `radius_px` still apply on top (a `fill` fills polygons again). With
+`zcol`, the column colours polygon outlines rather than fills. An
+unfilled polygon is selected (in a popup or from a served page) only by
+its outline, not by a click inside it; give `fill` for that. The
+geometry itself is unchanged: every vertex still travels in the page as
+16 bytes (two doubles), plus a third for base64.
+
 **Transport.** A view is embedded (the page above, on disk) or served
 from a local HTTP server by
 [`aobcore::serve_scene()`](https://rdrr.io/pkg/aobcore/man/serve_scene.html),
@@ -306,16 +329,27 @@ v5$scene$layers[[1]]$popup
 #> [1] "BIR74"
 #> 
 #> 
+v6 <- view(nc, style = "minimal")
+v6$scene$layers[[1]][c("stroke", "stroke_width_px", "fill")]
+#> $stroke
+#> [1]  51 102 204 255
+#> 
+#> $stroke_width_px
+#> [1] 1
+#> 
+#> $<NA>
+#> NULL
+#> 
 
 # CCAMLR statistical areas (simplified, illustrative; see the extdata
 # README) in EPSG:6932, coloured by area with popups, viewed in EPSG:3031
 areas <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson",
                                  package = "aobview"), quiet = TRUE)
 areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
-v6 <- view(areas, crs = "EPSG:3031", zcol = "area",
+v7 <- view(areas, crs = "EPSG:3031", zcol = "area",
            popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
-v6 <- view_add(v6, coast, popup = FALSE)
-vapply(v6$scene$legends[[1]]$classes, function(cl) cl$label, "")
+v7 <- view_add(v7, coast, popup = FALSE)
+vapply(v7$scene$legends[[1]]$classes, function(cl) cl$label, "")
 #> [1] "Area 48" "Area 58" "Area 88"
 if (FALSE) { # \dontrun{
 v2

@@ -36,6 +36,7 @@ view(
   ...,
   crs = NULL,
   densify = NULL,
+  style = "default",
   fill = NULL,
   stroke = NULL,
   stroke_width_px = NULL,
@@ -45,7 +46,7 @@ view(
   breaks = NULL,
   na_colour = "#999999",
   legend = TRUE,
-  popup = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -145,6 +146,12 @@ view(
   else; `FALSE` or `0` never densifies; a number densifies whenever the
   view CRS differs from `x`'s.
 
+- style:
+
+  `"default"` or `"minimal"`, the starting point that `fill`, `stroke`,
+  `stroke_width_px` and `radius_px` change. See Minimal style in
+  [`view()`](https://allboa.github.io/aobview/reference/view.md).
+
 - fill, stroke:
 
   Colours as `c(r, g, b, a)`, integers 0 to 255. `NULL` keeps the
@@ -177,9 +184,10 @@ view(
 
 - popup:
 
-  `TRUE` (the default) shows the attribute columns (the first 20) for a
-  selected feature, a character vector names the columns to show, and
-  `FALSE` shows none. See Popups.
+  `TRUE` shows the attribute columns (the first 20) for a selected
+  feature, a character vector names the columns to show, and `FALSE`
+  shows none. See Popups. `NULL` (the default) is `TRUE`, or `FALSE`
+  with `style = "minimal"`.
 
 ## Value
 
@@ -246,5 +254,5 @@ m <- terra::rast(ncols = 72, nrows = 20, xmin = -180, xmax = 180, ymin = -90, ym
                  vals = 1:1440, crs = "OGC:CRS84")
 view(m)
 #> <view> m: 1 layer in EPSG:3031
-#>   /tmp/RtmpqrYU24/view-1f4ae5f7a96.html
+#>   /tmp/RtmpJkGJ5M/view-1dfa48462524.html
 ```
