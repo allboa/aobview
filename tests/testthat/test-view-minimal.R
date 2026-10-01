@@ -50,6 +50,7 @@ test_that("with zcol, the minimal style colours polygon outlines", {
   expect_identical(ly[[1]]$stroke, list(column = "color"))
   expect_identical(ly[[2]]$stroke, list(column = "color"))
   expect_identical(ly[[3]]$fill, list(column = "color"))
+  expect_valid_scene(v)
   expect_error(view(x, style = "minimal", zcol = "b", stroke = c(0, 0, 0, 255),
                     file = tempfile(fileext = ".html")),
                "`stroke` and `zcol`")
@@ -81,4 +82,16 @@ test_that("a name is not deparsed from a whole data set passed by do.call()", {
   t <- system.time(nm <- deparse_name(x))[["elapsed"]]
   expect_lt(t, 1)
   expect_lte(nchar(nm), 60L)
+})
+
+test_that("a SpatVector takes the minimal style", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  x <- terra::vect(sf::st_sf(a = c(1, 2), b = c("x", "y"),
+                             geometry = lonlat(list(ring(-40, 40, -80, -70), ring(50, 60, -80, -75)))))
+  v <- view(x, style = "minimal", file = tempfile(fileext = ".html"))
+  expect_null(v$scene$layers[[1]][["fill"]])
+  for (l in v$scene$layers) expect_null(l$popup)
+  v <- view(x, style = "minimal", popup = TRUE, file = tempfile(fileext = ".html"))
+  expect_identical(unlist(v$scene$layers[[1]]$popup$columns), c("a", "b"))
 })

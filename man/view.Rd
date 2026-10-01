@@ -65,7 +65,8 @@ and nothing else; \code{FALSE} or \code{0} never densifies; a number densifies
 whenever the view CRS differs from \code{x}'s.}
 
 \item{style}{\code{"default"} or \code{"minimal"}, the starting point that \code{fill},
-\code{stroke}, \code{stroke_width_px} and \code{radius_px} change. See Minimal style.}
+\code{stroke}, \code{stroke_width_px} and \code{radius_px} change. See Minimal style
+in \code{\link[=view]{view()}}.}
 
 \item{fill, stroke}{Colours as \code{c(r, g, b, a)}, integers 0 to 255. \code{NULL}
 keeps the defaults: a translucent blue fill with a blue outline for
@@ -185,10 +186,12 @@ carries and the renderer builds per feature, for exploring how much data
 a view can take (like \code{pch = "."} in base graphics): opaque one-pixel
 lines and polygon outlines, polygons not filled (so not triangulated),
 points as two-pixel dots with no outline, and no popup columns unless
-\code{popup} asks for them. Each colour is one constant for the layer, not a
-value per feature. \code{fill}, \code{stroke}, \code{stroke_width_px} and \code{radius_px}
-still apply on top (a \code{fill} fills polygons again). With \code{zcol}, the
-column colours polygon outlines rather than fills. The geometry itself
+\code{popup} asks for them. Without \code{zcol}, each colour is one constant for
+the layer, not a value per feature. \code{fill}, \code{stroke}, \code{stroke_width_px}
+and \code{radius_px} still apply on top (a \code{fill} fills polygons again). With
+\code{zcol}, the column colours polygon outlines rather than fills. An
+unfilled polygon is selected (in a popup or from a served page) only by
+its outline, not by a click inside it; give \code{fill} for that. The geometry itself
 is unchanged: every vertex still travels in the page as 16 bytes (two
 doubles), plus a third for base64.
 

@@ -57,10 +57,12 @@
 #' a view can take (like `pch = "."` in base graphics): opaque one-pixel
 #' lines and polygon outlines, polygons not filled (so not triangulated),
 #' points as two-pixel dots with no outline, and no popup columns unless
-#' `popup` asks for them. Each colour is one constant for the layer, not a
-#' value per feature. `fill`, `stroke`, `stroke_width_px` and `radius_px`
-#' still apply on top (a `fill` fills polygons again). With `zcol`, the
-#' column colours polygon outlines rather than fills. The geometry itself
+#' `popup` asks for them. Without `zcol`, each colour is one constant for
+#' the layer, not a value per feature. `fill`, `stroke`, `stroke_width_px`
+#' and `radius_px` still apply on top (a `fill` fills polygons again). With
+#' `zcol`, the column colours polygon outlines rather than fills. An
+#' unfilled polygon is selected (in a popup or from a served page) only by
+#' its outline, not by a click inside it; give `fill` for that. The geometry itself
 #' is unchanged: every vertex still travels in the page as 16 bytes (two
 #' doubles), plus a third for base64.
 #'
@@ -105,7 +107,8 @@
 #'   and nothing else; `FALSE` or `0` never densifies; a number densifies
 #'   whenever the view CRS differs from `x`'s.
 #' @param style `"default"` or `"minimal"`, the starting point that `fill`,
-#'   `stroke`, `stroke_width_px` and `radius_px` change. See Minimal style.
+#'   `stroke`, `stroke_width_px` and `radius_px` change. See Minimal style
+#'   in [view()].
 #' @param fill,stroke Colours as `c(r, g, b, a)`, integers 0 to 255. `NULL`
 #'   keeps the defaults: a translucent blue fill with a blue outline for
 #'   polygons, blue lines, and blue points with a white outline. `fill` is
@@ -445,7 +448,7 @@ colour_column <- "color"
 ## Polygons get a grey outline unless `stroke` was given. In the minimal
 ## style polygons have no fill, so the column colours their outline.
 zcol_style <- function(kind, out, style, colour_col = colour_column) {
-  if (kind == "polygon" && identical(style$preset, "minimal") && is.null(style$fill)) {
+  if (kind == "polygon" && identical(style$preset, "minimal")) {
     if (!is.null(style$stroke)) {
       stop("`stroke` and `zcol` both set the colour of minimal-style polygon outlines; ",
            "use one.", call. = FALSE)
@@ -914,9 +917,9 @@ layer_id <- function(name) {
 }
 
 deparse_name <- function(expr) {
-  ## Only the first lines: do.call(view, list(x)) passes the data itself,
+  ## Only the first few lines: do.call(view, list(x)) passes the data itself,
   ## whose full deparse can take longer than the view.
-  nm <- paste(deparse(expr, width.cutoff = 60L, nlines = 2L), collapse = " ")
+  nm <- paste(deparse(expr, width.cutoff = 60L, nlines = 5L), collapse = " ")
   if (nchar(nm) > 60L) nm <- paste0(substr(nm, 1L, 57L), "...")
   nm
 }

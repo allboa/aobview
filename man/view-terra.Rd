@@ -98,7 +98,8 @@ and nothing else; \code{FALSE} or \code{0} never densifies; a number densifies
 whenever the view CRS differs from \code{x}'s.}
 
 \item{style}{\code{"default"} or \code{"minimal"}, the starting point that \code{fill},
-\code{stroke}, \code{stroke_width_px} and \code{radius_px} change. See Minimal style.}
+\code{stroke}, \code{stroke_width_px} and \code{radius_px} change. See Minimal style
+in \code{\link[=view]{view()}}.}
 
 \item{fill, stroke}{Colours as \code{c(r, g, b, a)}, integers 0 to 255. \code{NULL}
 keeps the defaults: a translucent blue fill with a blue outline for
