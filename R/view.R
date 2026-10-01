@@ -276,16 +276,11 @@ new_view <- function(crs, transport = "auto") {
   begin_transport(v, transport)
 }
 
-## Append x's layers to view v, above those already there. Methods: sf and
-## sfc here, SpatRaster and SpatVector in view-terra.R. Each returns v with
+## Append x's layers to view v, above those already there. Methods: vector
+## input here (default), SpatRaster and SpatVector in view-terra.R. Each returns v with
 ## its scene extended and the layers' extents (view CRS units) recorded.
 add_layers <- function(x, v, name, ...) {
   UseMethod("add_layers")
-}
-
-#' @export
-add_layers.default <- function(x, v, name, ...) {
-  stop(no_method_message(x), call. = FALSE)
 }
 
 #' @export
@@ -368,8 +363,8 @@ zcol_values <- function(attrs, zcol) {
 ## when given, is a data frame of popup columns, one row per element of g,
 ## carried beside the geometry and named as each layer's popup.
 ##
-## `source` is the object the user passed (an sf, sfc or SpatVector, whose
-## rows are the elements of g). The view keeps it, under a name, with the
+## `source` is the object the user passed (a geometry vector, a data frame
+## or a SpatVector, whose rows are the elements of g). The view keeps it, under a name, with the
 ## row map of each layer made from it: layer row i (1-based, in the layer's
 ## Arrow data) came from row idx[i] of the source. Empty and untransformable
 ## geometries have no layer row; a geometry collection's parts can give one
@@ -389,6 +384,14 @@ add_geometry <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL, 
   rows <- flat$rows
   if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
   src <- source_crs(g, view)
+  bad <- !finite_envelope(g)
+  if (any(bad)) {
+    warning(sum(bad), " of ", length(g), " geometries have coordinates that are not finite ",
+            "and are left out.", call. = FALSE)
+    g <- g[!bad]
+    rows <- rows[!bad]
+    if (length(g) == 0L) stop("No geometry in `x` has finite coordinates.", call. = FALSE)
+  }
   warn_geographic_view(src, view)
   g <- to_view_crs(g, src, view, densify)
   lost <- !finite_envelope(g)

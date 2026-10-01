@@ -120,3 +120,9 @@ test_that("a SpatVector is read through terra's WKB, without sf", {
   expect_identical(blob_column(v, "sv", "base"), c("Casey", "Davis"))
   expect_s4_class(v$sources[[1]]$object, "SpatVector")
 })
+
+test_that("non-finite input coordinates are named as the cause", {
+  x <- wk::xy(c(1, NaN), c(-70, -71), crs = "OGC:CRS84")
+  expect_warning(v <- view(x, file = html()), "1 of 2 geometries have coordinates that are not finite")
+  expect_identical(v$sources[[1]]$layers$x, 1L)
+})

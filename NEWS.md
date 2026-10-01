@@ -15,7 +15,11 @@
   WKT (it was the sf `crs`); the members of a geometry collection keep
   their row's place in the layer (they came after the other rows); a
   feature with any vertex PROJ cannot transform is left out with the
-  existing warning.
+  existing warning (GDAL, through sf, kept the visible part of a feature
+  that crosses an orthographic view's horizon). A geometry collection
+  holding an empty member is now drawn (it was left out as
+  untransformable). Geometries with non-finite input coordinates are left
+  out with their own warning.
 
 * Package skeleton, with R CMD check on Linux, macOS and Windows. aobcore
   is installed from GitHub (`Remotes: allboa/aobcore`) (#2).
