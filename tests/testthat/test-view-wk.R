@@ -142,18 +142,17 @@ test_that("a missing proj.db is found in a package that ships one, or is a clear
   dirs <- vapply(c("PROJ", "sf", "terra", "gdalraster"),
                  function(p) system.file("proj", package = p), "")
   has_db <- any(nzchar(dirs) & file.exists(file.path(dirs, "proj.db")))
+  bad <- normalizePath(tempdir(), "/")
   code <- paste0(
+    "Sys.setenv(PROJ_DATA = '", bad, "', PROJ_LIB = '", bad, "'); ",
     "r <- tryCatch({aobview:::proj_ready(); ",
-    "file.exists(file.path(Sys.getenv('PROJ_DATA'), 'proj.db'))}, ",
+    "if (startsWith(aobview:::proj_wkt('EPSG:3031'), 'PROJCRS')) 'ok'}, ",
     "error = function(e) conditionMessage(e)); cat(r)"
   )
   out <- system2(file.path(R.home("bin"), "Rscript"), c("-e", shQuote(code)),
-                 stdout = TRUE, stderr = FALSE,
-                 env = c(paste0("PROJ_DATA=", tempdir()), paste0("PROJ_LIB=", tempdir())))
+                 stdout = TRUE, stderr = FALSE)
   out <- paste(out, collapse = " ")
-  if (has_db) {
-    expect_match(out, "TRUE")
-  } else {
-    expect_match(out, "cannot find its database")
-  }
+  ## Without a proj.db in those packages, PROJ may still find one of its
+  ## own; if it cannot, the error says what to do.
+  expect_match(out, if (has_db) "^ok$" else "^ok$|cannot find its database")
 })
