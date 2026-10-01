@@ -70,6 +70,11 @@
 #' served layer is kept in `file.path(tempdir(), "aobview-cogs")` until
 #' the server stops.
 #'
+#' **Selections.** A served view's page sends the features the viewer
+#' selects (a click, Shift-click to add or remove) back to R: every vector
+#' layer can be selected. Read them with [selection()], [selected()] and
+#' [wait_for_selection()]; an embedded page cannot send them.
+#'
 #' **Spec version.** The scene is written at the lowest scene spec version
 #' that can express it ([aobcore::scene_spec_version()]): a view with no
 #' legend and no popup is unchanged by these features.
@@ -122,10 +127,14 @@
 #'   [aobcore::scene()]), the `file` it was written to (`NULL` when served),
 #'   the `server` serving it (an `"aob_server"` from
 #'   [aobcore::serve_scene()], or `NULL` when embedded), its `name` (the
-#'   page title), `theme`, and `extents`, each layer's extent in the view
-#'   CRS (from which the initial view is set). Add to it with
-#'   [view_add()]. Printing it opens
-#'   the page (or the server's URL) when the session is interactive.
+#'   page title), `theme`, `extents`, each layer's extent in the view
+#'   CRS (from which the initial view is set), `sources`, each vector
+#'   object viewed with its name and the map from its layers' rows to its
+#'   own rows, and `serial`, the scene serial the server gave the scene
+#'   (`NULL` when embedded). Add to it with [view_add()]. Printing it opens
+#'   the page when the session is interactive; a served view's URL is
+#'   opened only when no page is connected to its server, since an open
+#'   page follows the view (see [selection()]).
 #' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
 #'   rasters and vectors; [view-layers] for several layers in one view.
 #' @export
@@ -211,7 +220,9 @@ print.aob_view <- function(x, ...) {
   if (!is.null(x$server)) {
     running <- isTRUE(x$server$state$running)
     cat("  served at ", x$server$url, if (!running) " (stopped)", "\n", sep = "")
-    if (interactive() && running) open_url(x$server$url)
+    ## A page already showing the server follows a changed scene by reload
+    ## (decision 0007, item 5), so open one only when none is connected.
+    if (can_open() && running && page_count(x$server) == 0L) open_url(x$server$url)
   } else {
     cat("  ", x$file, "\n", sep = "")
     if (interactive()) open_page(x$file)
@@ -275,7 +286,8 @@ add_layers.sfc <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke 
 ## given, with a legend for those colours and popup attribute columns.
 ## Shared by the sf and SpatVector methods.
 add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, breaks = NULL,
-                   na_colour = "#999999", legend = TRUE, popup = TRUE) {
+                   na_colour = "#999999", legend = TRUE, popup = TRUE, source = x) {
+  force(source)
   check_flag(legend, "legend")
   rgba <- NULL
   if (!is.null(zcol)) {
@@ -289,7 +301,8 @@ add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, brea
   }
   attrs <- popup_attributes(x, popup)
   before <- layer_ids(v$scene)
-  v <- add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba, attrs = attrs)
+  v <- add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba, attrs = attrs,
+               source = source)
   drawn <- v$drawn
   v$drawn <- NULL
   if (!is.null(rgba) && legend) {
@@ -339,7 +352,15 @@ zcol_values <- function(x, zcol) {
 ## of g, carried beside the geometry as the layer's colour column. `attrs`,
 ## when given, is a data frame of popup columns, one row per element of g,
 ## carried beside the geometry and named as each layer's popup.
-add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL) {
+##
+## `source` is the object the user passed (an sf, sfc or SpatVector, whose
+## rows are the elements of g). The view keeps it, under a name, with the
+## row map of each layer made from it: layer row i (1-based, in the layer's
+## Arrow data) came from row idx[i] of the source. Empty and untransformable
+## geometries have no layer row; a geometry collection's parts can give one
+## source row several (decision 0007, item 3). See selection().
+add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL, source = g) {
+  force(source)
   if (length(g) == 0L) stop("`x` has no geometries to view.", call. = FALSE)
   rows <- seq_along(g)
   keep <- !sf::st_is_empty(g)
@@ -367,6 +388,7 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL) {
   multi <- length(parts) > 1L
   base <- unique_id(layer_id(name), s, if (multi) paste0("_", names(parts)) else "")
   colour_col <- unique_name(colour_column, names(attrs))
+  row_maps <- list()
   for (kind in names(parts)) {
     id <- if (multi) paste0(base, "_", kind) else base
     label <- if (multi) paste0(name, " (", kind_label[[kind]], ")") else name
@@ -374,6 +396,7 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL) {
     geom <- wk::wk_set_crs(geom, view)
     style_k <- layer_style(kind, style)
     idx <- rows[split$rows[[kind]]]
+    row_maps[[id]] <- as.integer(idx)
     if (!is.null(attrs)) {
       geom <- attribute_stream(geom, view, attrs[idx, , drop = FALSE])
       style_k$popup <- names(attrs)
@@ -387,6 +410,8 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL) {
     v$extents[[id]] <- bbox_extent(parts[[kind]])
   }
   v$scene <- s
+  v$sources <- c(v$sources, list(list(name = unique_name(name, source_names(v)),
+                                      object = source, layers = row_maps)))
   ## The rows of x drawn (not empty, transformed), for the legend.
   v$drawn <- sort(unique(rows))
   v
@@ -473,7 +498,8 @@ finish_view <- function(v, name, file, theme) {
     aobcore::write_scene_html(s, file = file, title = name, theme = theme)
   }
   structure(list(scene = s, file = file, server = server, name = name, theme = theme,
-                 extents = v$extents, keys = v$keys, local_bytes = v$local_bytes %||% 0),
+                 extents = v$extents, keys = v$keys, local_bytes = v$local_bytes %||% 0,
+                 sources = v$sources, serial = if (!is.null(server)) server$state$serial),
             class = "aob_view")
 }
 
@@ -846,6 +872,10 @@ deparse_name <- function(expr) {
 crs_text <- function(crs) {
   if (inherits(crs, "aob_json")) "a PROJJSON CRS" else as.character(crs)
 }
+
+## Whether print() opens the page: wrapped so tests can stand in for an
+## interactive session.
+can_open <- function() interactive()
 
 open_page <- function(file) {
   viewer <- getOption("viewer")
