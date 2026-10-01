@@ -105,3 +105,12 @@
   that `view_add()` has replaced. `view_add()` on a served view reloads the
   open page and clears the selection, and printing a served view opens the
   page only when none is connected (#22).
+* `view()` and `view_add()` take `style = "minimal"` for sf, sfc and
+  SpatVector data, for exploring how large a view can be (like `pch = "."`):
+  opaque one-pixel lines and polygon outlines, polygons not filled (no
+  triangulation or fill layer in the page), points as two-pixel dots with no
+  outline, and no popup columns unless `popup` asks for them. `popup` now
+  defaults to `NULL`, which is `TRUE` except in the minimal style.
+* A layer name is no longer deparsed from the whole data when `x` is passed
+  by value, as in `do.call(view, list(x))`; that deparse took longer than
+  the view itself for large data.

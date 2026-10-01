@@ -72,7 +72,7 @@ record_crs_facts <- function(rec) {
   lonlat <- crs_is_lonlat(def)
   ylim <- NULL
   if (lonlat) {
-    keep <- !wk::wk_meta(rec$geom)$is_empty
+    keep <- has_coords(rec$geom)
     bb <- unclass(wk::wk_bbox(rec$geom[keep]))
     ylim <- c(bb$ymin, bb$ymax)
   }

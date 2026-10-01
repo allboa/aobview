@@ -126,3 +126,11 @@ test_that("non-finite input coordinates are named as the cause", {
   expect_warning(v <- view(x, file = html()), "1 of 2 geometries have coordinates that are not finite")
   expect_identical(v$sources[[1]]$layers$x, 1L)
 })
+
+test_that("a geometry whose first part is empty is drawn", {
+  x <- wk::wkt(c("MULTIPOLYGON (EMPTY, ((0 -70, 10 -70, 10 -75, 0 -70)))", "POINT EMPTY"),
+               crs = "OGC:CRS84")
+  v <- view(x, file = html())
+  expect_identical(v$sources[[1]]$layers$x, 1L)
+  expect_identical(view_crs(x), "EPSG:3031")
+})

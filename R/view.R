@@ -69,6 +69,20 @@
 #' other atomic classes as their `as.character()` text. List, raw and matrix columns
 #' cannot be shown and are left out with a message.
 #'
+#' **Minimal style.** `style = "minimal"` draws with the least the page
+#' carries and the renderer builds per feature, for exploring how much data
+#' a view can take (like `pch = "."` in base graphics): opaque one-pixel
+#' lines and polygon outlines, polygons not filled (so not triangulated),
+#' points as two-pixel dots with no outline, and no popup columns unless
+#' `popup` asks for them. Without `zcol`, each colour is one constant for
+#' the layer, not a value per feature. `fill`, `stroke`, `stroke_width_px`
+#' and `radius_px` still apply on top (a `fill` fills polygons again). With
+#' `zcol`, the column colours polygon outlines rather than fills. An
+#' unfilled polygon is selected (in a popup or from a served page) only by
+#' its outline, not by a click inside it; give `fill` for that. The geometry itself
+#' is unchanged: every vertex still travels in the page as 16 bytes (two
+#' doubles), plus a third for base64.
+#'
 #' **Transport.** A view is embedded (the page above, on disk) or served
 #' from a local HTTP server by [aobcore::serve_scene()], which the browser
 #' reads a local COG from tile by tile instead of carrying its bytes in the
@@ -112,6 +126,9 @@
 #'   densifies lon/lat data every 0.25 degrees when the view CRS differs,
 #'   and nothing else; `FALSE` or `0` never densifies; a number densifies
 #'   whenever the view CRS differs from `x`'s.
+#' @param style `"default"` or `"minimal"`, the starting point that `fill`,
+#'   `stroke`, `stroke_width_px` and `radius_px` change. See Minimal style
+#'   in [view()].
 #' @param fill,stroke Colours as `c(r, g, b, a)`, integers 0 to 255. `NULL`
 #'   keeps the defaults: a translucent blue fill with a blue outline for
 #'   polygons, blue lines, and blue points with a white outline. `fill` is
@@ -129,9 +146,10 @@
 #' @param na_colour With `zcol`: the colour for `NA` values.
 #' @param legend With `zcol`: `TRUE` (the default) adds a legend for the
 #'   colours, `FALSE` leaves it out. Without `zcol` there is nothing to key.
-#' @param popup `TRUE` (the default) shows the attribute columns (the first
-#'   20) for a selected feature, a character vector names the columns to
-#'   show, and `FALSE` shows none. See Popups.
+#' @param popup `TRUE` shows the attribute columns (the first 20) for a
+#'   selected feature, a character vector names the columns to show, and
+#'   `FALSE` shows none. See Popups. `NULL` (the default) is `TRUE`, or
+#'   `FALSE` with `style = "minimal"`.
 #' @param stroke_width_px Line or outline width in pixels.
 #' @param radius_px Point radius in pixels.
 #' @param name The layer name, shown as the page title. Defaults to the
@@ -183,16 +201,18 @@
 #' v4$scene$legends[[1]]$classes[[1]]$label
 #' v5 <- view(nc, zcol = "BIR74", popup = c("NAME", "BIR74"))
 #' v5$scene$layers[[1]]$popup
+#' v6 <- view(nc, style = "minimal")
+#' v6$scene$layers[[1]][c("stroke", "stroke_width_px", "fill")]
 #'
 #' # CCAMLR statistical areas (simplified, illustrative; see the extdata
 #' # README) in EPSG:6932, coloured by area with popups, viewed in EPSG:3031
 #' areas <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson",
 #'                                  package = "aobview"), quiet = TRUE)
 #' areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
-#' v6 <- view(areas, crs = "EPSG:3031", zcol = "area",
+#' v7 <- view(areas, crs = "EPSG:3031", zcol = "area",
 #'            popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
-#' v6 <- view_add(v6, coast, popup = FALSE)
-#' vapply(v6$scene$legends[[1]]$classes, function(cl) cl$label, "")
+#' v7 <- view_add(v7, coast, popup = FALSE)
+#' vapply(v7$scene$legends[[1]]$classes, function(cl) cl$label, "")
 #' \dontrun{
 #' v2
 #' v3
@@ -203,16 +223,16 @@ view <- function(x, ...) {
 
 #' @rdname view
 #' @export
-view.default <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                         stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
-                         palette = NULL, breaks = NULL, na_colour = "#999999",
-                         legend = TRUE, popup = TRUE, name = NULL, file = NULL,
+view.default <- function(x, ..., crs = NULL, densify = NULL, style = "default", fill = NULL,
+                         stroke = NULL, stroke_width_px = NULL, radius_px = NULL,
+                         zcol = NULL, palette = NULL, breaks = NULL, na_colour = "#999999",
+                         legend = TRUE, popup = NULL, name = NULL, file = NULL,
                          theme = c("auto", "light", "dark"),
                          transport = getOption("aobview.transport", "auto")) {
   if (!wk::is_handleable(x)) stop(no_method_message(x), call. = FALSE)
   check_dots(..., what = "geometry")
   view_vector(x, NULL, name %||% deparse_name(substitute(x)), crs = crs, densify = densify,
-              fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+              style = style, fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
               radius_px = radius_px, zcol = zcol, palette = palette, breaks = breaks,
               na_colour = na_colour, legend = legend, popup = popup, file = file,
               theme = match.arg(theme), transport = transport)
@@ -220,15 +240,16 @@ view.default <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke
 
 #' @rdname view
 #' @export
-view.data.frame <- function(x, ..., geometry = NULL, crs = NULL, densify = NULL, fill = NULL,
-                            stroke = NULL, stroke_width_px = NULL, radius_px = NULL,
-                            zcol = NULL, palette = NULL, breaks = NULL,
-                            na_colour = "#999999", legend = TRUE, popup = TRUE, name = NULL,
+view.data.frame <- function(x, ..., geometry = NULL, crs = NULL, densify = NULL,
+                            style = "default", fill = NULL, stroke = NULL,
+                            stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+                            palette = NULL, breaks = NULL, na_colour = "#999999",
+                            legend = TRUE, popup = NULL, name = NULL,
                             file = NULL, theme = c("auto", "light", "dark"),
                             transport = getOption("aobview.transport", "auto")) {
   check_dots(..., what = "a data frame")
   view_vector(x, geometry, name %||% deparse_name(substitute(x)), crs = crs,
-              densify = densify, fill = fill, stroke = stroke,
+              densify = densify, style = style, fill = fill, stroke = stroke,
               stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
               palette = palette, breaks = breaks, na_colour = na_colour, legend = legend,
               popup = popup, file = file, theme = match.arg(theme), transport = transport)
@@ -292,15 +313,17 @@ add_layers.default <- function(x, v, name, ..., geometry = NULL) {
 ## A vector record's layers (see vector_record()): its geometry, coloured
 ## by column `zcol` when given, with a legend for those colours and popup
 ## attribute columns. Shared by every vector input.
-add_record <- function(rec, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
-                       stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+add_record <- function(rec, v, name, ..., densify = NULL, style = "default", fill = NULL,
+                       stroke = NULL, stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
                        palette = NULL, breaks = NULL, na_colour = "#999999", legend = TRUE,
-                       popup = TRUE, source) {
+                       popup = NULL, source) {
   check_dots(..., what = if (is.null(rec$attrs)) "geometry" else "a data frame")
   force(source)
-  style <- list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                radius_px = radius_px)
+  style <- list(preset = check_style(style), fill = fill, stroke = stroke,
+                stroke_width_px = stroke_width_px, radius_px = radius_px)
   check_flag(legend, "legend")
+  ## The minimal style carries no attribute columns unless asked to.
+  popup <- popup %||% !identical(style$preset, "minimal")
   rgba <- NULL
   if (!is.null(zcol)) {
     values <- zcol_values(rec$attrs, zcol)
@@ -373,7 +396,7 @@ add_geometry <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL, 
   force(source)
   if (length(g) == 0L) stop("`x` has no geometries to view.", call. = FALSE)
   rows <- seq_along(g)
-  keep <- !wk::wk_meta(g)$is_empty
+  keep <- has_coords(g)
   g <- g[keep]
   rows <- rows[keep]
   if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
@@ -444,8 +467,17 @@ colour_column <- "color"
 
 ## A layer coloured by column: fill for polygons and points, stroke for
 ## lines (so a `stroke` for lines is an error, as `fill` is for the rest).
-## Polygons get a grey outline unless `stroke` was given.
+## Polygons get a grey outline unless `stroke` was given. In the minimal
+## style polygons have no fill, so the column colours their outline.
 zcol_style <- function(kind, out, style, colour_col = colour_column) {
+  if (kind == "polygon" && identical(style$preset, "minimal")) {
+    if (!is.null(style$stroke)) {
+      stop("`stroke` and `zcol` both set the colour of minimal-style polygon outlines; ",
+           "use one.", call. = FALSE)
+    }
+    out$stroke <- colour_col
+    return(out)
+  }
   if (kind == "path") {
     if (!is.null(style$stroke)) {
       stop("`stroke` and `zcol` both set the colour of lines; use one.", call. = FALSE)
@@ -840,7 +872,7 @@ flatten_collections <- function(g, rows) {
     }), recursive = FALSE)
     g <- wk::wkb(out, crs = wk::wk_crs(g))
     rows <- unlist(out_rows)
-    keep <- !wk::wk_meta(g)$is_empty
+    keep <- has_coords(g)
     g <- g[keep]
     rows <- rows[keep]
   }
@@ -880,8 +912,29 @@ default_style <- list(
                stroke_width_px = 1, radius_px = 4)
 )
 
+## style = "minimal" (like pch = "." in base graphics): the least the
+## renderer has to build per feature. Opaque one-pixel lines and outlines,
+## polygons unfilled (no triangulation, no fill layer), points as two-pixel
+## dots with no outline, and no popup columns (see add_record()).
+minimal_style <- list(
+  polygon = list(stroke = c(default_blue, 255L), stroke_width_px = 1),
+  path = list(stroke = c(default_blue, 255L), stroke_width_px = 1),
+  point = list(fill = c(default_blue, 255L), radius_px = 1)
+)
+
+styles <- c("default", "minimal")
+
+check_style <- function(style) {
+  if (!is.character(style) || length(style) != 1L || is.na(style) || !style %in% styles) {
+    stop("`style` must be one of ", paste0("\"", styles, "\"", collapse = ", "), ".",
+         call. = FALSE)
+  }
+  style
+}
+
 layer_style <- function(kind, style) {
-  out <- default_style[[kind]]
+  out <- if (identical(style$preset, "minimal")) minimal_style[[kind]] else default_style[[kind]]
+  style$preset <- NULL
   for (nm in names(style)) {
     v <- style[[nm]]
     if (is.null(v)) next
@@ -902,7 +955,9 @@ layer_id <- function(name) {
 }
 
 deparse_name <- function(expr) {
-  nm <- paste(deparse(expr, width.cutoff = 60L), collapse = " ")
+  ## Only the first few lines: do.call(view, list(x)) passes the data itself,
+  ## whose full deparse can take longer than the view.
+  nm <- paste(deparse(expr, width.cutoff = 60L, nlines = 5L), collapse = " ")
   if (nchar(nm) > 60L) nm <- paste0(substr(nm, 1L, 57L), "...")
   nm
 }

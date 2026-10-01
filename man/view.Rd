@@ -13,6 +13,7 @@ view(x, ...)
   ...,
   crs = NULL,
   densify = NULL,
+  style = "default",
   fill = NULL,
   stroke = NULL,
   stroke_width_px = NULL,
@@ -22,7 +23,7 @@ view(x, ...)
   breaks = NULL,
   na_colour = "#999999",
   legend = TRUE,
-  popup = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -35,6 +36,7 @@ view(x, ...)
   geometry = NULL,
   crs = NULL,
   densify = NULL,
+  style = "default",
   fill = NULL,
   stroke = NULL,
   stroke_width_px = NULL,
@@ -44,7 +46,7 @@ view(x, ...)
   breaks = NULL,
   na_colour = "#999999",
   legend = TRUE,
-  popup = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -68,6 +70,10 @@ and polygon edges before they are transformed. \code{NULL} (the default)
 densifies lon/lat data every 0.25 degrees when the view CRS differs,
 and nothing else; \code{FALSE} or \code{0} never densifies; a number densifies
 whenever the view CRS differs from \code{x}'s.}
+
+\item{style}{\code{"default"} or \code{"minimal"}, the starting point that \code{fill},
+\code{stroke}, \code{stroke_width_px} and \code{radius_px} change. See Minimal style
+in \code{\link[=view]{view()}}.}
 
 \item{fill, stroke}{Colours as \code{c(r, g, b, a)}, integers 0 to 255. \code{NULL}
 keeps the defaults: a translucent blue fill with a blue outline for
@@ -96,9 +102,10 @@ the values into classes, one colour each; see \code{\link[=view_colours]{view_co
 \item{legend}{With \code{zcol}: \code{TRUE} (the default) adds a legend for the
 colours, \code{FALSE} leaves it out. Without \code{zcol} there is nothing to key.}
 
-\item{popup}{\code{TRUE} (the default) shows the attribute columns (the first
-20) for a selected feature, a character vector names the columns to
-show, and \code{FALSE} shows none. See Popups.}
+\item{popup}{\code{TRUE} shows the attribute columns (the first 20) for a
+selected feature, a character vector names the columns to show, and
+\code{FALSE} shows none. See Popups. \code{NULL} (the default) is \code{TRUE}, or
+\code{FALSE} with \code{style = "minimal"}.}
 
 \item{name}{The layer name, shown as the page title. Defaults to the
 expression passed as \code{x}.}
@@ -203,6 +210,20 @@ are carried as they are; factors as their labels, \code{Date} as
 other atomic classes as their \code{as.character()} text. List, raw and matrix columns
 cannot be shown and are left out with a message.
 
+\strong{Minimal style.} \code{style = "minimal"} draws with the least the page
+carries and the renderer builds per feature, for exploring how much data
+a view can take (like \code{pch = "."} in base graphics): opaque one-pixel
+lines and polygon outlines, polygons not filled (so not triangulated),
+points as two-pixel dots with no outline, and no popup columns unless
+\code{popup} asks for them. Without \code{zcol}, each colour is one constant for
+the layer, not a value per feature. \code{fill}, \code{stroke}, \code{stroke_width_px}
+and \code{radius_px} still apply on top (a \code{fill} fills polygons again). With
+\code{zcol}, the column colours polygon outlines rather than fills. An
+unfilled polygon is selected (in a popup or from a served page) only by
+its outline, not by a click inside it; give \code{fill} for that. The geometry itself
+is unchanged: every vertex still travels in the page as 16 bytes (two
+doubles), plus a third for base64.
+
 \strong{Transport.} A view is embedded (the page above, on disk) or served
 from a local HTTP server by \code{\link[aobcore:serve_scene]{aobcore::serve_scene()}}, which the browser
 reads a local COG from tile by tile instead of carrying its bytes in the
@@ -254,16 +275,18 @@ v4 <- view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
 v4$scene$legends[[1]]$classes[[1]]$label
 v5 <- view(nc, zcol = "BIR74", popup = c("NAME", "BIR74"))
 v5$scene$layers[[1]]$popup
+v6 <- view(nc, style = "minimal")
+v6$scene$layers[[1]][c("stroke", "stroke_width_px", "fill")]
 
 # CCAMLR statistical areas (simplified, illustrative; see the extdata
 # README) in EPSG:6932, coloured by area with popups, viewed in EPSG:3031
 areas <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson",
                                  package = "aobview"), quiet = TRUE)
 areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
-v6 <- view(areas, crs = "EPSG:3031", zcol = "area",
+v7 <- view(areas, crs = "EPSG:3031", zcol = "area",
            popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
-v6 <- view_add(v6, coast, popup = FALSE)
-vapply(v6$scene$legends[[1]]$classes, function(cl) cl$label, "")
+v7 <- view_add(v7, coast, popup = FALSE)
+vapply(v7$scene$legends[[1]]$classes, function(cl) cl$label, "")
 \dontrun{
 v2
 v3

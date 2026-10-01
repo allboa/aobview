@@ -139,3 +139,8 @@ proj_transform <- function(g, from, view) {
   trans <- PROJ::proj_trans_create(as.character(from), as.character(view))
   wk::wk_transform(g, trans)
 }
+
+## Which geometries have any coordinates? Not wk_meta()'s is_empty, which
+## is TRUE for a multi geometry or polygon whose first part or ring is
+## empty, whatever follows.
+has_coords <- function(g) wk::wk_count(g)$n_coord > 0
