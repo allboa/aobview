@@ -1,5 +1,16 @@
 # aobview 0.0.0.9000
 
+* `view()` and `view_add()` take `style = "minimal"` for sf, sfc and
+  SpatVector data, for exploring how large a view can be (like `pch = "."`):
+  opaque one-pixel lines and polygon outlines, polygons not filled (no
+  triangulation or fill layer in the page), points as two-pixel dots with no
+  outline, and no popup columns unless `popup` asks for them. `popup` now
+  defaults to `NULL`, which is `TRUE` except in the minimal style.
+
+* A layer name is no longer deparsed from the whole data when `x` is passed
+  by value, as in `do.call(view, list(x))`; that deparse took longer than
+  the view itself for large data.
+
 * Package skeleton, with R CMD check on Linux, macOS and Windows. aobcore
   is installed from GitHub (`Remotes: allboa/aobcore`) (#2).
 * `view()` draws `sf` and `sfc` points, lines and polygons in a

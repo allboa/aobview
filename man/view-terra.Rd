@@ -26,6 +26,7 @@
   ...,
   crs = NULL,
   densify = NULL,
+  style = "default",
   fill = NULL,
   stroke = NULL,
   stroke_width_px = NULL,
@@ -35,7 +36,7 @@
   breaks = NULL,
   na_colour = "#999999",
   legend = TRUE,
-  popup = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -96,6 +97,9 @@ densifies lon/lat data every 0.25 degrees when the view CRS differs,
 and nothing else; \code{FALSE} or \code{0} never densifies; a number densifies
 whenever the view CRS differs from \code{x}'s.}
 
+\item{style}{\code{"default"} or \code{"minimal"}, the starting point that \code{fill},
+\code{stroke}, \code{stroke_width_px} and \code{radius_px} change. See Minimal style.}
+
 \item{fill, stroke}{Colours as \code{c(r, g, b, a)}, integers 0 to 255. \code{NULL}
 keeps the defaults: a translucent blue fill with a blue outline for
 polygons, blue lines, and blue points with a white outline. \code{fill} is
@@ -113,9 +117,10 @@ the values into classes, one colour each; see \code{\link[=view_colours]{view_co
 
 \item{na_colour}{With \code{zcol}: the colour for \code{NA} values.}
 
-\item{popup}{\code{TRUE} (the default) shows the attribute columns (the first
-20) for a selected feature, a character vector names the columns to
-show, and \code{FALSE} shows none. See Popups.}
+\item{popup}{\code{TRUE} shows the attribute columns (the first 20) for a
+selected feature, a character vector names the columns to show, and
+\code{FALSE} shows none. See Popups. \code{NULL} (the default) is \code{TRUE}, or
+\code{FALSE} with \code{style = "minimal"}.}
 }
 \value{
 A view, as for \code{\link[=view]{view()}}.
