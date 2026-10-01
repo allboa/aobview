@@ -50,3 +50,8 @@
   with the scenespec validator (pinned to scenespec 9f8df26) and runs
   `tools/popup-check.mjs`, which clicks a station in an EPSG:3031 view
   headless and checks its popup's text.
+* `inst/extdata/ccamlr_statistical_areas.geojson`: the CCAMLR statistical
+  areas of Areas 48, 58 and 88 (CCAMLR GIS, https://gis.ccamlr.org), 19
+  polygons in EPSG:6932 simplified at 2 km, illustrative only, for
+  examples and tests of a projected CRS that is not the view's. Made by
+  `tools/make-ccamlr-fixture.R`; provenance in `inst/extdata/README`.

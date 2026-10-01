@@ -15,37 +15,7 @@ pols <- function() {
 ## PROJ cannot give a domain (some binary builds).
 expect_before_05 <- function(v) expect_true(v$scene$version %in% c("0.1", "0.4"))
 
-legend_labels <- function(lg) vapply(lg$classes, function(cl) cl$label, "")
 legend_colours <- function(lg) do.call(rbind, lapply(lg$classes, function(cl) cl$color))
-
-## The attribute columns of a view's data blob (not its geometry or colour
-## columns), as a list, converted column by column (a data frame of the
-## whole stream needs vctrs for the list columns).
-blob_df <- function(v, id) {
-  stream <- nanoarrow::read_nanoarrow(aobcore::scene_blobs(v$scene)[[id]])
-  schema <- stream$get_schema()
-  batches <- nanoarrow::collect_array_stream(stream)
-  geom <- v$scene$data[[id]]$geometry$column
-  cols <- names(schema$children)
-  keep <- cols[cols != geom & !startsWith(vapply(schema$children, function(ch) ch$format, ""), "+w")]
-  out <- lapply(keep, function(nm) {
-    do.call(c, lapply(batches, function(b) nanoarrow::convert_array(b$children[[nm]])))
-  })
-  names(out) <- keep
-  out
-}
-
-## The scene's JSON, checked by the scenespec validator when a checkout of
-## allboa/scenespec (with its node modules) is named by AOB_SCENESPEC.
-expect_valid_scene <- function(v) {
-  spec <- Sys.getenv("AOB_SCENESPEC")
-  if (!nzchar(spec) || !nzchar(Sys.which("node"))) return(invisible())
-  f <- tempfile(fileext = ".json")
-  writeLines(aobcore::scene_json(v$scene), f)
-  out <- suppressWarnings(system2("node", c(file.path(spec, "scripts", "validate.js"), f),
-                                  stdout = TRUE, stderr = TRUE))
-  expect_null(attr(out, "status"), label = paste(out, collapse = "\n"))
-}
 
 test_that("a numeric zcol gets a ramp legend from the same colours", {
   skip_if_not_installed("sf")

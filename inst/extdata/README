@@ -1,0 +1,25 @@
+ccamlr_statistical_areas.geojson
+--------------------------------
+
+CCAMLR statistical areas, Commission for the Conservation of Antarctic
+Marine Living Resources (CCAMLR GIS, https://gis.ccamlr.org).
+
+The subareas and divisions of Areas 48, 58 and 88: 19 Polygon features in
+EPSG:6932 (WGS 84 / NSIDC EASE-Grid 2.0 South), written by GDAL as GeoJSON
+with a "crs" member (not RFC 7946 lon/lat), coordinates in metres rounded
+to the metre. Six attributes, the ones used as popups: GAR_ID, GAR_Name,
+GAR_Short_Label, GAR_Long_Label, GAR_Start_Date and GAR_Size.
+
+Simplified for size (about 92 KB, from 38,112 vertices to 4,817): each
+polygon on its own, with sf::st_simplify(preserveTopology = TRUE,
+dTolerance = 2000), a 2 km tolerance. Because each polygon is simplified
+separately, the shared edges of neighbouring areas no longer match
+exactly: there are small gaps and overlaps along them.
+
+This copy is illustrative, for examples and tests. It is not an
+authoritative statement of the boundaries; use the data from CCAMLR GIS
+for that.
+
+Made 2026-10-01 by tools/make-ccamlr-fixture.R (in the source repository,
+not the installed package) from a GeoParquet copy of the CCAMLR
+statistical areas layer.
