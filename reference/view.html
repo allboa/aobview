@@ -228,10 +228,14 @@ Defaults to <code>getOption("aobview.transport", "auto")</code>.</p></dd>
 <code><a href="https://rdrr.io/pkg/aobcore/man/scene.html" class="external-link">aobcore::scene()</a></code>), the <code>file</code> it was written to (<code>NULL</code> when served),
 the <code>server</code> serving it (an <code>"aob_server"</code> from
 <code><a href="https://rdrr.io/pkg/aobcore/man/serve_scene.html" class="external-link">aobcore::serve_scene()</a></code>, or <code>NULL</code> when embedded), its <code>name</code> (the
-page title), <code>theme</code>, and <code>extents</code>, each layer's extent in the view
-CRS (from which the initial view is set). Add to it with
-<code><a href="view-layers.html">view_add()</a></code>. Printing it opens
-the page (or the server's URL) when the session is interactive.</p>
+page title), <code>theme</code>, <code>extents</code>, each layer's extent in the view
+CRS (from which the initial view is set), <code>sources</code>, each vector
+object viewed with its name and the map from its layers' rows to its
+own rows, and <code>serial</code>, the scene serial the server gave the scene
+(<code>NULL</code> when embedded). Add to it with <code><a href="view-layers.html">view_add()</a></code>. Printing it opens
+the page when the session is interactive; a served view's URL is
+opened only when no page is connected to its server, since an open
+page follows the view (see <code><a href="selection.html">selection()</a></code>).</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -291,6 +295,10 @@ view keeps its server running until <code>v$server$stop()</code>,
 answers only while R is idle. A temporary COG (see <a href="view-terra.html">view-terra</a>) of a
 served layer is kept in <code>file.path(tempdir(), "aobview-cogs")</code> until
 the server stops.</p>
+<p><strong>Selections.</strong> A served view's page sends the features the viewer
+selects (a click, Shift-click to add or remove) back to R: every vector
+layer can be selected. Read them with <code><a href="selection.html">selection()</a></code>, <code><a href="selection.html">selected()</a></code> and
+<code><a href="selection.html">wait_for_selection()</a></code>; an embedded page cannot send them.</p>
 <p><strong>Spec version.</strong> The scene is written at the lowest scene spec version
 that can express it (<code><a href="https://rdrr.io/pkg/aobcore/man/scene_spec_version.html" class="external-link">aobcore::scene_spec_version()</a></code>): a view with no
 legend and no popup is unchanged by these features.</p>

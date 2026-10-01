@@ -10,6 +10,11 @@
 - [`view(`*`<list>`*`)`](https://allboa.github.io/aobview/reference/view-layers.md)
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
   : View several layers in one page
+- [`selection()`](https://allboa.github.io/aobview/reference/selection.md)
+  [`selected()`](https://allboa.github.io/aobview/reference/selection.md)
+  [`wait_for_selection()`](https://allboa.github.io/aobview/reference/selection.md)
+  [`view_state()`](https://allboa.github.io/aobview/reference/selection.md)
+  : Selections from a served view
 
 ## View CRS and colours
 

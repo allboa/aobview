@@ -169,12 +169,16 @@ A view: a list of class `"aob_view"` with the `scene` (an
 `file` it was written to (`NULL` when served), the `server` serving it
 (an `"aob_server"` from
 [`aobcore::serve_scene()`](https://rdrr.io/pkg/aobcore/man/serve_scene.html),
-or `NULL` when embedded), its `name` (the page title), `theme`, and
+or `NULL` when embedded), its `name` (the page title), `theme`,
 `extents`, each layer's extent in the view CRS (from which the initial
-view is set). Add to it with
+view is set), `sources`, each vector object viewed with its name and the
+map from its layers' rows to its own rows, and `serial`, the scene
+serial the server gave the scene (`NULL` when embedded). Add to it with
 [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md).
-Printing it opens the page (or the server's URL) when the session is
-interactive.
+Printing it opens the page when the session is interactive; a served
+view's URL is opened only when no page is connected to its server, since
+an open page follows the view (see
+[`selection()`](https://allboa.github.io/aobview/reference/selection.md)).
 
 ## Details
 
@@ -251,6 +255,15 @@ temporary COG (see
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md))
 of a served layer is kept in `file.path(tempdir(), "aobview-cogs")`
 until the server stops.
+
+**Selections.** A served view's page sends the features the viewer
+selects (a click, Shift-click to add or remove) back to R: every vector
+layer can be selected. Read them with
+[`selection()`](https://allboa.github.io/aobview/reference/selection.md),
+[`selected()`](https://allboa.github.io/aobview/reference/selection.md)
+and
+[`wait_for_selection()`](https://allboa.github.io/aobview/reference/selection.md);
+an embedded page cannot send them.
 
 **Spec version.** The scene is written at the lowest scene spec version
 that can express it

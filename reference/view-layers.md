@@ -6,15 +6,20 @@ CRS, in list order: the first element at the bottom. `view_add()` adds a
 layer to a view already made, on top, and writes a new page, or, for a
 served view (see Transport in
 [`view()`](https://allboa.github.io/aobview/reference/view.md)), serves
-the new scene on the same server, at the same URL. An embedded view
-whose local raster tiles pass the threshold with the new layer becomes
-served (its earlier page stays on disk). `view(a) |> view_add(b)` gives
-the same scene as `view(list(a = a, b = b))` when the two have the same
-view CRS, that is when `view_crs(a)` equals `view_crs(list(a, b))`, as
-it does whenever `a` is projected, or `a` and `b` are both lon/lat south
-of 40S (or both north of 60N). Otherwise they differ: `view_add()` keeps
-`a`'s view CRS, while the list's CRS is chosen from every element
-(below). Pass `crs =` to either form to fix it.
+the new scene on the same server, at the same URL: a page open on it
+reloads itself with the new scene and keeps its camera, the selection is
+cleared, and the view given to `view_add()` is replaced (the selection
+functions,
+[`selection()`](https://allboa.github.io/aobview/reference/selection.md),
+are errors on it; use the view returned). An embedded view whose local
+raster tiles pass the threshold with the new layer becomes served (its
+earlier page stays on disk). `view(a) |> view_add(b)` gives the same
+scene as `view(list(a = a, b = b))` when the two have the same view CRS,
+that is when `view_crs(a)` equals `view_crs(list(a, b))`, as it does
+whenever `a` is projected, or `a` and `b` are both lon/lat south of 40S
+(or both north of 60N). Otherwise they differ: `view_add()` keeps `a`'s
+view CRS, while the list's CRS is chosen from every element (below).
+Pass `crs =` to either form to fix it.
 
 ## Usage
 
