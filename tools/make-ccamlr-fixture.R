@@ -23,7 +23,7 @@ if (is.na(src)) src <- "/mnt/project-files/uploads/hearth/6e8bcd31-8753-4399-8e1
 tolerance <- 2000 # metres, in EPSG:6932
 out <- "inst/extdata/ccamlr_statistical_areas.geojson"
 
-x <- read_sf(src)
+x <- st_read(src, quiet = TRUE)
 stopifnot(nrow(x) == 19L, identical(st_crs(x)$epsg, 6932L))
 y <- st_simplify(x, preserveTopology = TRUE, dTolerance = tolerance)
 y <- y[, c("GAR_ID", "GAR_Name", "GAR_Short_Label", "GAR_Long_Label", "GAR_Start_Date",
@@ -33,7 +33,7 @@ stopifnot(all(st_is_valid(y)))
 unlink(out)
 st_write(y, out, layer = "ccamlr_statistical_areas", driver = "GeoJSON", quiet = TRUE,
          layer_options = c("COORDINATE_PRECISION=0", "RFC7946=NO", "WRITE_BBOX=NO"))
-z <- read_sf(out)
+z <- st_read(out, quiet = TRUE)
 stopifnot(nrow(z) == 19L, identical(st_crs(z)$epsg, 6932L), all(st_is_valid(z)))
 nv <- sum(vapply(st_geometry(z), function(g) nrow(st_coordinates(g)), 0L))
 cat(out, ":", nrow(z), "polygons,", nv, "vertices,", file.size(out), "bytes\n")

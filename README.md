@@ -78,9 +78,9 @@ Legends and popups are scene spec 0.5 data ([aobcore](https://github.com/allboa/
 The package ships a small copy of the CCAMLR statistical areas (Areas 48, 58 and 88) in EPSG:6932, NSIDC EASE-Grid 2.0 South, simplified at 2 km and illustrative only (see `inst/extdata/README`). Coloured by area, with popups, in EPSG:3031 over the coastline:
 
 ```r
-areas <- sf::read_sf(system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview"))
+areas <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview"), quiet = TRUE)
 areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
-coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
+coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"), quiet = TRUE)
 view(areas, crs = "EPSG:3031", zcol = "area",
      popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size")) |>
   view_add(coast, popup = FALSE)

@@ -2,7 +2,8 @@
 ## non-lon/lat CRS (EPSG:6932) viewed in EPSG:3031.
 
 ccamlr <- function() {
-  sf::read_sf(system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview"))
+  sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview"),
+              quiet = TRUE)
 }
 
 test_that("the fixture reads as 19 polygons in EPSG:6932", {

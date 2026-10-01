@@ -121,8 +121,8 @@
 #'
 #' # CCAMLR statistical areas (simplified, illustrative; see the extdata
 #' # README) in EPSG:6932, coloured by area with popups, viewed in EPSG:3031
-#' areas <- sf::read_sf(system.file("extdata", "ccamlr_statistical_areas.geojson",
-#'                                  package = "aobview"))
+#' areas <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson",
+#'                                  package = "aobview"), quiet = TRUE)
 #' areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
 #' v6 <- view(areas, crs = "EPSG:3031", zcol = "area",
 #'            popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
