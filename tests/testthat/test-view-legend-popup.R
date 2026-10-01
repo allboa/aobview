@@ -61,11 +61,11 @@ test_that("a numeric zcol gets a ramp legend from the same colours", {
   key <- attr(view_colours(x$num, palette = "YlGnBu"), "key")
   stops <- do.call(rbind, lapply(lg$ramp$stops, function(s) s$color))
   expect_identical(stops, unname(t(grDevices::col2rgb(key$colours, alpha = TRUE))))
-  expect_identical(vapply(lg$ramp$stops, function(s) s$at, 0), seq(0, 1, length.out = 9))
+  expect_identical(vapply(lg$ramp$stops, function(s) s$at, 0), seq(0, 1, length.out = 33))
   ## The ends of the ramp are the colours of the lowest and highest values.
   rgba <- blob_rgba(v, "x")
   expect_identical(stops[1, ], unname(rgba[1, ]))
-  expect_identical(stops[9, ], unname(rgba[3, ]))
+  expect_identical(stops[33, ], unname(rgba[3, ]))
   ## No NA among the values: no NA entry.
   expect_null(lg$na)
   expect_valid_scene(v)
@@ -270,5 +270,68 @@ test_that("a SpatVector takes legend and popup", {
   v <- view(x, zcol = "chr", popup = "num", file = html())
   expect_identical(legend_labels(v$scene$legends[[1]]), c("p", "q"))
   expect_identical(v$scene$layers[[1]]$popup, list(columns = list("num")))
+  expect_valid_scene(v)
+})
+
+test_that("the ramp's 33 stops stay close to the features' colours", {
+  skip_if_not_installed("sf")
+  x <- sf::st_sf(num = seq(0, 1, length.out = 101),
+                 geometry = lonlat(lapply(0:100, function(i) sf::st_point(c(i * 3.5, -70)))))
+  for (pal in c("viridis", "YlGnBu", "Spectral")) {
+    v <- view(x, zcol = "num", palette = pal, popup = FALSE, file = html())
+    ramp <- v$scene$legends[[1]]$ramp
+    expect_length(ramp$stops, 33L)
+    stops <- do.call(rbind, lapply(ramp$stops, function(s) s$color))
+    at <- vapply(ramp$stops, function(s) s$at, 0)
+    ## The legend as a renderer draws it: linear between stops.
+    drawn <- apply(stops, 2, function(ch) stats::approx(at, ch, xout = x$num)$y)
+    ## About 18 at most: where an HCL palette clips at the edge of the
+    ## gamut (viridis's red reaches 0), a channel has a corner between two
+    ## stops. With 9 stops it was 51 for viridis.
+    err <- max(abs(drawn - blob_rgba(v, "x")))
+    expect_lt(err, 20, label = paste(pal, "max error", err))
+  }
+})
+
+test_that("a column with more than 30 levels gets no legend, with a message", {
+  skip_if_not_installed("sf")
+  n <- 31L
+  x <- sf::st_sf(id = sprintf("s%02d", seq_len(n)),
+                 geometry = lonlat(lapply(seq_len(n), function(i) sf::st_point(c(i * 10, -70)))))
+  expect_message(v <- view(x, zcol = "id", popup = FALSE, file = html()),
+                 "31 levels, more than a legend shows \\(30\\)")
+  expect_null(v$scene$legends)
+  expect_identical(v$scene$layers[[1]]$fill, list(column = "color"))
+  ## 30 levels: a legend.
+  expect_length(suppressMessages(view(x[-1, ], zcol = "id", popup = FALSE,
+                                      file = html()))$scene$legends[[1]]$classes, 30L)
+})
+
+test_that("the NA entry counts only drawn features", {
+  skip_if_not_installed("sf")
+  g <- c(sf::st_geometry(pols())[1:2], lonlat(list(sf::st_polygon())))
+  x <- sf::st_sf(num = c(1, 3, NA), geometry = g)
+  v <- view(x, zcol = "num", popup = FALSE, file = html())
+  expect_null(v$scene$legends[[1]]$na)
+  x$num <- c(1, NA, 3)
+  v <- view(x, zcol = "num", popup = FALSE, file = html())
+  expect_identical(v$scene$legends[[1]]$na$label, "NA")
+})
+
+test_that("POSIXlt, difftime, units and other classes travel as popup text or numbers", {
+  skip_if_not_installed("sf")
+  x <- pols()["num"]
+  x$lt <- as.POSIXlt(c("2026-01-02 03:04:05", NA, "2026-10-01 00:00:00"), tz = "UTC")
+  x$dt <- as.difftime(c(1.5, 2, NA), units = "hours")
+  x$u <- structure(c(10, 20, 30), units = list(numerator = "m", denominator = character()),
+                   class = "units")
+  x$hex <- as.hexmode(c(10L, 255L, 16L))
+  v <- view(x, file = html())
+  expect_identical(unlist(v$scene$layers[[1]]$popup$columns), c("num", "lt", "dt", "u", "hex"))
+  df <- blob_df(v, "x")
+  expect_identical(df$lt, c("2026-01-02T03:04:05Z", NA, "2026-10-01T00:00:00Z"))
+  expect_identical(df$dt, c(1.5, 2, NA))
+  expect_identical(df$u, c(10, 20, 30))
+  expect_identical(df$hex, as.character(as.hexmode(c(10L, 255L, 16L))))
   expect_valid_scene(v)
 })

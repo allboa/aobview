@@ -56,7 +56,7 @@ Colours are computed in R by `view_colours()`, which returns the RGBA matrix, an
 
 ### Legends and popups
 
-With `zcol`, the page shows a legend built from the same `view_colours()` result as the features: a ramp over the range, one entry per interval with `breaks`, or one per level, and an `NA` entry only when some value is missing. `legend = FALSE` leaves it out. A palette raster is keyed by a ramp of its palette.
+With `zcol`, the page shows a legend built from the same `view_colours()` result as the features: a ramp over the range, one entry per interval with `breaks`, or one per level (none above 30 levels), and an `NA` entry only when some value is missing. `legend = FALSE` leaves it out. A palette raster is keyed by a ramp of its palette.
 
 Selecting a feature (a click, tap or key press) shows its attributes. `popup = TRUE` (the default) carries the first 20 attribute columns in the page, `popup = c("name", "depth")` chooses columns, and `popup = FALSE` carries none. Factors travel as their labels and dates and times as ISO 8601 text; list columns are left out with a message.
 

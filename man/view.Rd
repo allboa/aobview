@@ -143,7 +143,9 @@ errors, since \code{zcol} sets those colours.
 from the same \code{\link[=view_colours]{view_colours()}} result as the features, so the two agree:
 a ramp over the range for numbers, one entry per interval with \code{breaks}
 (labelled as in \code{"(5, 10]"}), or one entry per level. An \code{"NA"} entry is
-added only when some value took \code{na_colour}. \code{legend = FALSE} leaves it
+added only when some drawn feature took \code{na_colour}. A column with more
+than 30 levels gets no legend (with a message), since a key that long is
+not readable; the features are still coloured. \code{legend = FALSE} leaves it
 out. A legend is scene spec 0.5 data (see \code{\link[aobcore:scene_add_legend]{aobcore::scene_add_legend()}}).
 
 \strong{Popups.} \code{popup = TRUE} (the default) carries \code{x}'s attribute columns
@@ -154,8 +156,8 @@ bytes to the page; choose columns with \code{popup = c("a", "b")}, which has
 no cap, or carry none with \code{popup = FALSE}. A data frame with no
 attribute columns gets no popup. Numbers, character and logical columns
 are carried as they are; factors as their labels, \code{Date} as
-\code{"YYYY-MM-DD"} and \code{POSIXct} as ISO 8601 text in UTC; other atomic
-classes as their \code{as.character()} text. List, raw and matrix columns
+\code{"YYYY-MM-DD"}, \code{POSIXct} and \code{POSIXlt} as ISO 8601 text in UTC, and
+other atomic classes as their \code{as.character()} text. List, raw and matrix columns
 cannot be shown and are left out with a message.
 
 \strong{Spec version.} The scene is written at the lowest scene spec version

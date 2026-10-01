@@ -46,12 +46,12 @@ for (const scheme of ["light", "dark"]) {
     await ctx.close();
     continue;
   }
-  // Let the first frames draw, then point at the station before the click
-  // (a pick right after the page reports ready can miss).
-  await page.waitForTimeout(1000);
   const at = await page.evaluate(stationPoint);
+  // Point at the station before pressing, as a mouse does. The page's first
+  // pick is slow in headless Chromium (SwiftShader): run on the press, it
+  // can hold the release past the renderer's 1000 ms tap window and the
+  // click is not taken. A move does that first pick on hover instead.
   await page.mouse.move(at.x, at.y);
-  await page.waitForTimeout(350);
   await page.mouse.click(at.x, at.y);
   const rows = await page
     .waitForFunction(() => {

@@ -34,7 +34,9 @@
 #' from the same [view_colours()] result as the features, so the two agree:
 #' a ramp over the range for numbers, one entry per interval with `breaks`
 #' (labelled as in `"(5, 10]"`), or one entry per level. An `"NA"` entry is
-#' added only when some value took `na_colour`. `legend = FALSE` leaves it
+#' added only when some drawn feature took `na_colour`. A column with more
+#' than 30 levels gets no legend (with a message), since a key that long is
+#' not readable; the features are still coloured. `legend = FALSE` leaves it
 #' out. A legend is scene spec 0.5 data (see [aobcore::scene_add_legend()]).
 #'
 #' **Popups.** `popup = TRUE` (the default) carries `x`'s attribute columns
@@ -45,8 +47,8 @@
 #' no cap, or carry none with `popup = FALSE`. A data frame with no
 #' attribute columns gets no popup. Numbers, character and logical columns
 #' are carried as they are; factors as their labels, `Date` as
-#' `"YYYY-MM-DD"` and `POSIXct` as ISO 8601 text in UTC; other atomic
-#' classes as their `as.character()` text. List, raw and matrix columns
+#' `"YYYY-MM-DD"`, `POSIXct` and `POSIXlt` as ISO 8601 text in UTC, and
+#' other atomic classes as their `as.character()` text. List, raw and matrix columns
 #' cannot be shown and are left out with a message.
 #'
 #' **Spec version.** The scene is written at the lowest scene spec version
@@ -242,8 +244,10 @@ add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, brea
   attrs <- popup_attributes(x, popup)
   before <- layer_ids(v$scene)
   v <- add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba, attrs = attrs)
+  drawn <- v$drawn
+  v$drawn <- NULL
   if (!is.null(rgba) && legend) {
-    args <- legend_args(attr(rgba, "key"), values, rgba, zcol)
+    args <- legend_args(attr(rgba, "key"), values, rgba, zcol, drawn)
     ## One legend for the object: on its first (bottom) layer when mixed
     ## geometry was split into several.
     if (!is.null(args)) {
@@ -337,6 +341,8 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL) {
     v$extents[[id]] <- bbox_extent(parts[[kind]])
   }
   v$scene <- s
+  ## The rows of x drawn (not empty, transformed), for the legend.
+  v$drawn <- sort(unique(rows))
   v
 }
 
@@ -440,9 +446,14 @@ add_legends <- function(s, keys) {
   s
 }
 
+## Levels above which a categorical legend is left out.
+legend_max_levels <- 30L
+
 ## scene_add_legend() arguments for a zcol key (see view_colours()), or
-## NULL when there is nothing to key (no value took a colour).
-legend_args <- function(key, values, rgba, title) {
+## NULL when there is nothing to key (no value took a colour, or too many
+## levels to read). `drawn` indexes the rows actually drawn, which decide
+## whether an NA entry is needed.
+legend_args <- function(key, values, rgba, title, drawn = seq_along(values)) {
   na <- as.integer(grDevices::col2rgb(key$na_colour, alpha = TRUE))
   colours <- hex_rgba(key$colours)
   out <- list(title = title)
@@ -463,10 +474,15 @@ legend_args <- function(key, values, rgba, title) {
     out$classes <- stats_names(lapply(seq_len(k), function(i) colours[i, ]), labels)
   } else {
     if (!length(key$levels)) return(NULL)
+    if (length(key$levels) > legend_max_levels) {
+      message("`", title, "` has ", length(key$levels), " levels, more than a legend shows (",
+              legend_max_levels, "); the view has no legend for it.")
+      return(NULL)
+    }
     out$classes <- stats_names(lapply(seq_along(key$levels), function(i) colours[i, ]),
                                key$levels)
   }
-  if (na_present(key, values)) {
+  if (na_present(key, values[drawn])) {
     out$na <- list(label = "NA", color = na)
   }
   out
@@ -562,13 +578,15 @@ popup_attributes <- function(x, popup) {
 ## or NULL when it cannot be shown. Factors become their labels (aobcore's
 ## IPC writer cannot write dictionaries), dates and times ISO 8601 text.
 popup_column <- function(x) {
+  ## POSIXlt is a list: convert it before list columns are dropped.
+  if (inherits(x, "POSIXt")) {
+    x <- format(as.POSIXct(x), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  }
   if (is.list(x) || is.raw(x) || !is.null(dim(x))) return(NULL)
   if (is.factor(x)) {
     x <- as.character(x)
   } else if (inherits(x, "Date")) {
     x <- format(x, "%Y-%m-%d")
-  } else if (inherits(x, "POSIXt")) {
-    x <- format(as.POSIXct(x), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   } else if (inherits(x, c("units", "difftime"))) {
     x <- as.numeric(unclass(x))
   } else if (is.object(x) || is.complex(x)) {
