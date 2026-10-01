@@ -11,6 +11,10 @@ pols <- function() {
   )
 }
 
+## A version before 0.5: 0.4 with the view's domain as bounds, 0.1 where
+## PROJ cannot give a domain (some binary builds).
+expect_before_05 <- function(v) expect_true(v$scene$version %in% c("0.1", "0.4"))
+
 legend_labels <- function(lg) vapply(lg$classes, function(cl) cl$label, "")
 legend_colours <- function(lg) do.call(rbind, lapply(lg$classes, function(cl) cl$color))
 
@@ -122,19 +126,19 @@ test_that("one value is one class; no values is no legend", {
   x$num <- NA_real_
   v <- view(x, zcol = "num", popup = FALSE, file = html())
   expect_null(v$scene$legends)
-  expect_identical(v$scene$version, "0.4")
+  expect_before_05(v)
 })
 
 test_that("legend = FALSE leaves the legend out and the version as it was", {
   skip_if_not_installed("sf")
   v <- view(pols(), zcol = "num", legend = FALSE, popup = FALSE, file = html())
   expect_null(v$scene$legends)
-  expect_identical(v$scene$version, "0.4")
+  expect_before_05(v)
   ## No zcol, no attributes: nothing from 0.5.
   v <- view(sf::st_geometry(pols()), file = html())
-  expect_identical(v$scene$version, "0.4")
+  expect_before_05(v)
   v <- view(pols(), popup = FALSE, file = html())
-  expect_identical(v$scene$version, "0.4")
+  expect_before_05(v)
   expect_null(v$scene$legends)
   expect_error(view(pols(), zcol = "num", legend = NA, file = html()), "TRUE or FALSE")
 })
