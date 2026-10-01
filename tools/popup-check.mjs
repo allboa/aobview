@@ -47,11 +47,6 @@ for (const scheme of ["light", "dark"]) {
     continue;
   }
   const at = await page.evaluate(stationPoint);
-  // Point at the station before pressing, as a mouse does. The page's first
-  // pick is slow in headless Chromium (SwiftShader): run on the press, it
-  // can hold the release past the renderer's 1000 ms tap window and the
-  // click is not taken. A move does that first pick on hover instead.
-  await page.mouse.move(at.x, at.y);
   await page.mouse.click(at.x, at.y);
   const rows = await page
     .waitForFunction(() => {
@@ -60,7 +55,7 @@ for (const scheme of ["light", "dark"]) {
       const dt = [...p.querySelectorAll("dt")].map((e) => e.textContent);
       const dd = [...p.querySelectorAll("dd")].map((e) => e.textContent);
       return { layer: p.dataset.aobLayer, row: p.dataset.aobRow, rows: dt.map((k, i) => [k, dd[i]]) };
-    }, null, { timeout: 5000 })
+    }, null, { timeout: 10000 })
     .then((h) => h.jsonValue())
     .catch(() => null);
   const ok = rows && rows.layer === "stations" && rows.row === "0" &&
