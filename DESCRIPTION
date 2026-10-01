@@ -9,7 +9,7 @@ Description: A convenience front end for 'allonboard' map scenes: 'view(x)'
     the lean core package 'aobcore'. This is an early skeleton; the package
     name is a placeholder.
 License: MIT + file LICENSE
-URL: https://github.com/allboa/aobview
+URL: https://allboa.github.io/aobview/, https://github.com/allboa/aobview
 BugReports: https://github.com/allboa/aobview/issues
 Imports:
     aobcore,

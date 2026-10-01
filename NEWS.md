@@ -55,3 +55,7 @@
   polygons in EPSG:6932 simplified at 2 km, illustrative only, for
   examples and tests of a projected CRS that is not the view's. Made by
   `tools/make-ccamlr-fixture.R`; provenance in `inst/extdata/README`.
+* A pkgdown site at https://allboa.github.io/aobview/, deployed from main
+  by GitHub Actions: a home page that says the project is in development,
+  a Get started article with live maps written by `view()`, and articles
+  on how the allonboard pieces fit together and how to get involved.

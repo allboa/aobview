@@ -3,3 +3,5 @@
 .RData
 *.tar.gz
 *.Rcheck/
+docs
+vignettes/articles/views/
