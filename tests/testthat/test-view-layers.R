@@ -26,10 +26,14 @@ test_that("a list of sf layers and a SpatRaster draws in one page, in list order
   ## The lon/lat vectors arrive in EPSG:3031.
   xy <- wk::wk_coords(blob_geometry(v, "track"))
   expect_true(all(abs(xy$x) < 4e6 & abs(xy$y) < 4e6))
-  ## The version is the highest any part needs: 0.4 with the view's bounds
-  ## (the domain), else 0.2 for the tiled raster.
+  ## The version is the highest any part needs: 0.5, since the land
+  ## polygons carry their attribute as a popup; the palette raster then
+  ## keeps its ramp as a legend.
   expect_identical(v$scene$version, aobcore::scene_spec_version(v$scene))
-  if (!is.null(v$scene$view$bounds)) expect_identical(v$scene$version, "0.4")
+  expect_identical(v$scene$version, "0.5")
+  expect_identical(v$scene$layers[[2]]$popup, list(columns = list("a")))
+  expect_identical(v$scene$legends[[1]]$layer, "sst")
+  expect_identical(v$scene$legends[[1]]$ramp$palette, "viridis")
   expect_output(print(v), "3 layers in EPSG:3031")
 })
 
@@ -174,14 +178,20 @@ test_that("without a domain the version is the lowest the layers need", {
   skip_if_not_installed("sf")
   old <- options(aobcore.domain = FALSE)
   on.exit(options(old), add = TRUE)
-  v <- view(list(a = land(), b = track()), file = html())
+  ## No attribute columns, so no popups (a popup or legend would be 0.5).
+  bare <- sf::st_geometry(land())
+  v <- view(list(a = bare, b = track()), file = html())
   expect_null(v$scene$view$bounds)
   expect_identical(v$scene$version, "0.1")
   skip_if_no_terra()
   sst <- terra::rast(extdata("polar_3031.tif"))
-  expect_identical(view_add(v, sst, file = html())$scene$version, "0.2")
+  ## A palette raster's ramp is drawn by the renderer before 0.5, so it
+  ## adds no legend and keeps the scene at 0.2.
+  v2 <- view_add(v, sst, file = html())
+  expect_identical(v2$scene$version, "0.2")
+  expect_null(v2$scene$legends)
   rgba <- terra::rast(extdata("polar_rgba.tif"))
-  expect_identical(view(list(a = land(), rgba = rgba), file = html())$scene$version, "0.3")
+  expect_identical(view(list(a = bare, rgba = rgba), file = html())$scene$version, "0.3")
 })
 
 test_that("list and add arguments are checked", {

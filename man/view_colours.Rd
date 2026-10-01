@@ -29,7 +29,9 @@ reads, or \code{c(r, g, b, a)} integers 0 to 255.}
 An integer matrix with one row per value and columns \code{r}, \code{g},
 \code{b}, \code{a} (0 to 255). Its \code{"key"} attribute describes the mapping for a
 legend: a list with \code{type} (\code{"continuous"}, \code{"binned"} or
-\code{"categorical"}), \code{colours} (hex strings), \code{na_colour}, and \code{range}
+\code{"categorical"}), \code{colours} (hex strings: 33 evenly spaced along the
+palette for continuous, else one per class or level), \code{na_colour}, and
+\code{range}
 (continuous), \code{breaks} (binned) or \code{levels} (categorical).
 }
 \description{

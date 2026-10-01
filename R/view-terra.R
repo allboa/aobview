@@ -26,9 +26,17 @@
 #' one layer (`layer`, the first by default) is drawn through a palette over
 #' the range of its values.
 #'
+#' **Legend.** A palette raster is keyed by a ramp of its palette over its
+#' range. In a scene with no legends or popups otherwise (scene spec 0.4 or
+#' earlier) the renderer draws that ramp itself and the scene stays at the
+#' lowest version that expresses it; in a scene spec 0.5 scene (a legend or
+#' popup on another layer) the ramp is written as the raster's legend with
+#' [aobcore::scene_add_legend()]. `legend = FALSE` leaves the ramp out,
+#' which needs scene spec 0.5. A colour image has no legend.
+#'
 #' A `SpatVector` is converted with [sf::st_as_sf()] and drawn as `sf` data
-#' is (see [view()]), coloured by an attribute with `zcol`; it needs the
-#' 'sf' package.
+#' is (see [view()]), coloured by an attribute with `zcol` (with a legend)
+#' and with its attributes as popups; it needs the 'sf' package.
 #'
 #' @inheritParams view
 #' @param x A 'terra' `SpatRaster` or `SpatVector`.
@@ -47,6 +55,9 @@
 #'   `SpatVector` with `zcol`, a palette as for [view()]: a name from
 #'   [grDevices::hcl.pals()] or [grDevices::palette.pals()], or a function
 #'   of `n`.
+#' @param legend For a palette `SpatRaster`, `TRUE` (the default) keys the
+#'   palette with a ramp and `FALSE` leaves it out (see Legend). For a
+#'   `SpatVector`, as for [view()].
 #' @param range `c(low, high)`: the values at the ends of the palette. By
 #'   default the range of the COG's coarsest level. For a colour image of a
 #'   type other than Byte, the values drawn as zero and full intensity.
@@ -66,7 +77,7 @@ NULL
 #' @rdname view-terra
 #' @export
 view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palette = NULL,
-                            range = NULL, name = NULL, file = NULL,
+                            range = NULL, legend = TRUE, name = NULL, file = NULL,
                             theme = c("auto", "light", "dark")) {
   need_terra()
   need_gdalraster()
@@ -74,7 +85,8 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
   theme <- match.arg(theme)
   check_raster(x)
   v <- new_view(crs %||% view_crs(x))
-  v <- add_layers(x, v, name, ..., layer = layer, rgb = rgb, palette = palette, range = range)
+  v <- add_layers(x, v, name, ..., layer = layer, rgb = rgb, palette = palette, range = range,
+                  legend = legend)
   finish_view(v, name, file, theme)
 }
 
@@ -83,7 +95,8 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
 view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                             stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
                             palette = NULL, breaks = NULL, na_colour = "#999999",
-                            name = NULL, file = NULL, theme = c("auto", "light", "dark")) {
+                            legend = TRUE, popup = TRUE, name = NULL, file = NULL,
+                            theme = c("auto", "light", "dark")) {
   check_dots(..., what = "a SpatVector")
   need_terra()
   need_sf()
@@ -93,14 +106,16 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, str
   v <- new_view(crs %||% view_crs(x))
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
                   stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
-                  palette = palette, breaks = breaks, na_colour = na_colour)
+                  palette = palette, breaks = breaks, na_colour = na_colour,
+                  legend = legend, popup = popup)
   finish_view(v, name, file, theme)
 }
 
 #' @export
 add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
                                   stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
-                                  palette = NULL, breaks = NULL, na_colour = "#999999") {
+                                  palette = NULL, breaks = NULL, na_colour = "#999999",
+                                  legend = TRUE, popup = TRUE) {
   check_dots(..., what = "a SpatVector")
   need_terra()
   need_sf()
@@ -108,14 +123,16 @@ add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, fill = NULL, 
   add_sf(sf::st_as_sf(x), v, name, densify,
          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
                       radius_px = radius_px),
-         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour)
+         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour,
+         legend = legend, popup = popup)
 }
 
 ## `...` goes to aobcore::cog_plan(), which refuses arguments it does not
 ## take.
 #' @export
 add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, palette = NULL,
-                                  range = NULL) {
+                                  range = NULL, legend = TRUE) {
+  check_flag(legend, "legend")
   need_terra()
   need_gdalraster()
   check_raster(x)
@@ -167,6 +184,9 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
                                        rgb = if (colour) bands else FALSE, label = name)
   v$scene <- s
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)
+  ## A palette raster's ramp: written as a legend only when the scene is
+  ## 0.5 (see add_legends()).
+  if (!colour) v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend)))
   v
 }
 

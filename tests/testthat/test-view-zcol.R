@@ -76,7 +76,7 @@ test_that("zcol travels as an RGBA column: numeric, factor, character, logical",
     geometry = lonlat(list(ring(0, 20, -80, -70), ring(40, 60, -80, -70), ring(80, 100, -80, -70)))
   )
   for (col in c("num", "fac", "chr", "lgl")) {
-    v <- view(pol, zcol = col, file = tempfile(fileext = ".html"))
+    v <- view(pol, zcol = col, popup = FALSE, file = tempfile(fileext = ".html"))
     expect_identical(v$scene$layers[[1]]$fill, list(column = "color"))
     expect_identical(blob_names(v, "pol"), c("geometry", "color"))
     expect_identical(blob_rgba(v, "pol"), plain_rgba(pol[[col]]), label = col)

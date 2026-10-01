@@ -38,7 +38,9 @@
 #' @return An integer matrix with one row per value and columns `r`, `g`,
 #'   `b`, `a` (0 to 255). Its `"key"` attribute describes the mapping for a
 #'   legend: a list with `type` (`"continuous"`, `"binned"` or
-#'   `"categorical"`), `colours` (hex strings), `na_colour`, and `range`
+#'   `"categorical"`), `colours` (hex strings: 33 evenly spaced along the
+#'   palette for continuous, else one per class or level), `na_colour`, and
+#'   `range`
 #'   (continuous), `breaks` (binned) or `levels` (categorical).
 #' @seealso [view()], whose `zcol` argument uses this.
 #' @export
@@ -100,8 +102,15 @@ colour_numbers <- function(values, palette, breaks, out) {
     out[ok, ] <- round(ramp(t))
   }
   list(type = "continuous", rgba = out, range = range,
-       colours = rgba_hex(cols[round(seq(1, 256, length.out = 9)), , drop = FALSE]))
+       colours = rgba_hex(cols[round(seq(1, 256, length.out = legend_stops)), , drop = FALSE]))
 }
+
+## Colours kept in a continuous key, evenly spaced along the 256 the
+## features are coloured from: a legend ramp interpolates linearly between
+## them, so 33 keeps it close to the features' colours (within about 20 of
+## 255 per channel for the hcl.pals() palettes, whose channels bend where
+## they clip at the edge of the gamut; 51 for viridis with 9 stops).
+legend_stops <- 33L
 
 colour_levels <- function(values, palette, out) {
   levels <- if (is.factor(values)) {

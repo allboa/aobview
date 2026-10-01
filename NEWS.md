@@ -28,3 +28,25 @@
   function of `n`. The colours are computed by the new `view_colours()`
   and travel as one RGBA column (`FixedSizeList<uint8, 4>`) beside the
   geometry (#5).
+* Legends (#6): `view(x, zcol = )` adds a scene spec 0.5 legend built from
+  the same `view_colours()` result as the features: a colour-stop ramp over
+  the range for numbers (33 stops), one class per interval with `breaks`
+  (labelled as in `"(5, 10]"`), or one class per level (no legend, with a
+  message, above 30 levels), plus an `"NA"` entry only when a drawn
+  feature took `na_colour`. `legend = FALSE` leaves it out. A palette
+  `SpatRaster` keeps its ramp: drawn by the renderer in a scene that needs
+  nothing from 0.5, and written with `aobcore::scene_add_legend()` once the
+  scene is 0.5 (where the renderer draws only the scene's legends);
+  `view(r, legend = FALSE)` leaves it out, which makes the scene 0.5.
+* Popups (#7): `popup = TRUE` (the default for `sf` and `SpatVector` data)
+  carries the first 20 attribute columns in the page, with a message when
+  there are more, and names them as the layer's popup (scene spec 0.5), so
+  selecting a feature shows its values. `popup = c(...)` chooses columns
+  (no cap) and `popup = FALSE` carries none. Factors travel as character
+  (aobcore's IPC writer cannot write dictionaries), `Date`, `POSIXct` and
+  `POSIXlt` as ISO 8601 text; list, raw and matrix columns are left out with a message.
+  A view with no legend and no popup keeps its earlier scene spec version.
+* `tools/write-views.R` also writes each scene as JSON; CI validates them
+  with the scenespec validator (pinned to scenespec 9f8df26) and runs
+  `tools/popup-check.mjs`, which clicks a station in an EPSG:3031 view
+  headless and checks its popup's text.
