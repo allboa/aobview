@@ -2,13 +2,13 @@
 % Please edit documentation in R/view.R
 \name{view}
 \alias{view}
-\alias{view.sf}
-\alias{view.sfc}
+\alias{view.default}
+\alias{view.data.frame}
 \title{View spatial data in its own CRS}
 \usage{
 view(x, ...)
 
-\method{view}{sf}(
+\method{view}{default}(
   x,
   ...,
   crs = NULL,
@@ -30,9 +30,10 @@ view(x, ...)
   transport = getOption("aobview.transport", "auto")
 )
 
-\method{view}{sfc}(
+\method{view}{data.frame}(
   x,
   ...,
+  geometry = NULL,
   crs = NULL,
   densify = NULL,
   style = "default",
@@ -40,6 +41,12 @@ view(x, ...)
   stroke = NULL,
   stroke_width_px = NULL,
   radius_px = NULL,
+  zcol = NULL,
+  palette = NULL,
+  breaks = NULL,
+  na_colour = "#999999",
+  legend = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -47,16 +54,16 @@ view(x, ...)
 )
 }
 \arguments{
-\item{x}{A spatial object: an \code{sf} data frame or an \code{sfc} geometry column
-(with the 'sf' package installed); a 'terra' object (\link{view-terra}); or
-a list of them (\link{view-layers}).}
+\item{x}{A spatial object: a geometry vector 'wk' can handle, or a data
+frame with such a column (an \code{sf} data frame, say); a 'terra' object
+(\link{view-terra}); or a list of them (\link{view-layers}).}
 
-\item{...}{Not used by the \code{sf} and \code{sfc} methods: an argument caught
-here (a misspelled one, say) is an error.}
+\item{...}{Not used by the vector methods: an argument caught here (a
+misspelled one, say) is an error.}
 
-\item{crs}{The view CRS: anything \code{\link[sf:st_crs]{sf::st_crs()}} and
-\code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ
-string. \code{NULL} (the default) uses \code{\link[=view_crs]{view_crs()}}.}
+\item{crs}{The view CRS: anything \code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} and 'PROJ'
+read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ string. \code{NULL} (the
+default) uses \code{\link[=view_crs]{view_crs()}}.}
 
 \item{densify}{Maximum edge length, in the units of \code{x}'s CRS, for lines
 and polygon edges before they are transformed. \code{NULL} (the default)
@@ -78,7 +85,8 @@ ignored for lines.}
 \item{radius_px}{Point radius in pixels.}
 
 \item{zcol}{The name of a column of \code{x} to colour features by, or \code{NULL}
-(the default) for one colour. Not for an \code{sfc}, which has no columns.}
+(the default) for one colour. Not for a bare geometry vector, which
+has no columns.}
 
 \item{palette}{With \code{zcol}: a palette name (from
 \code{\link[grDevices:hcl.pals]{grDevices::hcl.pals()}} or \code{\link[grDevices:palette.pals]{grDevices::palette.pals()}}) or a function
@@ -112,6 +120,10 @@ Not used by a served view (with a warning).}
 \item{transport}{\code{"auto"}, \code{"embed"} or \code{"serve"}: whether the view is
 written to a page or served from a local server (see Transport).
 Defaults to \code{getOption("aobview.transport", "auto")}.}
+
+\item{geometry}{For a data frame, the name of its geometry column.
+\code{NULL} (the default) takes the \code{sf} geometry column, else the first
+column 'wk' can handle.}
 }
 \value{
 A view: a list of class \code{"aob_view"} with the \code{scene} (an
@@ -144,11 +156,28 @@ geometries are dropped, as are Z and M values. The split layers share
 the view's name, with the kind appended to each label, as in
 \code{"mixed (polygons)"}.
 
+\strong{Inputs.} Vector data are read through 'wk' (allboa/design decision
+0008): \code{x} can be any geometry vector 'wk' can handle (an \code{sfc},
+\code{\link[wk:wkb]{wk::wkb()}}, \code{\link[wk:wkt]{wk::wkt()}}, \code{\link[wk:xy]{wk::xy()}}, \code{\link[wk:rct]{wk::rct()}}, a 'geos' geometry, a
+'geoarrow' vector, ...), or a data frame with such a column, whose other
+columns are the attributes (for \code{zcol} and popups). An \code{sf} data frame is
+one; for any other data frame the geometry column is the first that 'wk'
+can handle, or the one named by \code{geometry}. The CRS travels with the
+geometry (\code{\link[wk:wk_crs]{wk::wk_crs()}}). A terra \code{SpatVector} is read from terra's own
+WKB (see \link{view-terra}). A \code{\link[wk:grd]{wk::grd()}} is not drawn yet: a grid belongs on
+the raster path.
+
 'aobcore' does not reproject, so \code{x} is transformed to the view CRS here
-with \code{\link[sf:st_transform]{sf::st_transform()}}. When \code{x} is in lon/lat and the view CRS
-differs, lines and polygon edges are first densified in lon/lat (every
-\code{densify} degrees, 0.25 by default), so an edge along a parallel curves
-as it should in a polar view instead of cutting across it.
+by 'PROJ' (\code{\link[wk:wk_transform]{wk::wk_transform()}} with \code{\link[PROJ:proj_trans_create]{PROJ::proj_trans_create()}}). When
+\code{x} is in lon/lat and the view CRS differs, lines and polygon edges are
+first densified in lon/lat (every \code{densify} degrees, 0.25 by default,
+with \code{\link[aobcore:vector_densify]{aobcore::vector_densify()}}), so an edge along a parallel curves as
+it should in a polar view instead of cutting across it. The transform is
+point by point: nothing is cut at the antimeridian or the poles, so the
+view is right in any CRS but the topology of features that cross a
+seam is not guaranteed. A point PROJ cannot transform (one beyond an
+orthographic view's horizon, say) leaves its feature out, with a
+warning.
 
 \strong{Colour by attribute.} \code{zcol} names a column of \code{x} whose values
 colour each feature: the fill of polygons and points, the stroke of
@@ -223,6 +252,15 @@ that can express it (\code{\link[aobcore:scene_spec_version]{aobcore::scene_spec
 legend and no popup is unchanged by these features.
 }
 \examples{
+# Any geometry 'wk' can read, with its CRS: no 'sf' needed.
+line <- wk::wkt("LINESTRING (0 -60, 90 -60)", crs = "OGC:CRS84")
+v0 <- view(line)
+v0$scene$view$crs
+
+# A data frame with a geometry column.
+bases <- data.frame(base = c("Casey", "Davis"))
+bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
+v1 <- view(bases, zcol = "base")
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
                                  package = "aobcore"), quiet = TRUE)

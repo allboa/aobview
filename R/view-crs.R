@@ -28,13 +28,14 @@
 #' latitude range, and rule 4 keeps the first object's CRS.
 #'
 #' Data with no CRS is an error: set one first (for example
-#' `sf::st_set_crs()` or `terra::crs<-`), or pass `crs` to [view()].
+#' [wk::wk_set_crs()], `sf::st_set_crs()` or `terra::crs<-`), or pass `crs`
+#' to [view()]. Whether a CRS is lon/lat is read by 'PROJ'.
 #'
-#' @param x An `sf` or `sfc` object, a 'terra' `SpatRaster` or
-#'   `SpatVector`, or a list of them.
+#' @param x Geometry 'wk' can handle or a data frame with such a column
+#'   (an `sf` object, say), a 'terra' `SpatRaster` or `SpatVector`, or a
+#'   list of them.
 #' @return A CRS for [aobcore::scene()]: an `"authority:code"` string such
-#'   as `"EPSG:3031"`, or, when the data's CRS has no code, the `sf` `crs`
-#'   object (for `sf` data) or its WKT (for 'terra' data).
+#'   as `"EPSG:3031"`, or, when the data's CRS has no code, its WKT.
 #' @export
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
 #' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
@@ -63,18 +64,23 @@ crs_facts <- function(x) {
 }
 
 #' @export
-crs_facts.default <- function(x) {
-  need_sf()
-  crs <- sf::st_crs(x)
-  if (is.na(crs)) {
-    stop("`x` has no CRS. Set one with sf::st_set_crs(), or pass `crs` to view().",
-         call. = FALSE)
+crs_facts.default <- function(x) record_crs_facts(vector_record(x))
+
+## crs_facts() of a vector record (see vector_record()).
+record_crs_facts <- function(rec) {
+  def <- source_crs(rec$geom)
+  lonlat <- crs_is_lonlat(def)
+  ylim <- NULL
+  if (lonlat) {
+    keep <- has_coords(rec$geom)
+    bb <- unclass(wk::wk_bbox(rec$geom[keep]))
+    ylim <- c(bb$ymin, bb$ymax)
   }
-  lonlat <- isTRUE(sf::st_is_longlat(x))
-  bb <- if (lonlat) sf::st_bbox(x) else NULL
-  list(crs = sf_crs_code(crs), lonlat = lonlat,
-       ylim = if (lonlat) c(bb[["ymin"]], bb[["ymax"]]))
+  list(crs = crs_code(def) %||% view_crs_definition(def), lonlat = lonlat, ylim = ylim)
 }
+
+## A CRS with no code, as aobcore::scene_crs() takes it: PROJ's WKT.
+view_crs_definition <- function(def) proj_wkt(def)
 
 #' @export
 crs_facts.SpatRaster <- function(x) terra_crs_facts(x)
@@ -116,17 +122,6 @@ lonlat_view_crs <- function(ymin, ymax) {
 
 south_limit <- -40
 north_limit <- 60
-
-## An sf crs as "authority:code" when it has one (no 'gdalraster' needed
-## downstream), else the crs object, which aobcore::scene_crs() resolves.
-sf_crs_code <- function(crs) {
-  code <- crs$srid
-  if (is.character(code) && length(code) == 1L && !is.na(code) &&
-      grepl("^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9_.-]+$", code)) {
-    return(code)
-  }
-  crs
-}
 
 ## A terra object's CRS as "authority:code" when it has one, else its WKT.
 terra_crs_code <- function(x) {

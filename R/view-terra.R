@@ -38,9 +38,10 @@
 #' [aobcore::scene_add_legend()]. `legend = FALSE` leaves the ramp out,
 #' which needs scene spec 0.5. A colour image has no legend.
 #'
-#' A `SpatVector` is converted with [sf::st_as_sf()] and drawn as `sf` data
-#' is (see [view()]), coloured by an attribute with `zcol` (with a legend)
-#' and with its attributes as popups; it needs the 'sf' package.
+#' A `SpatVector` is read from terra's own WKB (`terra::geom(x, wkb =
+#' TRUE)`) with its attributes, and drawn as any vector data is (see
+#' [view()]), coloured by an attribute with `zcol` (with a legend) and with
+#' its attributes as popups. It does not need 'sf'.
 #'
 #' @inheritParams view
 #' @param x A 'terra' `SpatRaster` or `SpatVector`.
@@ -106,7 +107,6 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, style = "default
                             transport = getOption("aobview.transport", "auto")) {
   check_dots(..., what = "a SpatVector")
   need_terra()
-  need_sf()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
   transport <- check_transport(transport)
@@ -126,13 +126,12 @@ add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, style = "defa
                                   na_colour = "#999999", legend = TRUE, popup = NULL) {
   check_dots(..., what = "a SpatVector")
   need_terra()
-  need_sf()
   check_terra_crs(x)
-  add_sf(sf::st_as_sf(x), v, name, densify,
-         style = list(preset = check_style(style), fill = fill, stroke = stroke,
-                      stroke_width_px = stroke_width_px, radius_px = radius_px),
-         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour,
-         legend = legend, popup = popup, source = x)
+  add_record(vector_record(x), v, name, densify = densify, style = style, fill = fill,
+             stroke = stroke,
+             stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
+             palette = palette, breaks = breaks, na_colour = na_colour, legend = legend,
+             popup = popup, source = x)
 }
 
 ## `...` goes to aobcore::cog_plan(), which refuses arguments it does not

@@ -1,5 +1,29 @@
 # aobview 0.0.0.9000
 
+* Vector input is wk first (allboa/design decision 0008): `view()`,
+  `view_add()`, `view_crs()` and lists take any geometry wk can read (sfc,
+  wkb, wkt, xy, rct, geos, a geoarrow vector, ...) or a data frame with such
+  a column, whose other columns are the attributes for `zcol` and popups
+  (`geometry =` names the column when it is not the sf one or the first).
+  `sf` is one such input, no longer the engine: reprojection is PROJ's
+  (`wk::wk_transform()` with `PROJ::proj_trans_create()`, PROJ in Imports),
+  lon/lat densifying is `aobcore::vector_densify()`, and sf is only
+  suggested. A `SpatVector` is read from terra's own WKB, without sf. A wk
+  `grd` is refused for now (it belongs on the raster path). The transform
+  is point by point, so features crossing the antimeridian or a pole are
+  not cut (as before). Changes: a CRS with no code is passed on as PROJ's
+  WKT (it was the sf `crs`); the members of a geometry collection keep
+  their row's place in the layer (they came after the other rows); a
+  feature with any vertex PROJ cannot transform is left out with the
+  existing warning (GDAL, through sf, kept the visible part of a feature
+  that crosses an orthographic view's horizon). A geometry collection
+  holding an empty member is now drawn (it was left out as
+  untransformable). Geometries with non-finite input coordinates are left
+  out with their own warning. When PROJ cannot find its database
+  (proj.db), as with CRAN's macOS binary of the PROJ package, aobview
+  points PROJ_DATA at the proj folder shipped with PROJ, sf, terra or
+  gdalraster, the first that works, or says what to set.
+
 * Package skeleton, with R CMD check on Linux, macOS and Windows. aobcore
   is installed from GitHub (`Remotes: allboa/aobcore`) (#2).
 * `view()` draws `sf` and `sfc` points, lines and polygons in a

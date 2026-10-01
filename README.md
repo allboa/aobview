@@ -1,6 +1,6 @@
 # aobview
 
-Convenience front end for allonboard: a mapview-style `view(x)` for sf and terra, with palettes, legends and popups. The package name is a placeholder.
+Convenience front end for allonboard: a mapview-style `view(x)` for any geometry wk can read (sf included) and terra, with palettes, legends and popups. The package name is a placeholder.
 
 Website: <https://allboa.github.io/aobview/>, with live examples and how to get involved.
 
@@ -8,10 +8,12 @@ Read the org agent brief first: [allboa/design AGENTS.md](https://github.com/all
 
 ## Status
 
-Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, vector features can be coloured by an attribute, with a legend, and selecting a feature shows its attributes in a popup.
+Early (phase 3). `view()` draws points, lines and polygons from any geometry wk can read (sfc, wkb, wkt, xy, rct, geos, ...) or a data frame with such a column (sf included), and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, vector features can be coloured by an attribute, with a legend, and selecting a feature shows its attributes in a popup.
 
 ```r
 library(aobview)
+line <- wk::wkt("LINESTRING (0 -60, 90 -60)", crs = "OGC:CRS84")
+view(line)                        # a wk vector, no sf needed: drawn in EPSG:3031
 coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"), quiet = TRUE)
 view(coast)                       # lon/lat south of 40S: drawn in EPSG:3031
 view(coast, crs = "+proj=laea +lat_0=-90 +lon_0=140 +datum=WGS84")
@@ -100,7 +102,7 @@ CCAMLR statistical areas: Commission for the Conservation of Antarctic Marine Li
 - Lon/lat data entirely south of 40S is drawn in EPSG:3031 (Antarctic Polar Stereographic), and entirely north of 60N in EPSG:3413 (NSIDC Polar Stereographic North). The northern threshold is stricter because much mid-latitude land lies between 40N and 60N.
 - Other lon/lat data is drawn flat in its own CRS. Web Mercator is not used: it cannot show the poles.
 
-aobcore does not reproject, so aobview transforms with `sf::st_transform()`. Lon/lat lines and polygon edges are densified every 0.25 degrees first (`densify =`), so parallels curve in a polar view.
+Vector input is read through wk (allboa/design decision 0008): a bare geometry vector, or a data frame whose geometry column is the sf one or the first column wk can read (`geometry =` names another), with the CRS travelling on the geometry. aobcore does not reproject, so aobview transforms with PROJ (`wk::wk_transform()` with `PROJ::proj_trans_create()`), point by point: any CRS works, but nothing is cut at the antimeridian or the poles. Lon/lat lines and polygon edges are densified every 0.25 degrees first (`densify =`, with `aobcore::vector_densify()`), so parallels curve in a polar view.
 
 ![Lon/lat polygons, lines and points in EPSG:3031, light](tools/screenshots/mixed-lonlat-in-3031-light.png)
 
@@ -108,7 +110,7 @@ The cap over the pole is a lon/lat ring that runs up the 180 meridian to the pol
 
 ### terra
 
-A `SpatRaster` reaches the page as a Cloud Optimized GeoTIFF, planned into tiles by aobcore with meshes projected to the view CRS, so the raster is never resampled in R. A raster read unchanged from one COG uses that file: a remote COG is referenced by URL and the browser fetches its tiles by range request (the server must allow CORS), and a local one has its planned tiles embedded. Any other raster (in memory, computed, cropped, not tiled) is written to a temporary COG with `terra::writeRaster(filetype = "COG")` and embedded. Three or four Byte layers with red, green, blue (and alpha) colour interpretation draw as a colour image; otherwise one layer draws through a palette. A `SpatVector` goes through `sf::st_as_sf()` and the sf path.
+A `SpatRaster` reaches the page as a Cloud Optimized GeoTIFF, planned into tiles by aobcore with meshes projected to the view CRS, so the raster is never resampled in R. A raster read unchanged from one COG uses that file: a remote COG is referenced by URL and the browser fetches its tiles by range request (the server must allow CORS), and a local one has its planned tiles embedded. Any other raster (in memory, computed, cropped, not tiled) is written to a temporary COG with `terra::writeRaster(filetype = "COG")` and embedded. Three or four Byte layers with red, green, blue (and alpha) colour interpretation draw as a colour image; otherwise one layer draws through a palette. A `SpatVector` is read from terra's own WKB, with its attributes, and drawn as any vector input is.
 
 Raster views need gdalraster with a working PROJ database, since aobcore plans tiles with it. On macOS, CRAN's gdalraster binary currently cannot find its `proj.db` ("GDAL cannot resolve the CRS EPSG:3031"); gdalraster from conda-forge works.
 
@@ -123,4 +125,4 @@ Raster views need gdalraster with a working PROJ database, since aobcore plans t
 remotes::install_github("allboa/aobview")   # installs aobcore from GitHub too
 ```
 
-Imports: aobcore, wk and utils. sf and terra are suggested: `view()` dispatches on their classes (a `SpatVector` needs sf too). A `SpatRaster` needs gdalraster, for aobcore's COG reader. A view CRS given with no authority code (a PROJ string, say) also needs gdalraster, which aobcore suggests.
+Imports: aobcore, wk, PROJ, nanoarrow, grDevices and utils. sf and terra are suggested: sf is one input type among many, not the engine. A `SpatRaster` needs gdalraster, for aobcore's COG reader. A view CRS given with no authority code (a PROJ string, say) also needs gdalraster, which aobcore suggests.

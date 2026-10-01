@@ -37,7 +37,7 @@ test_that("mixed geometry and a geometry collection map each layer row to its so
   expect_identical(names(m), c("x_polygon", "x_path", "x_point"))
   expect_identical(m$x_polygon, c(1L, 3L, 3L))
   expect_identical(m$x_path, 2L)
-  expect_identical(m$x_point, c(4L, 3L))
+  expect_identical(m$x_point, c(3L, 4L))
   for (id in names(m)) expect_identical(blob_column(v, id, "id"), x$id[m[[id]]])
 })
 

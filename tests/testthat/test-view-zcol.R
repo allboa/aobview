@@ -140,7 +140,7 @@ test_that("zcol is checked", {
   expect_error(view(pol, zcol = c("z", "z"), file = tempfile()), "one column")
   expect_error(view(pol, zcol = "z", fill = c(1, 2, 3, 4), file = tempfile()), "use one")
   expect_error(view(pol, palette = "viridis", file = tempfile()), "give `zcol`")
-  expect_error(view(sf::st_geometry(pol), zcol = "z", file = tempfile()), "sfc has none")
+  expect_error(view(sf::st_geometry(pol), zcol = "z", file = tempfile()), "bare geometry vector has none")
 })
 
 test_that("zcol works through view_add() and for a SpatVector", {

@@ -78,7 +78,8 @@ test_that("mixed CRSs are reprojected to the first object's view CRS", {
   skip_if_not_installed("sf")
   ll <- track()
   p3031 <- sf::st_sfc(sf::st_linestring(rbind(c(0, 0), c(1e6, 1e6))), crs = "EPSG:3031")
-  expected <- sf::st_coordinates(to_view_crs(ll, "EPSG:3031", NULL))
+  g <- wk::as_wkb(ll)
+  expected <- as.matrix(wk::wk_coords(to_view_crs(g, source_crs(g), "EPSG:3031", NULL))[c("x", "y")])
   for (v in list(view(list(ll = ll, p3031 = p3031), file = html()),
                  view(list(p3031 = p3031, ll = ll), file = html()),
                  view_add(view(p3031, file = html()), ll, file = html()))) {

@@ -78,10 +78,11 @@ the list's CRS is chosen from every element (below). Pass \verb{crs =} to
 either form to fix it.
 }
 \details{
-Elements may be \code{sf} or \code{sfc} objects and 'terra' \code{SpatRaster} or
-\code{SpatVector} objects, in any mix of CRSs. Each is drawn as \code{\link[=view]{view()}} or
-\link{view-terra} draws it on its own, with its default style, and reprojected
-to the view CRS: vectors with \code{\link[sf:st_transform]{sf::st_transform()}} (lon/lat edges
+Elements may be any vector input \code{\link[=view]{view()}} takes (geometry 'wk' can
+handle, or a data frame with such a column, \code{sf} included) and 'terra'
+\code{SpatRaster} or \code{SpatVector} objects, in any mix of CRSs. Each is drawn
+as \code{\link[=view]{view()}} or \link{view-terra} draws it on its own, with its default style,
+and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
 densified first), rasters by \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}'s meshes.
 
 \strong{View CRS.} \code{crs} when given; otherwise \code{\link[=view_crs]{view_crs()}} of the whole list:
