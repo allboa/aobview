@@ -6,7 +6,7 @@ Read the org agent brief first: [allboa/design AGENTS.md](https://github.com/all
 
 ## Status
 
-Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, and vector features can be coloured by an attribute. Legends and popups are planned in the [issues](https://github.com/allboa/aobview/issues).
+Early (phase 3). `view()` draws sf and sfc points, lines and polygons, and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, vector features can be coloured by an attribute, with a legend, and selecting a feature shows its attributes in a popup.
 
 ```r
 library(aobview)
@@ -52,7 +52,24 @@ view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
 view(coast) |> view_add(stations, zcol = "operator", palette = "Set 1")
 ```
 
-Colours are computed in R by `view_colours()`, which returns the RGBA matrix, and travel to the page as one per-feature RGBA column beside the geometry; no other attribute goes with them.
+Colours are computed in R by `view_colours()`, which returns the RGBA matrix, and travel to the page as one per-feature RGBA column beside the geometry.
+
+### Legends and popups
+
+With `zcol`, the page shows a legend built from the same `view_colours()` result as the features: a ramp over the range, one entry per interval with `breaks`, or one per level, and an `NA` entry only when some value is missing. `legend = FALSE` leaves it out. A palette raster is keyed by a ramp of its palette.
+
+Selecting a feature (a click, tap or key press) shows its attributes. `popup = TRUE` (the default) carries the first 20 attribute columns in the page, `popup = c("name", "depth")` chooses columns, and `popup = FALSE` carries none. Factors travel as their labels and dates and times as ISO 8601 text; list columns are left out with a message.
+
+```r
+view(coast, popup = FALSE) |>
+  view_add(stations, zcol = "operator", palette = "Set 1")
+```
+
+Legends and popups are scene spec 0.5 data ([aobcore](https://github.com/allboa/aobcore) `scene_add_legend()` and `popup =`). A view with neither is written at the lower version it needs, as before.
+
+![Sectors coloured by a value with a ramp legend, and stations by operator with a class legend and one station's popup open, in EPSG:3031, light](tools/screenshots/zcol-popup-in-3031-popup-light.png)
+
+![The same, dark](tools/screenshots/zcol-popup-in-3031-popup-dark.png)
 
 ![Lon/lat sectors coloured by a value in EPSG:3031, the polar cap's missing value in grey, light](tools/screenshots/zcol-numeric-in-3031-light.png)
 

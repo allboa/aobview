@@ -26,9 +26,32 @@
 #' per class with `breaks`), factors, character and logical values one
 #' colour per level; `NA` takes `na_colour`. The colours are computed in R
 #' by [view_colours()] and travel to the page as one RGBA column beside the
-#' geometry; no other attribute does. With `zcol`, polygons get a grey
+#' geometry (with the popup columns, below). With `zcol`, polygons get a grey
 #' outline (change it with `stroke`); `fill`, and `stroke` for lines, are
 #' errors, since `zcol` sets those colours.
+#'
+#' **Legend.** With `zcol`, the view carries a legend for the colours, built
+#' from the same [view_colours()] result as the features, so the two agree:
+#' a ramp over the range for numbers, one entry per interval with `breaks`
+#' (labelled as in `"(5, 10]"`), or one entry per level. An `"NA"` entry is
+#' added only when some value took `na_colour`. `legend = FALSE` leaves it
+#' out. A legend is scene spec 0.5 data (see [aobcore::scene_add_legend()]).
+#'
+#' **Popups.** `popup = TRUE` (the default) carries `x`'s attribute columns
+#' in the page and declares them as the layer's popup (scene spec 0.5):
+#' selecting a feature (a click, tap or key press) shows its values. Only
+#' the first 20 columns are carried, with a message, since every column adds
+#' bytes to the page; choose columns with `popup = c("a", "b")`, which has
+#' no cap, or carry none with `popup = FALSE`. A data frame with no
+#' attribute columns gets no popup. Numbers, character and logical columns
+#' are carried as they are; factors as their labels, `Date` as
+#' `"YYYY-MM-DD"` and `POSIXct` as ISO 8601 text in UTC; other atomic
+#' classes as their `as.character()` text. List, raw and matrix columns
+#' cannot be shown and are left out with a message.
+#'
+#' **Spec version.** The scene is written at the lowest scene spec version
+#' that can express it ([aobcore::scene_spec_version()]): a view with no
+#' legend and no popup is unchanged by these features.
 #'
 #' @param x A spatial object: an `sf` data frame or an `sfc` geometry column
 #'   (with the 'sf' package installed); a 'terra' object ([view-terra]); or
@@ -57,6 +80,11 @@
 #' @param breaks With a numeric `zcol`: increasing break points that bin
 #'   the values into classes, one colour each; see [view_colours()].
 #' @param na_colour With `zcol`: the colour for `NA` values.
+#' @param legend With `zcol`: `TRUE` (the default) adds a legend for the
+#'   colours, `FALSE` leaves it out. Without `zcol` there is nothing to key.
+#' @param popup `TRUE` (the default) shows the attribute columns (the first
+#'   20) for a selected feature, a character vector names the columns to
+#'   show, and `FALSE` shows none. See Popups.
 #' @param stroke_width_px Line or outline width in pixels.
 #' @param radius_px Point radius in pixels.
 #' @param name The layer name, shown as the page title. Defaults to the
@@ -85,6 +113,9 @@
 #' v2 <- view(nc, crs = "EPSG:26717", fill = c(200, 120, 40, 160))
 #' v3 <- view(nc, zcol = "BIR74", palette = "YlOrRd")
 #' v4 <- view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
+#' v4$scene$legends[[1]]$classes[[1]]$label
+#' v5 <- view(nc, zcol = "BIR74", popup = c("NAME", "BIR74"))
+#' v5$scene$layers[[1]]$popup
 #' \dontrun{
 #' v2
 #' v3
@@ -102,8 +133,8 @@ view.default <- function(x, ...) {
 #' @export
 view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                     stroke_width_px = NULL, radius_px = NULL, zcol = NULL, palette = NULL,
-                    breaks = NULL, na_colour = "#999999", name = NULL, file = NULL,
-                    theme = c("auto", "light", "dark")) {
+                    breaks = NULL, na_colour = "#999999", legend = TRUE, popup = TRUE,
+                    name = NULL, file = NULL, theme = c("auto", "light", "dark")) {
   check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
@@ -111,7 +142,8 @@ view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NU
   v <- new_view(crs %||% view_crs(x))
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
                   stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
-                  palette = palette, breaks = breaks, na_colour = na_colour)
+                  palette = palette, breaks = breaks, na_colour = na_colour,
+                  legend = legend, popup = popup)
   finish_view(v, name, file, theme)
 }
 
@@ -169,13 +201,15 @@ add_layers.default <- function(x, v, name, ...) {
 #' @export
 add_layers.sf <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
                           stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
-                          palette = NULL, breaks = NULL, na_colour = "#999999") {
+                          palette = NULL, breaks = NULL, na_colour = "#999999",
+                          legend = TRUE, popup = TRUE) {
   check_dots(..., what = "sf data")
   need_sf()
   add_sf(x, v, name, densify,
          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
                       radius_px = radius_px),
-         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour)
+         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour,
+         legend = legend, popup = popup)
 }
 
 #' @export
@@ -190,9 +224,11 @@ add_layers.sfc <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke 
 }
 
 ## An sf data frame's layers: its geometry, coloured by column `zcol` when
-## given. Shared by the sf and SpatVector methods.
+## given, with a legend for those colours and popup attribute columns.
+## Shared by the sf and SpatVector methods.
 add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, breaks = NULL,
-                   na_colour = "#999999") {
+                   na_colour = "#999999", legend = TRUE, popup = TRUE) {
+  check_flag(legend, "legend")
   rgba <- NULL
   if (!is.null(zcol)) {
     values <- zcol_values(x, zcol)
@@ -203,7 +239,25 @@ add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, brea
   } else if (!is.null(palette) || !is.null(breaks)) {
     stop("`palette` and `breaks` colour a column: give `zcol` too.", call. = FALSE)
   }
-  add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba)
+  attrs <- popup_attributes(x, popup)
+  before <- layer_ids(v$scene)
+  v <- add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba, attrs = attrs)
+  if (!is.null(rgba) && legend) {
+    args <- legend_args(attr(rgba, "key"), values, rgba, zcol)
+    ## One legend for the object: on its first (bottom) layer when mixed
+    ## geometry was split into several.
+    if (!is.null(args)) {
+      v$keys <- c(v$keys, list(list(layer = setdiff(layer_ids(v$scene), before)[1L],
+                                    args = args)))
+    }
+  }
+  v
+}
+
+layer_ids <- function(s) vapply(s$layers, function(l) l$id, "")
+
+check_flag <- function(x, arg) {
+  if (!isTRUE(x) && !isFALSE(x)) stop("`", arg, "` must be TRUE or FALSE.", call. = FALSE)
 }
 
 no_zcol_for_sfc <- function(...) {
@@ -232,8 +286,10 @@ zcol_values <- function(x, zcol) {
 }
 
 ## `rgba`, when given, is an n x 4 matrix of colours, one row per element
-## of g, carried beside the geometry as the layer's colour column.
-add_sfc <- function(g, v, name, densify, style, rgba = NULL) {
+## of g, carried beside the geometry as the layer's colour column. `attrs`,
+## when given, is a data frame of popup columns, one row per element of g,
+## carried beside the geometry and named as each layer's popup.
+add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL) {
   if (length(g) == 0L) stop("`x` has no geometries to view.", call. = FALSE)
   rows <- seq_along(g)
   keep <- !sf::st_is_empty(g)
@@ -260,15 +316,21 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL) {
   parts <- split$parts
   multi <- length(parts) > 1L
   base <- unique_id(layer_id(name), s, if (multi) paste0("_", names(parts)) else "")
+  colour_col <- unique_name(colour_column, names(attrs))
   for (kind in names(parts)) {
     id <- if (multi) paste0(base, "_", kind) else base
     label <- if (multi) paste0(name, " (", kind_label[[kind]], ")") else name
     geom <- wk::wk_set_crs(wk::as_wkb(parts[[kind]]), NULL)
     geom <- wk::wk_set_crs(geom, view)
     style_k <- layer_style(kind, style)
+    idx <- rows[split$rows[[kind]]]
+    if (!is.null(attrs)) {
+      geom <- attribute_stream(geom, view, attrs[idx, , drop = FALSE])
+      style_k$popup <- names(attrs)
+    }
     if (!is.null(rgba)) {
-      geom <- rgba_stream(geom, view, rgba[rows[split$rows[[kind]]], , drop = FALSE])
-      style_k <- zcol_style(kind, style_k, style)
+      geom <- rgba_stream(geom, view, rgba[idx, , drop = FALSE], colour_col)
+      style_k <- zcol_style(kind, style_k, style, colour_col)
     }
     args <- c(list(s, id, geom, label = label), style_k)
     s <- do.call(aobcore::scene_add_vector, args)
@@ -284,14 +346,14 @@ colour_column <- "color"
 ## A layer coloured by column: fill for polygons and points, stroke for
 ## lines (so a `stroke` for lines is an error, as `fill` is for the rest).
 ## Polygons get a grey outline unless `stroke` was given.
-zcol_style <- function(kind, out, style) {
+zcol_style <- function(kind, out, style, colour_col = colour_column) {
   if (kind == "path") {
     if (!is.null(style$stroke)) {
       stop("`stroke` and `zcol` both set the colour of lines; use one.", call. = FALSE)
     }
-    out$stroke <- colour_column
+    out$stroke <- colour_col
   } else {
-    out$fill <- colour_column
+    out$fill <- colour_col
     if (kind == "polygon" && is.null(style$stroke)) out$stroke <- zcol_outline
   }
   out
@@ -299,22 +361,25 @@ zcol_style <- function(kind, out, style) {
 
 zcol_outline <- c(128L, 128L, 128L, 200L)
 
-## A native GeoArrow stream of geom (already in the view CRS) with an RGBA
-## column, FixedSizeList<uint8, 4>, one row per feature (scene spec 0.1).
-rgba_stream <- function(geom, view, rgba) {
-  stream <- aobcore::vector_stream(geom, view)
+## A native GeoArrow stream of geom (already in the view CRS, or a stream
+## from attribute_stream()) with an RGBA column, FixedSizeList<uint8, 4>,
+## one row per feature (scene spec 0.1), appended after its columns.
+rgba_stream <- function(geom, view, rgba, colour_col = colour_column) {
+  stream <- if (inherits(geom, "nanoarrow_array_stream")) geom else
+    aobcore::vector_stream(geom, view)
   schema <- stream$get_schema()
   batches <- nanoarrow::collect_array_stream(stream, validate = FALSE)
-  geom_col <- names(schema$children)[1L]
-  fields <- list(schema$children[[1L]], nanoarrow::na_fixed_size_list(nanoarrow::na_uint8(), 4L))
-  names(fields) <- c(geom_col, colour_column)
+  cols <- names(schema$children)
+  fields <- c(schema$children,
+              list(nanoarrow::na_fixed_size_list(nanoarrow::na_uint8(), 4L)))
+  names(fields) <- c(cols, colour_col)
   out_schema <- nanoarrow::na_struct(fields)
   start <- 0L
   arrays <- lapply(batches, function(b) {
     i <- start + seq_len(b$length)
     start <<- start + b$length
-    children <- list(b$children[[1L]], rgba_array(rgba[i, , drop = FALSE]))
-    names(children) <- c(geom_col, colour_column)
+    children <- c(b$children, list(rgba_array(rgba[i, , drop = FALSE])))
+    names(children) <- c(cols, colour_col)
     nanoarrow::nanoarrow_array_modify(nanoarrow::nanoarrow_array_init(out_schema),
                                       list(length = b$length, children = children))
   })
@@ -335,16 +400,199 @@ rgba_array <- function(m) {
 
 kind_label <- list(polygon = "polygons", path = "lines", point = "points")
 
-## Set the initial view and the scene version, write the page, and return
-## the view.
+## Set the initial view, the legends and the scene version, write the
+## page, and return the view.
 finish_view <- function(v, name, file, theme) {
   s <- v$scene
   s$view$extent <- view_extent(v$extents, s$view$bounds)
+  s <- add_legends(s, v$keys)
   s$version <- aobcore::scene_spec_version(s)
   file <- file %||% tempfile("view-", fileext = ".html")
   aobcore::write_scene_html(s, file = file, title = name, theme = theme)
-  structure(list(scene = s, file = file, name = name, theme = theme, extents = v$extents),
+  structure(list(scene = s, file = file, name = name, theme = theme, extents = v$extents,
+                 keys = v$keys),
             class = "aob_view")
+}
+
+## The scene's legends, rebuilt from the view's keys (one per keyed layer,
+## in the order the layers were added) each time a page is written, so
+## view_add() can change what the scene needs.
+##
+## A key is list(layer, args) for a layer coloured by column, or
+## list(layer, palette = TRUE, legend = TRUE/FALSE) for a palette raster.
+## Before scene spec 0.5 the renderer draws a ramp for each palette raster
+## itself and the spec has no legends, so a scene that needs nothing from
+## 0.5 is left as it is: the lowest version that expresses it. A 0.5 scene
+## (any legend or popup) draws only its own legends, so then each palette
+## raster gets its ramp as a legend. A palette raster with legend = FALSE
+## can only go without its ramp in 0.5, so it makes the scene 0.5.
+add_legends <- function(s, keys) {
+  s$legends <- NULL
+  palette <- vapply(keys, function(k) isTRUE(k$palette), TRUE)
+  wanted <- vapply(keys, function(k) !isTRUE(k$palette) || isTRUE(k$legend), TRUE)
+  popups <- any(vapply(s$layers, function(l) !is.null(l$popup), TRUE))
+  hide_ramp <- any(palette & !wanted)
+  if (!any(!palette) && !popups && !hide_ramp) return(s)
+  for (k in keys[wanted]) {
+    s <- do.call(aobcore::scene_add_legend, c(list(s, k$layer), k$args))
+  }
+  if (hide_ramp) s$version <- "0.5"
+  s
+}
+
+## scene_add_legend() arguments for a zcol key (see view_colours()), or
+## NULL when there is nothing to key (no value took a colour).
+legend_args <- function(key, values, rgba, title) {
+  na <- as.integer(grDevices::col2rgb(key$na_colour, alpha = TRUE))
+  colours <- hex_rgba(key$colours)
+  out <- list(title = title)
+  if (key$type == "continuous") {
+    r <- key$range
+    if (anyNA(r)) return(NULL)
+    if (r[1] == r[2]) {
+      ## One value: one class, in the colour view_colours() gave it.
+      one <- unname(rgba[which(is.finite(as.numeric(values)))[1L], ])
+      out$classes <- stats_names(list(one), format_num(r[1]))
+    } else {
+      out$ramp <- list(range = r, stops = colours)
+    }
+  } else if (key$type == "binned") {
+    b <- format_num(key$breaks)
+    k <- length(b) - 1L
+    labels <- paste0(c("[", rep("(", k - 1L)), b[-(k + 1L)], ", ", b[-1L], "]")
+    out$classes <- stats_names(lapply(seq_len(k), function(i) colours[i, ]), labels)
+  } else {
+    if (!length(key$levels)) return(NULL)
+    out$classes <- stats_names(lapply(seq_along(key$levels), function(i) colours[i, ]),
+                               key$levels)
+  }
+  if (na_present(key, values)) {
+    out$na <- list(label = "NA", color = na)
+  }
+  out
+}
+
+## Did any value take the NA colour? view_colours() gives it to NA (and
+## non-finite numbers), to values outside `breaks`, and to values with no
+## level.
+na_present <- function(key, values) {
+  if (key$type == "categorical") return(anyNA(match(as.character(values), key$levels)))
+  v <- as.numeric(values)
+  out <- !is.finite(v)
+  if (key$type == "binned") {
+    b <- key$breaks
+    out <- out | (is.finite(v) & (v < b[1] | v > b[length(b)]))
+  }
+  any(out)
+}
+
+stats_names <- function(x, nms) {
+  names(x) <- nms
+  x
+}
+
+format_num <- function(x) vapply(x, function(z) format(z, digits = 6), "")
+
+hex_rgba <- function(hex) {
+  m <- t(grDevices::col2rgb(hex, alpha = TRUE))
+  storage.mode(m) <- "integer"
+  unname(m)
+}
+
+## A name not in `taken`: name, else name_2, name_3, ...
+unique_name <- function(name, taken) {
+  out <- name
+  i <- 1L
+  while (out %in% taken) {
+    i <- i + 1L
+    out <- paste0(name, "_", i)
+  }
+  out
+}
+
+## ---- popups ----------------------------------------------------------------
+
+## Columns carried for popup = TRUE; more are left out with a message.
+popup_max <- 20L
+
+## The popup columns of x as a data frame of writable columns, or NULL for
+## none. popup is TRUE (the first popup_max attribute columns), FALSE, or a
+## character vector of column names.
+popup_attributes <- function(x, popup) {
+  if (isFALSE(popup) || is.null(popup)) return(NULL)
+  geom <- attr(x, "sf_column")
+  cols <- setdiff(names(x), geom)
+  if (isTRUE(popup)) {
+    if (!length(cols)) return(NULL)
+    if (length(cols) > popup_max) {
+      message("The popup shows the first ", popup_max, " of ", length(cols), " columns; ",
+              "choose them with `popup = c(...)`.")
+      cols <- cols[seq_len(popup_max)]
+    }
+  } else if (is.character(popup) && length(popup) && !anyNA(popup)) {
+    if (anyDuplicated(popup)) stop("`popup` names a column more than once.", call. = FALSE)
+    if (any(popup %in% geom)) {
+      stop("\"", geom, "\" is the geometry column; `popup` names attribute columns.",
+           call. = FALSE)
+    }
+    miss <- setdiff(popup, cols)
+    if (length(miss)) {
+      stop("`popup` column", if (length(miss) > 1L) "s", " not in `x`: ",
+           paste0("\"", miss, "\"", collapse = ", "), ".", call. = FALSE)
+    }
+    cols <- popup
+  } else {
+    stop("`popup` must be TRUE, FALSE or a character vector of column names.", call. = FALSE)
+  }
+  df <- sf::st_drop_geometry(x)
+  out <- lapply(cols, function(nm) popup_column(df[[nm]]))
+  names(out) <- cols
+  bad <- vapply(out, is.null, TRUE)
+  if (any(bad)) {
+    message("Popup column", if (sum(bad) > 1L) "s", " ",
+            paste0("\"", cols[bad], "\"", collapse = ", "),
+            " cannot be shown as text and ", if (sum(bad) > 1L) "are" else "is", " left out.")
+    out <- out[!bad]
+  }
+  if (!length(out)) return(NULL)
+  structure(out, class = "data.frame", row.names = c(NA_integer_, -nrow(df)))
+}
+
+## One column as a vector the Arrow writer takes (numbers, text, logical),
+## or NULL when it cannot be shown. Factors become their labels (aobcore's
+## IPC writer cannot write dictionaries), dates and times ISO 8601 text.
+popup_column <- function(x) {
+  if (is.list(x) || is.raw(x) || !is.null(dim(x))) return(NULL)
+  if (is.factor(x)) {
+    x <- as.character(x)
+  } else if (inherits(x, "Date")) {
+    x <- format(x, "%Y-%m-%d")
+  } else if (inherits(x, "POSIXt")) {
+    x <- format(as.POSIXct(x), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  } else if (inherits(x, c("units", "difftime"))) {
+    x <- as.numeric(unclass(x))
+  } else if (is.object(x) || is.complex(x)) {
+    x <- tryCatch(as.character(x), error = function(e) NULL)
+    if (is.null(x)) return(NULL)
+  }
+  if (is.character(x)) x <- enc2utf8(x)
+  if (!is.character(x) && !is.numeric(x) && !is.logical(x)) return(NULL)
+  attributes(x) <- NULL
+  ok <- tryCatch({
+    nanoarrow::as_nanoarrow_array(x)
+    TRUE
+  }, error = function(e) FALSE)
+  if (ok) x else NULL
+}
+
+## A native GeoArrow stream of geom (already in the view CRS) with the
+## columns of data frame `attrs` before it, one row per feature.
+attribute_stream <- function(geom, view, attrs) {
+  gcol <- unique_name("geometry", names(attrs))
+  df <- attrs
+  rownames(df) <- NULL
+  df[[gcol]] <- geom
+  aobcore::vector_stream(df, view, geometry = gcol)
 }
 
 ## The initial view (decision 0005): the union of the layers' extents,

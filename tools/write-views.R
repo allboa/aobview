@@ -1,6 +1,11 @@
-# Write example view() pages for headless screenshots.
+# Write example view() pages for headless screenshots, and each page's
+# scene as JSON for the scenespec validator.
 #
 #   Rscript tools/write-views.R <outdir>
+#
+# Writes <name>.html and <name>.json for each view. Screenshots are taken
+# from the pages with aobcore's js/screenshots.mjs, which also opens the
+# popup of the first feature of a point layer with a popup.
 #
 # Polar first: lon/lat polygons, lines and points viewed in EPSG:3031 (the
 # default for lon/lat data south of 40S), then the same in a view CRS given
@@ -11,6 +16,14 @@ library(sf)
 out <- commandArgs(trailingOnly = TRUE)[1]
 if (is.na(out)) stop("usage: Rscript tools/write-views.R <outdir>")
 dir.create(out, showWarnings = FALSE, recursive = TRUE)
+
+# view() writes the page; the scene goes beside it as JSON.
+view <- function(...) save_json(aobview::view(...))
+view_add <- function(...) save_json(aobview::view_add(...))
+save_json <- function(v) {
+  writeLines(aobcore::scene_json(v$scene), sub("[.]html$", ".json", v$file))
+  v
+}
 
 # Lon/lat polygons: 30-degree sectors from 65S to 50S, whose parallels must
 # curve, and a cap over the pole from 78S, which crosses the antimeridian.
@@ -59,6 +72,21 @@ view(polys, zcol = "sea", name = "sectors") |>
   view_add(coast) |>
   view_add(stations, zcol = "operator", palette = "Set 1", radius_px = 7,
            file = file.path(out, "zcol-categorical-in-3031.html"))
+
+# Legend and popups, in EPSG:3031 (scene spec 0.5): the sectors coloured by
+# a value along a continuous palette (the legend's ramp, with an NA entry
+# for the cap), and the stations, over the coastline, coloured by operator
+# (a class legend) with their attributes as popups. A station is selected
+# in the popup screenshots.
+stations$established <- as.Date(c("1969-02-01", "1957-01-13", "1954-02-13", "1956-02-16",
+                                  "1975-10-01", "1956-11-23"))
+stations$elevation_m <- c(40, 18, 5, 24, 16, 2835)
+view(polys, zcol = "value", palette = "YlGnBu", popup = c("name", "value"), name = "sectors",
+     file = tempfile(fileext = ".html")) |>
+  view_add(coast, popup = FALSE) |>
+  view_add(stations[c("name", "operator", "established", "elevation_m")], zcol = "operator",
+           palette = "Set 1", radius_px = 8, name = "stations",
+           file = file.path(out, "zcol-popup-in-3031.html"))
 
 # terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
 # for a raster already in 3031).

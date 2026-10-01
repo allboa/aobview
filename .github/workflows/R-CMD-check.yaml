@@ -50,3 +50,26 @@ jobs:
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           args: 'c("--no-manual", "--as-cran")'
           error-on: '"warning"'
+
+      # The scenes tools/write-views.R writes (the screenshot pages, scene
+      # spec 0.1 to 0.5: legends and popups included) checked by the
+      # scenespec validator, and a headless click on a station in the
+      # EPSG:3031 popup page that checks the popup's text. Linux only: it has
+      # R, the package's suggested packages, Node and Chrome.
+      - name: Validate written views and check a popup headless
+        if: runner.os == 'Linux'
+        env:
+          # A pinned scenespec commit (main after scene spec 0.5), so a spec
+          # change cannot turn this check red unseen; bump it deliberately.
+          SCENESPEC_SHA: 9f8df2699f7fc7813d491547f1be59cdca7c44ce
+        run: |
+          R CMD INSTALL .
+          Rscript tools/write-views.R "$RUNNER_TEMP/views"
+          git clone https://github.com/allboa/scenespec "$RUNNER_TEMP/scenespec"
+          (cd "$RUNNER_TEMP/scenespec" && git checkout --detach "$SCENESPEC_SHA" && npm ci --no-audit --no-fund)
+          node "$RUNNER_TEMP/scenespec/scripts/validate.js" "$RUNNER_TEMP"/views/*.json
+          mkdir -p "$RUNNER_TEMP/pw" && cp tools/popup-check.mjs "$RUNNER_TEMP/pw/"
+          cd "$RUNNER_TEMP/pw"
+          echo '{"type":"module","private":true}' > package.json
+          npm install --no-audit --no-fund playwright-core@1.56.1
+          CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node popup-check.mjs "$RUNNER_TEMP/views"

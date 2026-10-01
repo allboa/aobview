@@ -14,6 +14,7 @@
   rgb = NULL,
   palette = NULL,
   range = NULL,
+  legend = TRUE,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark")
@@ -32,6 +33,8 @@
   palette = NULL,
   breaks = NULL,
   na_colour = "#999999",
+  legend = TRUE,
+  popup = TRUE,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark")
@@ -67,6 +70,10 @@ of \code{n}.}
 default the range of the COG's coarsest level. For a colour image of a
 type other than Byte, the values drawn as zero and full intensity.}
 
+\item{legend}{For a palette \code{SpatRaster}, \code{TRUE} (the default) keys the
+palette with a ramp and \code{FALSE} leaves it out (see Legend). For a
+\code{SpatVector}, as for \code{\link[=view]{view()}}.}
+
 \item{name}{The layer name, shown as the page title. Defaults to the
 expression passed as \code{x}.}
 
@@ -94,10 +101,14 @@ ignored for lines.}
 \item{zcol}{The name of a column of \code{x} to colour features by, or \code{NULL}
 (the default) for one colour. Not for an \code{sfc}, which has no columns.}
 
-\item{breaks}{With a numeric `zcol`: increasing break points that bin
-the values into classes, one colour each; see [view_colours()].}
+\item{breaks}{With a numeric \code{zcol}: increasing break points that bin
+the values into classes, one colour each; see \code{\link[=view_colours]{view_colours()}}.}
 
 \item{na_colour}{With \code{zcol}: the colour for \code{NA} values.}
+
+\item{popup}{\code{TRUE} (the default) shows the attribute columns (the first
+20) for a selected feature, a character vector names the columns to
+show, and \code{FALSE} shows none. See Popups.}
 }
 \value{
 A view, as for \code{\link[=view]{view()}}.
@@ -130,9 +141,17 @@ colour image. Otherwise
 one layer (\code{layer}, the first by default) is drawn through a palette over
 the range of its values.
 
+\strong{Legend.} A palette raster is keyed by a ramp of its palette over its
+range. In a scene with no legends or popups otherwise (scene spec 0.4 or
+earlier) the renderer draws that ramp itself and the scene stays at the
+lowest version that expresses it; in a scene spec 0.5 scene (a legend or
+popup on another layer) the ramp is written as the raster's legend with
+\code{\link[aobcore:scene_add_legend]{aobcore::scene_add_legend()}}. \code{legend = FALSE} leaves the ramp out,
+which needs scene spec 0.5. A colour image has no legend.
+
 A \code{SpatVector} is converted with \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and drawn as \code{sf} data
-is (see \code{\link[=view]{view()}}), coloured by an attribute with \code{zcol}; it needs the
-'sf' package.
+is (see \code{\link[=view]{view()}}), coloured by an attribute with \code{zcol} (with a legend)
+and with its attributes as popups; it needs the 'sf' package.
 }
 \examples{
 \dontshow{if (requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")) withAutoprint(\{ # examplesIf}
