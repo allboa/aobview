@@ -88,6 +88,18 @@ view(polys, zcol = "value", palette = "YlGnBu", popup = c("name", "value"), name
            palette = "Set 1", radius_px = 8, name = "stations",
            file = file.path(out, "zcol-popup-in-3031.html"))
 
+# The CCAMLR statistical areas shipped in inst/extdata (simplified at 2 km,
+# illustrative), in EPSG:6932 (EASE-Grid 2.0 South, a projected CRS that is
+# not the view's), reprojected to EPSG:3031 over the coastline: coloured by
+# area (48, 58, 88; a class legend), with popups.
+areas <- st_read(system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview"),
+                 quiet = TRUE)
+areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
+view(areas, crs = "EPSG:3031", zcol = "area",
+     popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"),
+     name = "statistical areas", file = tempfile(fileext = ".html")) |>
+  view_add(coast, popup = FALSE, file = file.path(out, "ccamlr-areas-in-3031.html"))
+
 # terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
 # for a raster already in 3031).
 if (requireNamespace("terra", quietly = TRUE)) {

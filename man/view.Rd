@@ -179,6 +179,16 @@ v4 <- view(nc, zcol = "SID74", breaks = c(0, 5, 10, 20, 50))
 v4$scene$legends[[1]]$classes[[1]]$label
 v5 <- view(nc, zcol = "BIR74", popup = c("NAME", "BIR74"))
 v5$scene$layers[[1]]$popup
+
+# CCAMLR statistical areas (simplified, illustrative; see the extdata
+# README) in EPSG:6932, coloured by area with popups, viewed in EPSG:3031
+areas <- sf::read_sf(system.file("extdata", "ccamlr_statistical_areas.geojson",
+                                 package = "aobview"))
+areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
+v6 <- view(areas, crs = "EPSG:3031", zcol = "area",
+           popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
+v6 <- view_add(v6, coast, popup = FALSE)
+vapply(v6$scene$legends[[1]]$classes, function(cl) cl$label, "")
 \dontrun{
 v2
 v3

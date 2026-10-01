@@ -75,6 +75,21 @@ Legends and popups are scene spec 0.5 data ([aobcore](https://github.com/allboa/
 
 ![Sectors by a character column and stations by operator, over the coastline, in EPSG:3031, dark](tools/screenshots/zcol-categorical-in-3031-dark.png)
 
+The package ships a small copy of the CCAMLR statistical areas (Areas 48, 58 and 88) in EPSG:6932, NSIDC EASE-Grid 2.0 South, simplified at 2 km and illustrative only (see `inst/extdata/README`). Coloured by area, with popups, in EPSG:3031 over the coastline:
+
+```r
+areas <- sf::read_sf(system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview"))
+areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
+coast <- sf::read_sf(system.file("extdata", "coastline_south_40s.geojson", package = "aobcore"))
+view(areas, crs = "EPSG:3031", zcol = "area",
+     popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size")) |>
+  view_add(coast, popup = FALSE)
+```
+
+![CCAMLR statistical areas coloured by area, with a class legend, over the coastline in EPSG:3031, light](tools/screenshots/ccamlr-areas-in-3031-light.png)
+
+CCAMLR statistical areas: Commission for the Conservation of Antarctic Marine Living Resources (CCAMLR GIS, https://gis.ccamlr.org).
+
 ### The view CRS
 
 `view_crs(x)` is the default, and `crs =` overrides it:
