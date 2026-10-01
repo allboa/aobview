@@ -3,7 +3,10 @@
 #' `view()` of a list draws each element as one or more layers of a single
 #' scene, in one view CRS, in list order: the first element at the bottom.
 #' `view_add()` adds a layer to a view already made, on top, and writes a
-#' new page. `view(a) |> view_add(b)` gives the same scene as
+#' new page, or, for a served view (see Transport in [view()]), serves the
+#' new scene on the same server, at the same URL. An embedded view whose
+#' local raster tiles pass the threshold with the new layer becomes served
+#' (its earlier page stays on disk). `view(a) |> view_add(b)` gives the same scene as
 #' `view(list(a = a, b = b))` when the two have the same view CRS, that is
 #' when `view_crs(a)` equals `view_crs(list(a, b))`, as it does whenever `a`
 #' is projected, or `a` and `b` are both lon/lat south of 40S (or both north
@@ -53,7 +56,12 @@
 #'   view's name and this one, joined by a comma.
 #' @param file Path of the HTML file to write. Defaults to a new file in the
 #'   session's temporary directory. `view_add()` leaves `v`'s page as it is.
+#'   Not used by a served view (with a warning).
 #' @param theme As for [view()]. `view_add()` defaults to `v`'s theme.
+#' @param transport As for [view()]. For `view_add()`, how the new layers
+#'   are carried: on a served view, `"embed"` embeds a new local COG's tiles
+#'   (the server delivers them as blobs) and `"auto"` or `"serve"` serve its
+#'   file; the view stays served either way.
 #' @param v A view from [view()] or `view_add()`.
 #' @return A view, as for [view()].
 #' @seealso [view()], [view-terra], [view_crs()].
@@ -81,18 +89,21 @@ NULL
 #' @rdname view-layers
 #' @export
 view.list <- function(x, ..., crs = NULL, name = NULL, file = NULL,
-                      theme = c("auto", "light", "dark")) {
+                      theme = c("auto", "light", "dark"),
+                      transport = getOption("aobview.transport", "auto")) {
   check_dots(..., what = "a list")
   theme <- match.arg(theme)
+  transport <- check_transport(transport)
   labels <- list_labels(x, substitute(x))
-  v <- new_view(crs %||% view_crs_list(x, labels))
+  v <- new_view(crs %||% view_crs_list(x, labels), transport)
   v <- add_list(x, v, labels)
   finish_view(v, name %||% paste(labels, collapse = ", "), file, theme)
 }
 
 #' @rdname view-layers
 #' @export
-view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL) {
+view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL,
+                     transport = getOption("aobview.transport", "auto")) {
   if (!inherits(v, "aob_view") || is.null(v$scene)) {
     stop("`v` must be a view from view().", call. = FALSE)
   }
@@ -101,6 +112,7 @@ view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL) {
          "to choose one, use view(list(...), crs = ).", call. = FALSE)
   }
   theme <- match.arg(theme %||% v$theme %||% "auto", c("auto", "light", "dark"))
+  v <- begin_transport(v, check_transport(transport))
   if (is_plain_list(x)) {
     check_dots(..., what = "a list")
     labels <- list_labels(x, substitute(x))

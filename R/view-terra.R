@@ -12,12 +12,16 @@
 #' remote (an `http(s)` URL or a `/vsicurl/` path), that file is used. A remote COG is referenced by URL and the browser fetches its tiles
 #' by HTTP range requests (the server must allow them, and CORS): the page
 #' carries the recipe, not the data. A local COG's planned tiles are
-#' embedded in the page. Anything else (a raster in memory, a file that is
+#' embedded in the page, unless the view is served (see Transport in
+#' [view()]): then the server delivers the file. Anything else (a raster in
+#' memory, a file that is
 #' striped or has no overviews, several sources, a computed, cropped or
 #' windowed raster, or one given another `terra::NAflag()`) is
-#' written to a temporary COG with `terra::writeRaster(filetype = "COG")`,
-#' whose planned tiles are embedded, so the page opens from disk with no
-#' server. The temporary COG is deleted once the page is written.
+#' written to a temporary COG in `file.path(tempdir(), "aobview-cogs")`
+#' with `terra::writeRaster(filetype = "COG")`. When its planned tiles are
+#' embedded, so the page opens from disk with no server, the temporary COG
+#' is deleted once the layer is added; when the view is served, the server
+#' keeps it until it stops.
 #'
 #' **Colour or palette.** A raster of 3 or 4 layers with values 0 to 255
 #' (Byte) and colour interpretation red, green, blue (and alpha), set with
@@ -78,13 +82,15 @@ NULL
 #' @export
 view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palette = NULL,
                             range = NULL, legend = TRUE, name = NULL, file = NULL,
-                            theme = c("auto", "light", "dark")) {
+                            theme = c("auto", "light", "dark"),
+                            transport = getOption("aobview.transport", "auto")) {
   need_terra()
   need_gdalraster()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
+  transport <- check_transport(transport)
   check_raster(x)
-  v <- new_view(crs %||% view_crs(x))
+  v <- new_view(crs %||% view_crs(x), transport)
   v <- add_layers(x, v, name, ..., layer = layer, rgb = rgb, palette = palette, range = range,
                   legend = legend)
   finish_view(v, name, file, theme)
@@ -96,14 +102,16 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, str
                             stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
                             palette = NULL, breaks = NULL, na_colour = "#999999",
                             legend = TRUE, popup = TRUE, name = NULL, file = NULL,
-                            theme = c("auto", "light", "dark")) {
+                            theme = c("auto", "light", "dark"),
+                            transport = getOption("aobview.transport", "auto")) {
   check_dots(..., what = "a SpatVector")
   need_terra()
   need_sf()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
+  transport <- check_transport(transport)
   check_terra_crs(x)
-  v <- new_view(crs %||% view_crs(x))
+  v <- new_view(crs %||% view_crs(x), transport)
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
                   stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
                   palette = palette, breaks = breaks, na_colour = na_colour,
@@ -173,15 +181,26 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
     }
   }
 
-  ## scene_add_tiled_raster() copies the planned tiles' bytes into the
-  ## scene, so a temporary COG is not needed once the layer is added.
-  if (!is.null(temp)) on.exit(unlink(temp$dsn), add = TRUE)
+  ## An embedded layer carries its planned tiles' bytes in the scene, so a
+  ## temporary COG is not needed once the layer is added. A served layer's
+  ## temporary COG is kept, for the server to own and delete when it stops.
+  keep <- FALSE
+  if (!is.null(temp)) on.exit(if (!keep) unlink(temp$dsn), add = TRUE)
   s <- v$scene
   plan <- aobcore::cog_plan(cog, s$view$crs, ...)
+  ## Embed or serve, from the plan's tile byte lengths, before any tile
+  ## byte is read (decision 0006).
+  chosen <- choose_embed(v, cog, plan, name)
+  v <- chosen$v
   id <- unique_id(layer_id(name), s, c("", "_vertices", "_indices"))
   s <- aobcore::scene_add_tiled_raster(s, id, plan,
                                        palette = palette %||% "viridis", range = range,
-                                       rgb = if (colour) bands else FALSE, label = name)
+                                       rgb = if (colour) bands else FALSE,
+                                       embed = chosen$embed, label = name)
+  if (!is.null(temp) && isFALSE(chosen$embed)) {
+    keep <- TRUE
+    v$own <- c(v$own, temp$dsn)
+  }
   v$scene <- s
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)
   ## A palette raster's ramp: written as a legend only when the scene is
@@ -307,7 +326,7 @@ is_byte <- function(x) {
 ## structure. Colour images are written pixel interleaved, as Byte when
 ## their values allow, with an alpha band added when cells are missing.
 raster_temp_cog <- function(x, rgb) {
-  f <- tempfile("view-", fileext = ".tif")
+  f <- tempfile("view-", tmpdir = temp_cog_dir(), fileext = ".tif")
   if (rgb) {
     ## The layer carries its bands itself (scene_add_tiled_raster(rgb =)),
     ## so the file needs no colour interpretation, only pixel interleaving.

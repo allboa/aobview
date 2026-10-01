@@ -5,7 +5,8 @@
 #' view in an interactive session opens the page in the IDE's viewer or the
 #' browser. The page is written by [aobcore::write_scene_html()] and needs
 #' no server and no network: the data travel in the page as native
-#' 'GeoArrow'.
+#' 'GeoArrow'. A view with large local rasters is served from a local
+#' server instead (see Transport).
 #'
 #' Points, lines and polygons (single or multi) are drawn as one layer
 #' each. A mixed `GEOMETRY` or `GEOMETRYCOLLECTION` column is split into up
@@ -51,6 +52,24 @@
 #' other atomic classes as their `as.character()` text. List, raw and matrix columns
 #' cannot be shown and are left out with a message.
 #'
+#' **Transport.** A view is embedded (the page above, on disk) or served
+#' from a local HTTP server by [aobcore::serve_scene()], which the browser
+#' reads a local COG from tile by tile instead of carrying its bytes in the
+#' page (allboa/design decision 0006). `transport = "embed"` always embeds,
+#' `"serve"` always serves (it needs the 'httpuv' package), and `"auto"`
+#' (the default, or `getOption("aobview.transport")`) embeds unless the
+#' view's local raster tiles, counted from each layer's tile plan before
+#' any byte is read, come to more than `getOption("aobview.embed_max")`
+#' bytes (32 MiB by default). Then, in an interactive session with 'httpuv'
+#' installed, that layer and any added later are served, with a message
+#' naming the size; otherwise the tiles are embedded with a warning. Vector
+#' data and remote COGs never make a view served by themselves. A served
+#' view keeps its server running until `v$server$stop()`,
+#' [aobcore::stop_scene_servers()] or the end of the R session; the server
+#' answers only while R is idle. A temporary COG (see [view-terra]) of a
+#' served layer is kept in `file.path(tempdir(), "aobview-cogs")` until
+#' the server stops.
+#'
 #' **Spec version.** The scene is written at the lowest scene spec version
 #' that can express it ([aobcore::scene_spec_version()]): a view with no
 #' legend and no popup is unchanged by these features.
@@ -93,14 +112,20 @@
 #'   expression passed as `x`.
 #' @param file Path of the HTML file to write. Defaults to a new file in the
 #'   session's temporary directory.
+#'   Not used by a served view (with a warning).
 #' @param theme `"auto"` follows the browser's light or dark preference;
 #'   `"light"` or `"dark"` fixes it.
+#' @param transport `"auto"`, `"embed"` or `"serve"`: whether the view is
+#'   written to a page or served from a local server (see Transport).
+#'   Defaults to `getOption("aobview.transport", "auto")`.
 #' @return A view: a list of class `"aob_view"` with the `scene` (an
-#'   [aobcore::scene()]), the `file` it was written to, its `name` (the
+#'   [aobcore::scene()]), the `file` it was written to (`NULL` when served),
+#'   the `server` serving it (an `"aob_server"` from
+#'   [aobcore::serve_scene()], or `NULL` when embedded), its `name` (the
 #'   page title), `theme`, and `extents`, each layer's extent in the view
 #'   CRS (from which the initial view is set). Add to it with
 #'   [view_add()]. Printing it opens
-#'   the page when the session is interactive.
+#'   the page (or the server's URL) when the session is interactive.
 #' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
 #'   rasters and vectors; [view-layers] for several layers in one view.
 #' @export
@@ -146,12 +171,14 @@ view.default <- function(x, ...) {
 view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                     stroke_width_px = NULL, radius_px = NULL, zcol = NULL, palette = NULL,
                     breaks = NULL, na_colour = "#999999", legend = TRUE, popup = TRUE,
-                    name = NULL, file = NULL, theme = c("auto", "light", "dark")) {
+                    name = NULL, file = NULL, theme = c("auto", "light", "dark"),
+                    transport = getOption("aobview.transport", "auto")) {
   check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
-  v <- new_view(crs %||% view_crs(x))
+  transport <- check_transport(transport)
+  v <- new_view(crs %||% view_crs(x), transport)
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
                   stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
                   palette = palette, breaks = breaks, na_colour = na_colour,
@@ -163,13 +190,15 @@ view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NU
 #' @export
 view.sfc <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
                      stroke_width_px = NULL, radius_px = NULL, name = NULL,
-                     file = NULL, theme = c("auto", "light", "dark")) {
+                     file = NULL, theme = c("auto", "light", "dark"),
+                     transport = getOption("aobview.transport", "auto")) {
   no_zcol_for_sfc(...)
   check_dots(..., what = "sf data")
   need_sf()
   name <- name %||% deparse_name(substitute(x))
   theme <- match.arg(theme)
-  v <- new_view(crs %||% view_crs(x))
+  transport <- check_transport(transport)
+  v <- new_view(crs %||% view_crs(x), transport)
   v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
                   stroke_width_px = stroke_width_px, radius_px = radius_px)
   finish_view(v, name, file, theme)
@@ -178,9 +207,15 @@ view.sfc <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = N
 #' @export
 print.aob_view <- function(x, ...) {
   cat("<view> ", x$name, ": ", length(x$scene$layers), " layer",
-      if (length(x$scene$layers) != 1L) "s", " in ", crs_text(x$scene$view$crs), "\n",
-      "  ", x$file, "\n", sep = "")
-  if (interactive()) open_page(x$file)
+      if (length(x$scene$layers) != 1L) "s", " in ", crs_text(x$scene$view$crs), "\n", sep = "")
+  if (!is.null(x$server)) {
+    running <- isTRUE(x$server$state$running)
+    cat("  served at ", x$server$url, if (!running) " (stopped)", "\n", sep = "")
+    if (interactive() && running) open_url(x$server$url)
+  } else {
+    cat("  ", x$file, "\n", sep = "")
+    if (interactive()) open_page(x$file)
+  }
   invisible(x)
 }
 
@@ -193,9 +228,10 @@ print.aob_view <- function(x, ...) {
 
 ## An unwritten view: an empty scene in `crs`, with the view's domain as
 ## its bounds (aobcore::scene()'s default, decision 0005).
-new_view <- function(crs) {
-  structure(list(scene = aobcore::scene(aobcore::scene_crs(crs)), extents = list()),
-            class = "aob_view")
+new_view <- function(crs, transport = "auto") {
+  v <- structure(list(scene = aobcore::scene(aobcore::scene_crs(crs)), extents = list()),
+                 class = "aob_view")
+  begin_transport(v, transport)
 }
 
 ## Append x's layers to view v, above those already there. Methods: sf and
@@ -423,10 +459,21 @@ finish_view <- function(v, name, file, theme) {
   s$view$extent <- view_extent(v$extents, s$view$bounds)
   s <- add_legends(s, v$keys)
   s$version <- aobcore::scene_spec_version(s)
-  file <- file %||% tempfile("view-", fileext = ".html")
-  aobcore::write_scene_html(s, file = file, title = name, theme = theme)
-  structure(list(scene = s, file = file, name = name, theme = theme, extents = v$extents,
-                 keys = v$keys),
+  server <- NULL
+  if (is_served(v)) {
+    if (!is.null(file)) {
+      warning("`file` is not written: the view is served from a local server, not ",
+              "embedded in a page. Use `transport = \"embed\"` for a page on disk.",
+              call. = FALSE)
+    }
+    file <- NULL
+    server <- serve_view(v, s, name, theme)
+  } else {
+    file <- file %||% tempfile("view-", fileext = ".html")
+    aobcore::write_scene_html(s, file = file, title = name, theme = theme)
+  }
+  structure(list(scene = s, file = file, server = server, name = name, theme = theme,
+                 extents = v$extents, keys = v$keys, local_bytes = v$local_bytes %||% 0),
             class = "aob_view")
 }
 

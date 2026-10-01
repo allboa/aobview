@@ -17,7 +17,8 @@
   legend = TRUE,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 
 \method{view}{SpatVector}(
@@ -37,7 +38,8 @@
   popup = TRUE,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 }
 \arguments{
@@ -78,10 +80,15 @@ palette with a ramp and \code{FALSE} leaves it out (see Legend). For a
 expression passed as \code{x}.}
 
 \item{file}{Path of the HTML file to write. Defaults to a new file in the
-session's temporary directory.}
+session's temporary directory.
+Not used by a served view (with a warning).}
 
 \item{theme}{\code{"auto"} follows the browser's light or dark preference;
 \code{"light"} or \code{"dark"} fixes it.}
+
+\item{transport}{\code{"auto"}, \code{"embed"} or \code{"serve"}: whether the view is
+written to a page or served from a local server (see Transport).
+Defaults to \code{getOption("aobview.transport", "auto")}.}
 
 \item{densify}{Maximum edge length, in the units of \code{x}'s CRS, for lines
 and polygon edges before they are transformed. \code{NULL} (the default)
@@ -127,12 +134,16 @@ overviews (a COG, or an image small enough for one tile), local or
 remote (an \code{http(s)} URL or a \verb{/vsicurl/} path), that file is used. A remote COG is referenced by URL and the browser fetches its tiles
 by HTTP range requests (the server must allow them, and CORS): the page
 carries the recipe, not the data. A local COG's planned tiles are
-embedded in the page. Anything else (a raster in memory, a file that is
+embedded in the page, unless the view is served (see Transport in
+\code{\link[=view]{view()}}): then the server delivers the file. Anything else (a raster in
+memory, a file that is
 striped or has no overviews, several sources, a computed, cropped or
 windowed raster, or one given another \code{terra::NAflag()}) is
-written to a temporary COG with \code{terra::writeRaster(filetype = "COG")},
-whose planned tiles are embedded, so the page opens from disk with no
-server. The temporary COG is deleted once the page is written.
+written to a temporary COG in \code{file.path(tempdir(), "aobview-cogs")}
+with \code{terra::writeRaster(filetype = "COG")}. When its planned tiles are
+embedded, so the page opens from disk with no server, the temporary COG
+is deleted once the layer is added; when the view is served, the server
+keeps it until it stops.
 
 \strong{Colour or palette.} A raster of 3 or 4 layers with values 0 to 255
 (Byte) and colour interpretation red, green, blue (and alpha), set with
