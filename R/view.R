@@ -825,9 +825,9 @@ to_view_crs <- function(g, src, view, densify) {
   proj_transform(g, src, view)
 }
 
-## Decision 0004 rules out a per-coordinate transform of projected data into
-## a geographic view: nothing cuts it at the antimeridian or the poles.
-## (#9, item 2.) Warn, and say how to get a projected view.
+## A per-coordinate transform of projected data into a geographic view
+## cuts nothing at the antimeridian or the poles (decision 0004; 0008 parks
+## that: draw anyway). Warn, and say how to get a projected view.
 warn_geographic_view <- function(src, view) {
   if (crs_is_lonlat(src)) return(invisible())
   geographic <- tryCatch(crs_is_lonlat(view), error = function(e) FALSE)
