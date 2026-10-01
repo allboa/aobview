@@ -4,3 +4,8 @@
 ^\.Rproj\.user$
 ^tools$
 ^\.git$
+^man/figures$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^vignettes/articles$

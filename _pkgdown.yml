@@ -1,0 +1,81 @@
+url: https://allboa.github.io/aobview/
+
+template:
+  bootstrap: 5
+  light-switch: true
+
+development:
+  mode: unreleased
+
+home:
+  title: "aobview: view spatial data in its own CRS (in development)"
+  description: >
+    A mapview-style view(x) for sf and terra that draws data in its own
+    coordinate reference system, polar views included. Early, in active
+    development, and open to anyone who wants to try it.
+  sidebar:
+    structure: [status, project, links, license, authors, dev]
+    components:
+      status:
+        title: Status
+        text: >
+          Early development. Package names are placeholders, the scene
+          spec is pre-1.0, and nothing is on CRAN. Please try it and
+          [open an issue](https://github.com/allboa/aobview/issues).
+      project:
+        title: allonboard
+        text: >
+          [aobcore](https://github.com/allboa/aobcore) (core package)<br>
+          [scenespec](https://github.com/allboa/scenespec) (scene spec)<br>
+          [design](https://github.com/allboa/design) (decisions)<br>
+          [spikes](https://github.com/allboa/spikes) (experiments)
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, allonboard, github, lightswitch]
+  components:
+    allonboard:
+      text: allonboard
+      menu:
+      - text: "The project"
+      - text: "aobcore: core package and renderer"
+        href: https://github.com/allboa/aobcore
+      - text: "scenespec: renderer-neutral scene spec"
+        href: https://github.com/allboa/scenespec
+      - text: "design: decision records and agent brief"
+        href: https://github.com/allboa/design
+      - text: "spikes: experiments"
+        href: https://github.com/allboa/spikes
+      - text: -------
+      - text: "Get involved"
+        href: articles/get-involved.html
+    github:
+      icon: fa-github
+      href: https://github.com/allboa/aobview
+      aria-label: GitHub
+
+reference:
+- title: View data
+  contents:
+  - view
+  - view-terra
+  - view-layers
+- title: View CRS and colours
+  contents:
+  - view_crs
+  - view_colours
+- title: Package
+  contents:
+  - aobview-package
+
+articles:
+- title: Using aobview
+  navbar: ~
+  contents:
+  - articles/aobview
+- title: The project
+  navbar: The project
+  contents:
+  - articles/how-it-fits-together
+  - articles/get-involved
