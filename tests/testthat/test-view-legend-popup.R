@@ -14,9 +14,21 @@ pols <- function() {
 legend_labels <- function(lg) vapply(lg$classes, function(cl) cl$label, "")
 legend_colours <- function(lg) do.call(rbind, lapply(lg$classes, function(cl) cl$color))
 
-## The data frame of a view's data blob (attribute columns and geometry).
+## The attribute columns of a view's data blob (not its geometry or colour
+## columns), as a list, converted column by column (a data frame of the
+## whole stream needs vctrs for the list columns).
 blob_df <- function(v, id) {
-  as.data.frame(nanoarrow::read_nanoarrow(aobcore::scene_blobs(v$scene)[[id]]))
+  stream <- nanoarrow::read_nanoarrow(aobcore::scene_blobs(v$scene)[[id]])
+  schema <- stream$get_schema()
+  batches <- nanoarrow::collect_array_stream(stream)
+  geom <- v$scene$data[[id]]$geometry$column
+  cols <- names(schema$children)
+  keep <- cols[cols != geom & !startsWith(vapply(schema$children, function(ch) ch$format, ""), "+w")]
+  out <- lapply(keep, function(nm) {
+    do.call(c, lapply(batches, function(b) nanoarrow::convert_array(b$children[[nm]])))
+  })
+  names(out) <- keep
+  out
 }
 
 ## The scene's JSON, checked by the scenespec validator when a checkout of
@@ -153,7 +165,7 @@ test_that("popup = TRUE carries the attribute columns, readable in the blob", {
   expect_identical(v$scene$layers[[1]]$popup, list(columns = as.list(cols)))
   expect_identical(v$scene$version, "0.5")
   df <- blob_df(v, "x")
-  expect_identical(names(df), c(cols, "geometry"))
+  expect_identical(blob_names(v, "x"), c(cols, "geometry"))
   expect_identical(df$num, x$num)
   ## A factor as its labels (the IPC writer cannot write dictionaries).
   expect_identical(df$fac, c("x", "y", NA))
