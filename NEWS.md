@@ -71,3 +71,16 @@
   opens the URL, and `view_add()` replaces its scene on the same server.
   A served layer's temporary COG is kept in `tempdir()/aobview-cogs` and
   deleted when the server stops. httpuv is suggested (#17).
+* Served views send selections back to R (allboa/design decision 0007):
+  `selection(v)` gives the selected rows as indices into the objects that
+  were viewed, `selected(v)` the rows themselves (`sf`, `sfc` or
+  `SpatVector`; `source =` picks one of several), `wait_for_selection(v)`
+  waits for the next selection, and `view_state(v)` gives the page's
+  settled view. A view keeps each vector object with the map from its
+  layers' rows to its own rows (empty and untransformable geometries
+  dropped, mixed geometry split, geometry collection parts), and the scene
+  serial of its server. Every vector layer of a served view is selectable.
+  The functions are errors on an embedded view, a stopped server and a view
+  that `view_add()` has replaced. `view_add()` on a served view reloads the
+  open page and clears the selection, and printing a served view opens the
+  page only when none is connected (#22).

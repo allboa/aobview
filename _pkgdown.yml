@@ -61,6 +61,7 @@ reference:
   - view
   - view-terra
   - view-layers
+  - selection
 - title: View CRS and colours
   contents:
   - view_crs

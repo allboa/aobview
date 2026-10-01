@@ -111,10 +111,14 @@ A view: a list of class \code{"aob_view"} with the \code{scene} (an
 \code{\link[aobcore:scene]{aobcore::scene()}}), the \code{file} it was written to (\code{NULL} when served),
 the \code{server} serving it (an \code{"aob_server"} from
 \code{\link[aobcore:serve_scene]{aobcore::serve_scene()}}, or \code{NULL} when embedded), its \code{name} (the
-page title), \code{theme}, and \code{extents}, each layer's extent in the view
-CRS (from which the initial view is set). Add to it with
-\code{\link[=view_add]{view_add()}}. Printing it opens
-the page (or the server's URL) when the session is interactive.
+page title), \code{theme}, \code{extents}, each layer's extent in the view
+CRS (from which the initial view is set), \code{sources}, each vector
+object viewed with its name and the map from its layers' rows to its
+own rows, and \code{serial}, the scene serial the server gave the scene
+(\code{NULL} when embedded). Add to it with \code{\link[=view_add]{view_add()}}. Printing it opens
+the page when the session is interactive; a served view's URL is
+opened only when no page is connected to its server, since an open
+page follows the view (see \code{\link[=selection]{selection()}}).
 }
 \description{
 Draws \code{x} in a self-contained HTML page, in the CRS chosen by
@@ -187,6 +191,11 @@ view keeps its server running until \code{v$server$stop()},
 answers only while R is idle. A temporary COG (see \link{view-terra}) of a
 served layer is kept in \code{file.path(tempdir(), "aobview-cogs")} until
 the server stops.
+
+\strong{Selections.} A served view's page sends the features the viewer
+selects (a click, Shift-click to add or remove) back to R: every vector
+layer can be selected. Read them with \code{\link[=selection]{selection()}}, \code{\link[=selected]{selected()}} and
+\code{\link[=wait_for_selection]{wait_for_selection()}}; an embedded page cannot send them.
 
 \strong{Spec version.} The scene is written at the lowest scene spec version
 that can express it (\code{\link[aobcore:scene_spec_version]{aobcore::scene_spec_version()}}): a view with no

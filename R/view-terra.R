@@ -132,7 +132,7 @@ add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, fill = NULL, 
          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
                       radius_px = radius_px),
          zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour,
-         legend = legend, popup = popup)
+         legend = legend, popup = popup, source = x)
 }
 
 ## `...` goes to aobcore::cog_plan(), which refuses arguments it does not
