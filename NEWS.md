@@ -19,7 +19,10 @@
   that crosses an orthographic view's horizon). A geometry collection
   holding an empty member is now drawn (it was left out as
   untransformable). Geometries with non-finite input coordinates are left
-  out with their own warning.
+  out with their own warning. When PROJ cannot find its database
+  (proj.db), as with CRAN's macOS binary of the PROJ package, aobview
+  points PROJ_DATA at the proj folder shipped with PROJ, sf, terra or
+  gdalraster, the first that works, or says what to set.
 
 * Package skeleton, with R CMD check on Linux, macOS and Windows. aobcore
   is installed from GitHub (`Remotes: allboa/aobcore`) (#2).

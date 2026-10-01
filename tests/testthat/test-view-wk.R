@@ -134,3 +134,26 @@ test_that("a geometry whose first part is empty is drawn", {
   expect_identical(v$sources[[1]]$layers$x, 1L)
   expect_identical(view_crs(x), "EPSG:3031")
 })
+
+test_that("a missing proj.db is found in a package that ships one, or is a clear error", {
+  ## Simulates CRAN's macOS PROJ binary, which finds no proj.db. A fresh R
+  ## session: PROJ keeps a database once it has opened one.
+  skip_on_cran()
+  dirs <- vapply(c("PROJ", "sf", "terra", "gdalraster"),
+                 function(p) system.file("proj", package = p), "")
+  has_db <- any(nzchar(dirs) & file.exists(file.path(dirs, "proj.db")))
+  code <- paste0(
+    "r <- tryCatch({aobview:::proj_ready(); ",
+    "file.exists(file.path(Sys.getenv('PROJ_DATA'), 'proj.db'))}, ",
+    "error = function(e) conditionMessage(e)); cat(r)"
+  )
+  out <- system2(file.path(R.home("bin"), "Rscript"), c("-e", shQuote(code)),
+                 stdout = TRUE, stderr = FALSE,
+                 env = c(paste0("PROJ_DATA=", tempdir()), paste0("PROJ_LIB=", tempdir())))
+  out <- paste(out, collapse = " ")
+  if (has_db) {
+    expect_match(out, "TRUE")
+  } else {
+    expect_match(out, "cannot find its database")
+  }
+})

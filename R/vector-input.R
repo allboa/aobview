@@ -84,10 +84,49 @@ source_crs <- function(g, view = NULL) {
   def
 }
 
+## Can PROJ find its database (proj.db)? CRAN's macOS binary of the PROJ
+## package does not set one up, so when PROJ cannot read OGC:CRS84 the
+## proj folder that ships with PROJ, sf, terra or gdalraster is tried, by
+## setting PROJ_DATA (and PROJ_LIB, for PROJ before 9.1) for the session.
+## The first that works is kept; success is remembered.
+proj_state <- new.env(parent = emptyenv())
+
+proj_ready <- function() {
+  if (isTRUE(proj_state$ready)) return(invisible(TRUE))
+  works <- function() {
+    !inherits(try(PROJ::proj_trans_create("OGC:CRS84", "EPSG:4326"), silent = TRUE),
+              "try-error")
+  }
+  if (!works()) {
+    old <- Sys.getenv(c("PROJ_DATA", "PROJ_LIB"), unset = NA)
+    found <- FALSE
+    for (pkg in c("PROJ", "sf", "terra", "gdalraster")) {
+      dir <- system.file("proj", package = pkg)
+      if (!nzchar(dir) || !file.exists(file.path(dir, "proj.db"))) next
+      Sys.setenv(PROJ_DATA = dir, PROJ_LIB = dir)
+      if (works()) {
+        found <- TRUE
+        break
+      }
+    }
+    if (!found) {
+      for (nm in names(old)) {
+        if (is.na(old[[nm]])) Sys.unsetenv(nm) else do.call(Sys.setenv, as.list(old[nm]))
+      }
+      stop("PROJ cannot find its database (proj.db), so no CRS can be read. ",
+           "Set the PROJ_DATA environment variable to a folder holding proj.db, ",
+           "or install sf or terra, whose binaries carry one.", call. = FALSE)
+    }
+  }
+  proj_state$ready <- TRUE
+  invisible(TRUE)
+}
+
 ## PROJ's WKT2 for a definition, or an error. PROJ 0.7.0's proj_crs_text()
 ## crashes R on a definition PROJ cannot read, so the definition is first
 ## checked by creating a transform from it, which fails as an R error.
 proj_wkt <- function(def) {
+  proj_ready()
   def <- as.character(def)
   ok <- length(def) == 1L && !is.na(def) && nzchar(def) &&
     !inherits(try(PROJ::proj_trans_create(def, "OGC:CRS84"), silent = TRUE), "try-error")
@@ -136,6 +175,7 @@ crs_short <- function(x) {
 
 ## Transform wkb g from CRS `from` to the view CRS with PROJ.
 proj_transform <- function(g, from, view) {
+  proj_ready()
   trans <- PROJ::proj_trans_create(as.character(from), as.character(view))
   wk::wk_transform(g, trans)
 }
