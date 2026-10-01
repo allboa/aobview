@@ -14,16 +14,16 @@ view_crs(x)
 
 - x:
 
-  An `sf` or `sfc` object, a 'terra' `SpatRaster` or `SpatVector`, or a
-  list of them.
+  Geometry 'wk' can handle or a data frame with such a column (an `sf`
+  object, say), a 'terra' `SpatRaster` or `SpatVector`, or a list of
+  them.
 
 ## Value
 
 A CRS for
 [`aobcore::scene()`](https://rdrr.io/pkg/aobcore/man/scene.html): an
 `"authority:code"` string such as `"EPSG:3031"`, or, when the data's CRS
-has no code, the `sf` `crs` object (for `sf` data) or its WKT (for
-'terra' data).
+has no code, its WKT.
 
 ## Details
 
@@ -57,9 +57,11 @@ to 4 apply to their combined latitude range, and rule 4 keeps the first
 object's CRS.
 
 Data with no CRS is an error: set one first (for example
+[`wk::wk_set_crs()`](https://paleolimbot.github.io/wk/reference/wk_crs.html),
 [`sf::st_set_crs()`](https://r-spatial.github.io/sf/reference/st_crs.html)
 or `terra::crs<-`), or pass `crs` to
-[`view()`](https://allboa.github.io/aobview/reference/view.md).
+[`view()`](https://allboa.github.io/aobview/reference/view.md). Whether
+a CRS is lon/lat is read by 'PROJ'.
 
 ## Examples
 

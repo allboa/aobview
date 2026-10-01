@@ -186,10 +186,11 @@ file; the view stays served either way.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Elements may be <code>sf</code> or <code>sfc</code> objects and 'terra' <code>SpatRaster</code> or
-<code>SpatVector</code> objects, in any mix of CRSs. Each is drawn as <code><a href="view.html">view()</a></code> or
-<a href="view-terra.html">view-terra</a> draws it on its own, with its default style, and reprojected
-to the view CRS: vectors with <code><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">sf::st_transform()</a></code> (lon/lat edges
+    <p>Elements may be any vector input <code><a href="view.html">view()</a></code> takes (geometry 'wk' can
+handle, or a data frame with such a column, <code>sf</code> included) and 'terra'
+<code>SpatRaster</code> or <code>SpatVector</code> objects, in any mix of CRSs. Each is drawn
+as <code><a href="view.html">view()</a></code> or <a href="view-terra.html">view-terra</a> draws it on its own, with its default style,
+and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
 densified first), rasters by <code><a href="https://rdrr.io/pkg/aobcore/man/cog_plan.html" class="external-link">aobcore::cog_plan()</a></code>'s meshes.</p>
 <p><strong>View CRS.</strong> <code>crs</code> when given; otherwise <code><a href="view_crs.html">view_crs()</a></code> of the whole list:
 the CRS of the first element with a projected CRS, or, when every element

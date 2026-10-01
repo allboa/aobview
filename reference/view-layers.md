@@ -111,14 +111,15 @@ A view, as for
 
 ## Details
 
-Elements may be `sf` or `sfc` objects and 'terra' `SpatRaster` or
-`SpatVector` objects, in any mix of CRSs. Each is drawn as
+Elements may be any vector input
+[`view()`](https://allboa.github.io/aobview/reference/view.md) takes
+(geometry 'wk' can handle, or a data frame with such a column, `sf`
+included) and 'terra' `SpatRaster` or `SpatVector` objects, in any mix
+of CRSs. Each is drawn as
 [`view()`](https://allboa.github.io/aobview/reference/view.md) or
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
 draws it on its own, with its default style, and reprojected to the view
-CRS: vectors with
-[`sf::st_transform()`](https://r-spatial.github.io/sf/reference/st_transform.html)
-(lon/lat edges densified first), rasters by
+CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
 [`aobcore::cog_plan()`](https://rdrr.io/pkg/aobcore/man/cog_plan.html)'s
 meshes.
 

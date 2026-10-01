@@ -14,15 +14,18 @@ aobview and its core package, aobcore, are installed from GitHub:
 remotes::install_github("allboa/aobview")
 ```
 
-sf is needed for vector data, and terra and gdalraster for rasters.
+Vector data can be any geometry wk can read (sf, wkb, wkt, xy, geos, …)
+or a data frame with such a column; PROJ reprojects it. terra and
+gdalraster are needed for rasters.
 
 ## A first view
 
-[`view()`](https://allboa.github.io/aobview/reference/view.md) takes an
-sf object and draws it in a page. aobcore ships a coastline south of 40S
-in longitude and latitude; aobview sees that it lies entirely in the far
-south and draws it in Antarctic Polar Stereographic (EPSG:3031),
-densifying edges first so that parallels curve.
+[`view()`](https://allboa.github.io/aobview/reference/view.md) takes
+vector data (here an sf object) and draws it in a page. aobcore ships a
+coastline south of 40S in longitude and latitude; aobview sees that it
+lies entirely in the far south and draws it in Antarctic Polar
+Stereographic (EPSG:3031), densifying edges first so that parallels
+curve.
 
 ``` r
 

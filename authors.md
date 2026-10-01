@@ -9,12 +9,12 @@
 Source:
 [`DESCRIPTION`](https://github.com/allboa/aobview/blob/main/DESCRIPTION)
 
-Sumner M (2026). *aobview: View 'sf' and 'terra' Data in Their Own
-Coordinate Reference System*. R package version 0.0.0.9000,
+Sumner M (2026). *aobview: View Spatial Data in Its Own Coordinate
+Reference System*. R package version 0.0.0.9000,
 <https://allboa.github.io/aobview/>.
 
     @Manual{,
-      title = {aobview: View 'sf' and 'terra' Data in Their Own Coordinate Reference System},
+      title = {aobview: View Spatial Data in Its Own Coordinate Reference System},
       author = {Michael Sumner},
       year = {2026},
       note = {R package version 0.0.0.9000},

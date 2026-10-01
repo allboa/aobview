@@ -2,9 +2,41 @@
 
 ## aobview 0.0.0.9000
 
+- Vector input is wk first (allboa/design decision 0008):
+  [`view()`](https://allboa.github.io/aobview/reference/view.md),
+  [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md),
+  [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md)
+  and lists take any geometry wk can read (sfc, wkb, wkt, xy, rct, geos,
+  a geoarrow vector, …) or a data frame with such a column, whose other
+  columns are the attributes for `zcol` and popups (`geometry =` names
+  the column when it is not the sf one or the first). `sf` is one such
+  input, no longer the engine: reprojection is PROJ’s
+  ([`wk::wk_transform()`](https://paleolimbot.github.io/wk/reference/wk_transform.html)
+  with
+  [`PROJ::proj_trans_create()`](https://hypertidy.github.io/PROJ/reference/proj_trans_create.html),
+  PROJ in Imports), lon/lat densifying is
+  [`aobcore::vector_densify()`](https://rdrr.io/pkg/aobcore/man/vector_densify.html),
+  and sf is only suggested. A `SpatVector` is read from terra’s own WKB,
+  without sf. A wk `grd` is refused for now (it belongs on the raster
+  path). The transform is point by point, so features crossing the
+  antimeridian or a pole are not cut (as before). Changes: a CRS with no
+  code is passed on as PROJ’s WKT (it was the sf `crs`); the members of
+  a geometry collection keep their row’s place in the layer (they came
+  after the other rows); a feature with any vertex PROJ cannot transform
+  is left out with the existing warning (GDAL, through sf, kept the
+  visible part of a feature that crosses an orthographic view’s
+  horizon). A geometry collection holding an empty member is now drawn
+  (it was left out as untransformable). Geometries with non-finite input
+  coordinates are left out with their own warning. When PROJ cannot find
+  its database (proj.db), as with CRAN’s macOS binary of the PROJ
+  package, aobview points PROJ_DATA at the proj folder shipped with
+  PROJ, sf, terra or gdalraster, the first that works, or says what to
+  set.
+
 - Package skeleton, with R CMD check on Linux, macOS and Windows.
   aobcore is installed from GitHub (`Remotes: allboa/aobcore`)
   ([\#2](https://github.com/allboa/aobview/issues/2)).
+
 - [`view()`](https://allboa.github.io/aobview/reference/view.md) draws
   `sf` and `sfc` points, lines and polygons in a self-contained page
   written by
@@ -12,6 +44,7 @@
   one layer per kind; mixed geometry is split by kind. Printing the view
   opens it in an interactive session
   ([\#2](https://github.com/allboa/aobview/issues/2)).
+
 - [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md)
   is the default view CRS: a projected CRS is kept; lon/lat data
   entirely south of 40S are drawn in EPSG:3031 and entirely north of 60N
@@ -19,6 +52,7 @@
   Lon/lat lines and polygon edges are densified every 0.25 degrees
   before they are transformed
   ([\#2](https://github.com/allboa/aobview/issues/2)).
+
 - [`view()`](https://allboa.github.io/aobview/reference/view.md) draws a
   terra `SpatRaster` as a tiled COG through aobcore (`cog_info()`,
   `cog_plan()`, `scene_add_tiled_raster()`): a raster read unchanged
@@ -31,6 +65,7 @@
   [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md)
   has methods for both. terra and gdalraster are suggested
   ([\#3](https://github.com/allboa/aobview/issues/3)).
+
 - `view(x, zcol = )` colours `sf` and `SpatVector` features by an
   attribute, also through
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md):
@@ -42,6 +77,7 @@
   [`view_colours()`](https://allboa.github.io/aobview/reference/view_colours.md)
   and travel as one RGBA column (`FixedSizeList<uint8, 4>`) beside the
   geometry ([\#5](https://github.com/allboa/aobview/issues/5)).
+
 - Legends ([\#6](https://github.com/allboa/aobview/issues/6)):
   `view(x, zcol = )` adds a scene spec 0.5 legend built from the same
   [`view_colours()`](https://allboa.github.io/aobview/reference/view_colours.md)
@@ -56,6 +92,7 @@
   once the scene is 0.5 (where the renderer draws only the scene’s
   legends); `view(r, legend = FALSE)` leaves it out, which makes the
   scene 0.5.
+
 - Popups ([\#7](https://github.com/allboa/aobview/issues/7)):
   `popup = TRUE` (the default for `sf` and `SpatVector` data) carries
   the first 20 attribute columns in the page, with a message when there
@@ -66,22 +103,26 @@
   and `POSIXlt` as ISO 8601 text; list, raw and matrix columns are left
   out with a message. A view with no legend and no popup keeps its
   earlier scene spec version.
+
 - `tools/write-views.R` also writes each scene as JSON; CI validates
   them with the scenespec validator (pinned to scenespec 9f8df26) and
   runs `tools/popup-check.mjs`, which clicks a station in an EPSG:3031
   view headless and checks its popup’s text.
+
 - `inst/extdata/ccamlr_statistical_areas.geojson`: the CCAMLR
   statistical areas of Areas 48, 58 and 88 (CCAMLR GIS,
   <https://gis.ccamlr.org>), 19 polygons in EPSG:6932 simplified at 2
   km, illustrative only, for examples and tests of a projected CRS that
   is not the view’s. Made by `tools/make-ccamlr-fixture.R`; provenance
   in `inst/extdata/README`.
+
 - A pkgdown site at <https://allboa.github.io/aobview/>, deployed from
   main by GitHub Actions: a home page that says the project is in
   development, a Get started article with live maps written by
   [`view()`](https://allboa.github.io/aobview/reference/view.md), and
   articles on how the allonboard pieces fit together and how to get
   involved.
+
 - [`view()`](https://allboa.github.io/aobview/reference/view.md) and
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
   choose between embedding the view in a page and serving it from a
@@ -100,6 +141,7 @@
   is kept in `tempdir()/aobview-cogs` and deleted when the server stops.
   httpuv is suggested
   ([\#17](https://github.com/allboa/aobview/issues/17)).
+
 - Served views send selections back to R (allboa/design decision 0007):
   `selection(v)` gives the selected rows as indices into the objects
   that were viewed, `selected(v)` the rows themselves (`sf`, `sfc` or
@@ -117,6 +159,7 @@
   on a served view reloads the open page and clears the selection, and
   printing a served view opens the page only when none is connected
   ([\#22](https://github.com/allboa/aobview/issues/22)).
+
 - [`view()`](https://allboa.github.io/aobview/reference/view.md) and
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
   take `style = "minimal"` for sf, sfc and SpatVector data, for
@@ -125,6 +168,7 @@
   fill layer in the page), points as two-pixel dots with no outline, and
   no popup columns unless `popup` asks for them. `popup` now defaults to
   `NULL`, which is `TRUE` except in the minimal style.
+
 - A layer name is no longer deparsed from the whole data when `x` is
   passed by value, as in `do.call(view, list(x))`; that deparse took
   longer than the view itself for large data.

@@ -59,12 +59,12 @@ units, or `NULL`), `trigger` (`"click"`, `"toggle"` or `"clear"`),
 has zero rows when nothing is selected.
 
 `selected(v)` gives the selected rows themselves: `x[rows, ]` of the
-`sf` data frame or `SpatVector` that was viewed, or `x[rows]` of an
-`sfc`, with every column of `x`, not only those of the popup. `source`
-names the object when the view has several: it defaults to the only one
-with selected rows, and is an error naming them when several have
-selected rows. With nothing selected it gives zero rows of the view's
-only object, or `NULL` when the view has several.
+data frame (`sf` included) or `SpatVector` that was viewed, or `x[rows]`
+of a bare geometry vector, with every column of `x`, not only those of
+the popup. `source` names the object when the view has several: it
+defaults to the only one with selected rows, and is an error naming them
+when several have selected rows. With nothing selected it gives zero
+rows of the view's only object, or `NULL` when the view has several.
 
 `wait_for_selection(v)` waits until the page sends its next selection (a
 click, a toggle or a clear), then returns `selected(v)`. It services R's

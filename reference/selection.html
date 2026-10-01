@@ -132,8 +132,9 @@ units, or <code>NULL</code>), <code>trigger</code> (<code>"click"</code>, <code>
 <code>connection</code> (which page), <code>seq</code> and <code>time</code> say where it came from. It
 has zero rows when nothing is selected.</p>
 <p><code>selected(v)</code> gives the selected rows themselves: <code>x[rows, ]</code> of the
-<code>sf</code> data frame or <code>SpatVector</code> that was viewed, or <code>x[rows]</code> of an
-<code>sfc</code>, with every column of <code>x</code>, not only those of the popup. <code>source</code>
+data frame (<code>sf</code> included) or <code>SpatVector</code> that was viewed, or <code>x[rows]</code>
+of a bare geometry vector, with every column of <code>x</code>, not only those of
+the popup. <code>source</code>
 names the object when the view has several: it defaults to the only one
 with selected rows, and is an error naming them when several have
 selected rows. With nothing selected it gives zero rows of the view's

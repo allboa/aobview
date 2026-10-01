@@ -71,11 +71,9 @@ view(
 - crs:
 
   The view CRS: anything
-  [`sf::st_crs()`](https://r-spatial.github.io/sf/reference/st_crs.html)
-  and
   [`aobcore::scene_crs()`](https://rdrr.io/pkg/aobcore/man/scene_crs.html)
-  read, such as `"EPSG:3031"`, `3031` or a PROJ string. `NULL` (the
-  default) uses
+  and 'PROJ' read, such as `"EPSG:3031"`, `3031` or a PROJ string.
+  `NULL` (the default) uses
   [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md).
 
 - layer:
@@ -170,7 +168,8 @@ view(
 - zcol:
 
   The name of a column of `x` to colour features by, or `NULL` (the
-  default) for one colour. Not for an `sfc`, which has no columns.
+  default) for one colour. Not for a bare geometry vector, which has no
+  columns.
 
 - breaks:
 
@@ -230,12 +229,12 @@ popup on another layer) the ramp is written as the raster's legend with
 `legend = FALSE` leaves the ramp out, which needs scene spec 0.5. A
 colour image has no legend.
 
-A `SpatVector` is converted with
-[`sf::st_as_sf()`](https://r-spatial.github.io/sf/reference/st_as_sf.html)
-and drawn as `sf` data is (see
+A `SpatVector` is read from terra's own WKB
+(`terra::geom(x, wkb = TRUE)`) with its attributes, and drawn as any
+vector data is (see
 [`view()`](https://allboa.github.io/aobview/reference/view.md)),
 coloured by an attribute with `zcol` (with a legend) and with its
-attributes as popups; it needs the 'sf' package.
+attributes as popups. It does not need 'sf'.
 
 ## See also
 
@@ -254,5 +253,5 @@ m <- terra::rast(ncols = 72, nrows = 20, xmin = -180, xmax = 180, ymin = -90, ym
                  vals = 1:1440, crs = "OGC:CRS84")
 view(m)
 #> <view> m: 1 layer in EPSG:3031
-#>   /tmp/RtmpJkGJ5M/view-1dfa48462524.html
+#>   /tmp/Rtmpopopmu/view-1e1c226d657b.html
 ```

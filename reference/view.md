@@ -15,7 +15,7 @@ local server instead (see Transport).
 ``` r
 view(x, ...)
 
-# S3 method for class 'sf'
+# Default S3 method
 view(
   x,
   ...,
@@ -38,10 +38,11 @@ view(
   transport = getOption("aobview.transport", "auto")
 )
 
-# S3 method for class 'sfc'
+# S3 method for class 'data.frame'
 view(
   x,
   ...,
+  geometry = NULL,
   crs = NULL,
   densify = NULL,
   style = "default",
@@ -49,6 +50,12 @@ view(
   stroke = NULL,
   stroke_width_px = NULL,
   radius_px = NULL,
+  zcol = NULL,
+  palette = NULL,
+  breaks = NULL,
+  na_colour = "#999999",
+  legend = TRUE,
+  popup = NULL,
   name = NULL,
   file = NULL,
   theme = c("auto", "light", "dark"),
@@ -60,25 +67,23 @@ view(
 
 - x:
 
-  A spatial object: an `sf` data frame or an `sfc` geometry column (with
-  the 'sf' package installed); a 'terra' object
+  A spatial object: a geometry vector 'wk' can handle, or a data frame
+  with such a column (an `sf` data frame, say); a 'terra' object
   ([view-terra](https://allboa.github.io/aobview/reference/view-terra.md));
   or a list of them
   ([view-layers](https://allboa.github.io/aobview/reference/view-layers.md)).
 
 - ...:
 
-  Not used by the `sf` and `sfc` methods: an argument caught here (a
-  misspelled one, say) is an error.
+  Not used by the vector methods: an argument caught here (a misspelled
+  one, say) is an error.
 
 - crs:
 
   The view CRS: anything
-  [`sf::st_crs()`](https://r-spatial.github.io/sf/reference/st_crs.html)
-  and
   [`aobcore::scene_crs()`](https://rdrr.io/pkg/aobcore/man/scene_crs.html)
-  read, such as `"EPSG:3031"`, `3031` or a PROJ string. `NULL` (the
-  default) uses
+  and 'PROJ' read, such as `"EPSG:3031"`, `3031` or a PROJ string.
+  `NULL` (the default) uses
   [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md).
 
 - densify:
@@ -113,7 +118,8 @@ view(
 - zcol:
 
   The name of a column of `x` to colour features by, or `NULL` (the
-  default) for one colour. Not for an `sfc`, which has no columns.
+  default) for one colour. Not for a bare geometry vector, which has no
+  columns.
 
 - palette:
 
@@ -171,6 +177,12 @@ view(
   page or served from a local server (see Transport). Defaults to
   `getOption("aobview.transport", "auto")`.
 
+- geometry:
+
+  For a data frame, the name of its geometry column. `NULL` (the
+  default) takes the `sf` geometry column, else the first column 'wk'
+  can handle.
+
 ## Value
 
 A view: a list of class `"aob_view"` with the `scene` (an
@@ -198,13 +210,38 @@ geometries are dropped, as are Z and M values. The split layers share
 the view's name, with the kind appended to each label, as in
 `"mixed (polygons)"`.
 
+**Inputs.** Vector data are read through 'wk' (allboa/design decision
+0008): `x` can be any geometry vector 'wk' can handle (an `sfc`,
+[`wk::wkb()`](https://paleolimbot.github.io/wk/reference/wkb.html),
+[`wk::wkt()`](https://paleolimbot.github.io/wk/reference/wkt.html),
+[`wk::xy()`](https://paleolimbot.github.io/wk/reference/xy.html),
+[`wk::rct()`](https://paleolimbot.github.io/wk/reference/rct.html), a
+'geos' geometry, a 'geoarrow' vector, ...), or a data frame with such a
+column, whose other columns are the attributes (for `zcol` and popups).
+An `sf` data frame is one; for any other data frame the geometry column
+is the first that 'wk' can handle, or the one named by `geometry`. The
+CRS travels with the geometry
+([`wk::wk_crs()`](https://paleolimbot.github.io/wk/reference/wk_crs.html)).
+A terra `SpatVector` is read from terra's own WKB (see
+[view-terra](https://allboa.github.io/aobview/reference/view-terra.md)).
+A [`wk::grd()`](https://paleolimbot.github.io/wk/reference/grd.html) is
+not drawn yet: a grid belongs on the raster path.
+
 'aobcore' does not reproject, so `x` is transformed to the view CRS here
+by 'PROJ'
+([`wk::wk_transform()`](https://paleolimbot.github.io/wk/reference/wk_transform.html)
 with
-[`sf::st_transform()`](https://r-spatial.github.io/sf/reference/st_transform.html).
+[`PROJ::proj_trans_create()`](https://hypertidy.github.io/PROJ/reference/proj_trans_create.html)).
 When `x` is in lon/lat and the view CRS differs, lines and polygon edges
 are first densified in lon/lat (every `densify` degrees, 0.25 by
-default), so an edge along a parallel curves as it should in a polar
-view instead of cutting across it.
+default, with
+[`aobcore::vector_densify()`](https://rdrr.io/pkg/aobcore/man/vector_densify.html)),
+so an edge along a parallel curves as it should in a polar view instead
+of cutting across it. The transform is point by point: nothing is cut at
+the antimeridian or the poles, so the view is right in any CRS but the
+topology of features that cross a seam is not guaranteed. A point PROJ
+cannot transform (one beyond an orthographic view's horizon, say) leaves
+its feature out, with a warning.
 
 **Colour by attribute.** `zcol` names a column of `x` whose values
 colour each feature: the fill of polygons and points, the stroke of
@@ -305,6 +342,16 @@ for several layers in one view.
 ## Examples
 
 ``` r
+# Any geometry 'wk' can read, with its CRS: no 'sf' needed.
+line <- wk::wkt("LINESTRING (0 -60, 90 -60)", crs = "OGC:CRS84")
+v0 <- view(line)
+v0$scene$view$crs
+#> [1] "EPSG:3031"
+
+# A data frame with a geometry column.
+bases <- data.frame(base = c("Casey", "Davis"))
+bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
+v1 <- view(bases, zcol = "base")
 coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
                                  package = "aobcore"), quiet = TRUE)
 v <- view(coast)

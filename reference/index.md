@@ -27,5 +27,4 @@
 
 - [`aobview`](https://allboa.github.io/aobview/reference/aobview-package.md)
   [`aobview-package`](https://allboa.github.io/aobview/reference/aobview-package.md)
-  : aobview: View 'sf' and 'terra' Data in Their Own Coordinate
-  Reference System
+  : aobview: View Spatial Data in Its Own Coordinate Reference System
