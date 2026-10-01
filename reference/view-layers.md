@@ -3,14 +3,18 @@
 [`view()`](https://allboa.github.io/aobview/reference/view.md) of a list
 draws each element as one or more layers of a single scene, in one view
 CRS, in list order: the first element at the bottom. `view_add()` adds a
-layer to a view already made, on top, and writes a new page.
-`view(a) |> view_add(b)` gives the same scene as
-`view(list(a = a, b = b))` when the two have the same view CRS, that is
-when `view_crs(a)` equals `view_crs(list(a, b))`, as it does whenever
-`a` is projected, or `a` and `b` are both lon/lat south of 40S (or both
-north of 60N). Otherwise they differ: `view_add()` keeps `a`'s view CRS,
-while the list's CRS is chosen from every element (below). Pass `crs =`
-to either form to fix it.
+layer to a view already made, on top, and writes a new page, or, for a
+served view (see Transport in
+[`view()`](https://allboa.github.io/aobview/reference/view.md)), serves
+the new scene on the same server, at the same URL. An embedded view
+whose local raster tiles pass the threshold with the new layer becomes
+served (its earlier page stays on disk). `view(a) |> view_add(b)` gives
+the same scene as `view(list(a = a, b = b))` when the two have the same
+view CRS, that is when `view_crs(a)` equals `view_crs(list(a, b))`, as
+it does whenever `a` is projected, or `a` and `b` are both lon/lat south
+of 40S (or both north of 60N). Otherwise they differ: `view_add()` keeps
+`a`'s view CRS, while the list's CRS is chosen from every element
+(below). Pass `crs =` to either form to fix it.
 
 ## Usage
 
@@ -22,10 +26,19 @@ view(
   crs = NULL,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 
-view_add(v, x, ..., name = NULL, file = NULL, theme = NULL)
+view_add(
+  v,
+  x,
+  ...,
+  name = NULL,
+  file = NULL,
+  theme = NULL,
+  transport = getOption("aobview.transport", "auto")
+)
 ```
 
 ## Arguments
@@ -65,12 +78,20 @@ view_add(v, x, ..., name = NULL, file = NULL, theme = NULL)
 
   Path of the HTML file to write. Defaults to a new file in the
   session's temporary directory. `view_add()` leaves `v`'s page as it
-  is.
+  is. Not used by a served view (with a warning).
 
 - theme:
 
   As for [`view()`](https://allboa.github.io/aobview/reference/view.md).
   `view_add()` defaults to `v`'s theme.
+
+- transport:
+
+  As for [`view()`](https://allboa.github.io/aobview/reference/view.md).
+  For `view_add()`, how the new layers are carried: on a served view,
+  `"embed"` embeds a new local COG's tiles (the server delivers them as
+  blobs) and `"auto"` or `"serve"` serve its file; the view stays served
+  either way.
 
 - v:
 

@@ -82,3 +82,21 @@
   [`view()`](https://allboa.github.io/aobview/reference/view.md), and
   articles on how the allonboard pieces fit together and how to get
   involved.
+- [`view()`](https://allboa.github.io/aobview/reference/view.md) and
+  [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
+  choose between embedding the view in a page and serving it from a
+  local server with
+  [`aobcore::serve_scene()`](https://rdrr.io/pkg/aobcore/man/serve_scene.html)
+  (allboa/design decision 0006). `transport = "auto"` (the default, or
+  `getOption("aobview.transport")`) embeds unless the view’s local
+  raster tiles, counted from each tile plan, pass
+  `getOption("aobview.embed_max")` (32 MiB): then, in an interactive
+  session with httpuv, the view is served with a message (a server is
+  left running), and otherwise embedded with a warning. `"embed"` and
+  `"serve"` force one. A served view has `v$server` and `v$file = NULL`;
+  printing it opens the URL, and
+  [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
+  replaces its scene on the same server. A served layer’s temporary COG
+  is kept in `tempdir()/aobview-cogs` and deleted when the server stops.
+  httpuv is suggested
+  ([\#17](https://github.com/allboa/aobview/issues/17)).

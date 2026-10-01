@@ -10,6 +10,8 @@ placeholder.
 
 Useful links:
 
+- <https://allboa.github.io/aobview/>
+
 - <https://github.com/allboa/aobview>
 
 - Report bugs at <https://github.com/allboa/aobview/issues>

@@ -7,7 +7,8 @@ interactive session opens the page in the IDE's viewer or the browser.
 The page is written by
 [`aobcore::write_scene_html()`](https://rdrr.io/pkg/aobcore/man/write_scene_html.html)
 and needs no server and no network: the data travel in the page as
-native 'GeoArrow'.
+native 'GeoArrow'. A view with large local rasters is served from a
+local server instead (see Transport).
 
 ## Usage
 
@@ -32,7 +33,8 @@ view(
   popup = TRUE,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 
 # S3 method for class 'sfc'
@@ -47,7 +49,8 @@ view(
   radius_px = NULL,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 ```
 
@@ -145,22 +148,33 @@ view(
 - file:
 
   Path of the HTML file to write. Defaults to a new file in the
-  session's temporary directory.
+  session's temporary directory. Not used by a served view (with a
+  warning).
 
 - theme:
 
   `"auto"` follows the browser's light or dark preference; `"light"` or
   `"dark"` fixes it.
 
+- transport:
+
+  `"auto"`, `"embed"` or `"serve"`: whether the view is written to a
+  page or served from a local server (see Transport). Defaults to
+  `getOption("aobview.transport", "auto")`.
+
 ## Value
 
 A view: a list of class `"aob_view"` with the `scene` (an
 [`aobcore::scene()`](https://rdrr.io/pkg/aobcore/man/scene.html)), the
-`file` it was written to, its `name` (the page title), `theme`, and
+`file` it was written to (`NULL` when served), the `server` serving it
+(an `"aob_server"` from
+[`aobcore::serve_scene()`](https://rdrr.io/pkg/aobcore/man/serve_scene.html),
+or `NULL` when embedded), its `name` (the page title), `theme`, and
 `extents`, each layer's extent in the view CRS (from which the initial
 view is set). Add to it with
 [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md).
-Printing it opens the page when the session is interactive.
+Printing it opens the page (or the server's URL) when the session is
+interactive.
 
 ## Details
 
@@ -215,6 +229,28 @@ are carried as they are; factors as their labels, `Date` as
 other atomic classes as their
 [`as.character()`](https://rdrr.io/r/base/character.html) text. List,
 raw and matrix columns cannot be shown and are left out with a message.
+
+**Transport.** A view is embedded (the page above, on disk) or served
+from a local HTTP server by
+[`aobcore::serve_scene()`](https://rdrr.io/pkg/aobcore/man/serve_scene.html),
+which the browser reads a local COG from tile by tile instead of
+carrying its bytes in the page (allboa/design decision 0006).
+`transport = "embed"` always embeds, `"serve"` always serves (it needs
+the 'httpuv' package), and `"auto"` (the default, or
+`getOption("aobview.transport")`) embeds unless the view's local raster
+tiles, counted from each layer's tile plan before any byte is read, come
+to more than `getOption("aobview.embed_max")` bytes (32 MiB by default).
+Then, in an interactive session with 'httpuv' installed, that layer and
+any added later are served, with a message naming the size; otherwise
+the tiles are embedded with a warning. Vector data and remote COGs never
+make a view served by themselves. A served view keeps its server running
+until `v$server$stop()`,
+[`aobcore::stop_scene_servers()`](https://rdrr.io/pkg/aobcore/man/scene_servers.html)
+or the end of the R session; the server answers only while R is idle. A
+temporary COG (see
+[view-terra](https://allboa.github.io/aobview/reference/view-terra.md))
+of a served layer is kept in `file.path(tempdir(), "aobview-cogs")`
+until the server stops.
 
 **Spec version.** The scene is written at the lowest scene spec version
 that can express it

@@ -91,7 +91,8 @@ happens in the mesh.</p>
 <span>  legend <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  theme <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"light"</span>, <span class="st">"dark"</span><span class="op">)</span></span>
+<span>  theme <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"light"</span>, <span class="st">"dark"</span><span class="op">)</span>,</span>
+<span>  transport <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"aobview.transport"</span>, <span class="st">"auto"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'SpatVector'</span></span>
@@ -112,7 +113,8 @@ happens in the mesh.</p>
 <span>  popup <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  theme <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"light"</span>, <span class="st">"dark"</span><span class="op">)</span></span>
+<span>  theme <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"light"</span>, <span class="st">"dark"</span><span class="op">)</span>,</span>
+<span>  transport <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"aobview.transport"</span>, <span class="st">"auto"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -176,12 +178,19 @@ expression passed as <code>x</code>.</p></dd>
 
 <dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>
 <dd><p>Path of the HTML file to write. Defaults to a new file in the
-session's temporary directory.</p></dd>
+session's temporary directory.
+Not used by a served view (with a warning).</p></dd>
 
 
 <dt id="arg-theme">theme<a class="anchor" aria-label="anchor" href="#arg-theme"></a></dt>
 <dd><p><code>"auto"</code> follows the browser's light or dark preference;
 <code>"light"</code> or <code>"dark"</code> fixes it.</p></dd>
+
+
+<dt id="arg-transport">transport<a class="anchor" aria-label="anchor" href="#arg-transport"></a></dt>
+<dd><p><code>"auto"</code>, <code>"embed"</code> or <code>"serve"</code>: whether the view is
+written to a page or served from a local server (see Transport).
+Defaults to <code>getOption("aobview.transport", "auto")</code>.</p></dd>
 
 
 <dt id="arg-densify">densify<a class="anchor" aria-label="anchor" href="#arg-densify"></a></dt>
@@ -238,12 +247,16 @@ overviews (a COG, or an image small enough for one tile), local or
 remote (an <code>http(s)</code> URL or a <code>/vsicurl/</code> path), that file is used. A remote COG is referenced by URL and the browser fetches its tiles
 by HTTP range requests (the server must allow them, and CORS): the page
 carries the recipe, not the data. A local COG's planned tiles are
-embedded in the page. Anything else (a raster in memory, a file that is
+embedded in the page, unless the view is served (see Transport in
+<code><a href="view.html">view()</a></code>): then the server delivers the file. Anything else (a raster in
+memory, a file that is
 striped or has no overviews, several sources, a computed, cropped or
 windowed raster, or one given another <code><a href="https://rspatial.github.io/terra/reference/NAflag.html" class="external-link">terra::NAflag()</a></code>) is
-written to a temporary COG with <code>terra::writeRaster(filetype = "COG")</code>,
-whose planned tiles are embedded, so the page opens from disk with no
-server. The temporary COG is deleted once the page is written.</p>
+written to a temporary COG in <code>file.path(tempdir(), "aobview-cogs")</code>
+with <code>terra::writeRaster(filetype = "COG")</code>. When its planned tiles are
+embedded, so the page opens from disk with no server, the temporary COG
+is deleted once the layer is added; when the view is served, the server
+keeps it until it stops.</p>
 <p><strong>Colour or palette.</strong> A raster of 3 or 4 layers with values 0 to 255
 (Byte) and colour interpretation red, green, blue (and alpha), set with
 <code><a href="https://rspatial.github.io/terra/reference/RGB.html" class="external-link">terra::RGB()</a></code> (in its order) or else from the file, is drawn as a
@@ -277,7 +290,7 @@ and with its attributes as popups; it needs the 'sf' package.</p>
 <span class="r-in"><span>                 vals <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">1440</span>, crs <span class="op">=</span> <span class="st">"OGC:CRS84"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="view.html">view</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;view&gt; m: 1 layer in EPSG:3031</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   /tmp/Rtmp6eOL2H/view-1d424014e556.html</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   /tmp/RtmpWVmpvE/view-1e671019db0e.html</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

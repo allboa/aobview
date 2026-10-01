@@ -26,7 +26,8 @@ view(
   legend = TRUE,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 
 # S3 method for class 'SpatVector'
@@ -47,7 +48,8 @@ view(
   popup = TRUE,
   name = NULL,
   file = NULL,
-  theme = c("auto", "light", "dark")
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
 )
 ```
 
@@ -121,12 +123,19 @@ view(
 - file:
 
   Path of the HTML file to write. Defaults to a new file in the
-  session's temporary directory.
+  session's temporary directory. Not used by a served view (with a
+  warning).
 
 - theme:
 
   `"auto"` follows the browser's light or dark preference; `"light"` or
   `"dark"` fixes it.
+
+- transport:
+
+  `"auto"`, `"embed"` or `"serve"`: whether the view is written to a
+  page or served from a local server (see Transport). Defaults to
+  `getOption("aobview.transport", "auto")`.
 
 - densify:
 
@@ -185,14 +194,17 @@ remote (an `http(s)` URL or a `/vsicurl/` path), that file is used. A
 remote COG is referenced by URL and the browser fetches its tiles by
 HTTP range requests (the server must allow them, and CORS): the page
 carries the recipe, not the data. A local COG's planned tiles are
-embedded in the page. Anything else (a raster in memory, a file that is
-striped or has no overviews, several sources, a computed, cropped or
-windowed raster, or one given another
+embedded in the page, unless the view is served (see Transport in
+[`view()`](https://allboa.github.io/aobview/reference/view.md)): then
+the server delivers the file. Anything else (a raster in memory, a file
+that is striped or has no overviews, several sources, a computed,
+cropped or windowed raster, or one given another
 [`terra::NAflag()`](https://rspatial.github.io/terra/reference/NAflag.html))
-is written to a temporary COG with
-`terra::writeRaster(filetype = "COG")`, whose planned tiles are
-embedded, so the page opens from disk with no server. The temporary COG
-is deleted once the page is written.
+is written to a temporary COG in `file.path(tempdir(), "aobview-cogs")`
+with `terra::writeRaster(filetype = "COG")`. When its planned tiles are
+embedded, so the page opens from disk with no server, the temporary COG
+is deleted once the layer is added; when the view is served, the server
+keeps it until it stops.
 
 **Colour or palette.** A raster of 3 or 4 layers with values 0 to 255
 (Byte) and colour interpretation red, green, blue (and alpha), set with
@@ -234,5 +246,5 @@ m <- terra::rast(ncols = 72, nrows = 20, xmin = -180, xmax = 180, ymin = -90, ym
                  vals = 1:1440, crs = "OGC:CRS84")
 view(m)
 #> <view> m: 1 layer in EPSG:3031
-#>   /tmp/Rtmp6eOL2H/view-1d424014e556.html
+#>   /tmp/RtmpWVmpvE/view-1e671019db0e.html
 ```
