@@ -21,8 +21,9 @@
 #' has zero rows when nothing is selected.
 #'
 #' `selected(v)` gives the selected rows themselves: `x[rows, ]` of the
-#' `sf` data frame or `SpatVector` that was viewed, or `x[rows]` of an
-#' `sfc`, with every column of `x`, not only those of the popup. `source`
+#' data frame (`sf` included) or `SpatVector` that was viewed, or `x[rows]`
+#' of a bare geometry vector, with every column of `x`, not only those of
+#' the popup. `source`
 #' names the object when the view has several: it defaults to the only one
 #' with selected rows, and is an error naming them when several have
 #' selected rows. With nothing selected it gives zero rows of the view's
@@ -253,5 +254,5 @@ rows_of <- function(v, sel, source = NULL) {
   }
   x <- v$sources[[match(source, nms)]]$object
   rows <- sort(unique(sel$row[sel$source == source]))
-  if (inherits(x, "sfc")) x[rows] else x[rows, ]
+  if (is.data.frame(x) || inherits(x, "SpatVector")) x[rows, ] else x[rows]
 }

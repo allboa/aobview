@@ -53,8 +53,9 @@ units, or \code{NULL}), \code{trigger} (\code{"click"}, \code{"toggle"} or \code
 has zero rows when nothing is selected.
 
 \code{selected(v)} gives the selected rows themselves: \code{x[rows, ]} of the
-\code{sf} data frame or \code{SpatVector} that was viewed, or \code{x[rows]} of an
-\code{sfc}, with every column of \code{x}, not only those of the popup. \code{source}
+data frame (\code{sf} included) or \code{SpatVector} that was viewed, or \code{x[rows]}
+of a bare geometry vector, with every column of \code{x}, not only those of
+the popup. \code{source}
 names the object when the view has several: it defaults to the only one
 with selected rows, and is an error naming them when several have
 selected rows. With nothing selected it gives zero rows of the view's

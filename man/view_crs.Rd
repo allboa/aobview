@@ -7,13 +7,13 @@
 view_crs(x)
 }
 \arguments{
-\item{x}{An \code{sf} or \code{sfc} object, a 'terra' \code{SpatRaster} or
-\code{SpatVector}, or a list of them.}
+\item{x}{Geometry 'wk' can handle or a data frame with such a column
+(an \code{sf} object, say), a 'terra' \code{SpatRaster} or \code{SpatVector}, or a
+list of them.}
 }
 \value{
 A CRS for \code{\link[aobcore:scene]{aobcore::scene()}}: an \code{"authority:code"} string such
-as \code{"EPSG:3031"}, or, when the data's CRS has no code, the \code{sf} \code{crs}
-object (for \code{sf} data) or its WKT (for 'terra' data).
+as \code{"EPSG:3031"}, or, when the data's CRS has no code, its WKT.
 }
 \description{
 The CRS \code{\link[=view]{view()}} draws in when \code{crs} is not given. The project is polar
@@ -47,7 +47,8 @@ when every object is in lon/lat, rules 2 to 4 apply to their combined
 latitude range, and rule 4 keeps the first object's CRS.
 
 Data with no CRS is an error: set one first (for example
-\code{sf::st_set_crs()} or \verb{terra::crs<-}), or pass \code{crs} to \code{\link[=view]{view()}}.
+\code{\link[wk:wk_set_crs]{wk::wk_set_crs()}}, \code{sf::st_set_crs()} or \verb{terra::crs<-}), or pass \code{crs}
+to \code{\link[=view]{view()}}. Whether a CRS is lon/lat is read by 'PROJ'.
 }
 \examples{
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}

@@ -34,8 +34,12 @@ test_that("data with no CRS is an error that says how to set one", {
   expect_error(view(x, file = tempfile(fileext = ".html")), "st_set_crs")
 })
 
-test_that("a CRS with no code is passed on as the sf crs", {
+test_that("a CRS with no code is passed on as its WKT", {
   skip_if_not_installed("sf")
   x <- sf::st_sfc(sf::st_point(c(0, 0)), crs = "+proj=laea +lat_0=-90 +datum=WGS84")
-  expect_s3_class(view_crs(x), "crs")
+  crs <- view_crs(x)
+  expect_type(crs, "character")
+  expect_match(crs, "^PROJCRS")
+  w <- wk::wkt("POINT (0 0)", crs = "+proj=laea +lat_0=-90 +datum=WGS84")
+  expect_identical(view_crs(w), crs)
 })

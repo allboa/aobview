@@ -15,11 +15,28 @@
 #' the view's name, with the kind appended to each label, as in
 #' `"mixed (polygons)"`.
 #'
+#' **Inputs.** Vector data are read through 'wk' (allboa/design decision
+#' 0008): `x` can be any geometry vector 'wk' can handle (an `sfc`,
+#' [wk::wkb()], [wk::wkt()], [wk::xy()], [wk::rct()], a 'geos' geometry, a
+#' 'geoarrow' vector, ...), or a data frame with such a column, whose other
+#' columns are the attributes (for `zcol` and popups). An `sf` data frame is
+#' one; for any other data frame the geometry column is the first that 'wk'
+#' can handle, or the one named by `geometry`. The CRS travels with the
+#' geometry ([wk::wk_crs()]). A terra `SpatVector` is read from terra's own
+#' WKB (see [view-terra]). A [wk::grd()] is not drawn yet: a grid belongs on
+#' the raster path.
+#'
 #' 'aobcore' does not reproject, so `x` is transformed to the view CRS here
-#' with [sf::st_transform()]. When `x` is in lon/lat and the view CRS
-#' differs, lines and polygon edges are first densified in lon/lat (every
-#' `densify` degrees, 0.25 by default), so an edge along a parallel curves
-#' as it should in a polar view instead of cutting across it.
+#' by 'PROJ' ([wk::wk_transform()] with [PROJ::proj_trans_create()]). When
+#' `x` is in lon/lat and the view CRS differs, lines and polygon edges are
+#' first densified in lon/lat (every `densify` degrees, 0.25 by default,
+#' with [aobcore::vector_densify()]), so an edge along a parallel curves as
+#' it should in a polar view instead of cutting across it. The transform is
+#' point by point: nothing is cut at the antimeridian or the poles, so the
+#' view is right in any CRS but the topology of features that cross a
+#' seam is not guaranteed. A point PROJ cannot transform (one beyond an
+#' orthographic view's horizon, say) leaves its feature out, with a
+#' warning.
 #'
 #' **Colour by attribute.** `zcol` names a column of `x` whose values
 #' colour each feature: the fill of polygons and points, the stroke of
@@ -79,14 +96,17 @@
 #' that can express it ([aobcore::scene_spec_version()]): a view with no
 #' legend and no popup is unchanged by these features.
 #'
-#' @param x A spatial object: an `sf` data frame or an `sfc` geometry column
-#'   (with the 'sf' package installed); a 'terra' object ([view-terra]); or
-#'   a list of them ([view-layers]).
-#' @param ... Not used by the `sf` and `sfc` methods: an argument caught
-#'   here (a misspelled one, say) is an error.
-#' @param crs The view CRS: anything [sf::st_crs()] and
-#'   [aobcore::scene_crs()] read, such as `"EPSG:3031"`, `3031` or a PROJ
-#'   string. `NULL` (the default) uses [view_crs()].
+#' @param x A spatial object: a geometry vector 'wk' can handle, or a data
+#'   frame with such a column (an `sf` data frame, say); a 'terra' object
+#'   ([view-terra]); or a list of them ([view-layers]).
+#' @param ... Not used by the vector methods: an argument caught here (a
+#'   misspelled one, say) is an error.
+#' @param geometry For a data frame, the name of its geometry column.
+#'   `NULL` (the default) takes the `sf` geometry column, else the first
+#'   column 'wk' can handle.
+#' @param crs The view CRS: anything [aobcore::scene_crs()] and 'PROJ'
+#'   read, such as `"EPSG:3031"`, `3031` or a PROJ string. `NULL` (the
+#'   default) uses [view_crs()].
 #' @param densify Maximum edge length, in the units of `x`'s CRS, for lines
 #'   and polygon edges before they are transformed. `NULL` (the default)
 #'   densifies lon/lat data every 0.25 degrees when the view CRS differs,
@@ -97,7 +117,8 @@
 #'   polygons, blue lines, and blue points with a white outline. `fill` is
 #'   ignored for lines.
 #' @param zcol The name of a column of `x` to colour features by, or `NULL`
-#'   (the default) for one colour. Not for an `sfc`, which has no columns.
+#'   (the default) for one colour. Not for a bare geometry vector, which
+#'   has no columns.
 #' @param palette With `zcol`: a palette name (from
 #'   [grDevices::hcl.pals()] or [grDevices::palette.pals()]) or a function
 #'   of `n` returning `n` colours, such as [grDevices::hcl.colors()]; see
@@ -138,6 +159,16 @@
 #' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
 #'   rasters and vectors; [view-layers] for several layers in one view.
 #' @export
+#' @examples
+#' # Any geometry 'wk' can read, with its CRS: no 'sf' needed.
+#' line <- wk::wkt("LINESTRING (0 -60, 90 -60)", crs = "OGC:CRS84")
+#' v0 <- view(line)
+#' v0$scene$view$crs
+#'
+#' # A data frame with a geometry column.
+#' bases <- data.frame(base = c("Casey", "Davis"))
+#' bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
+#' v1 <- view(bases, zcol = "base")
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
 #' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
 #'                                  package = "aobcore"), quiet = TRUE)
@@ -170,46 +201,46 @@ view <- function(x, ...) {
   UseMethod("view")
 }
 
+#' @rdname view
 #' @export
-view.default <- function(x, ...) {
-  stop(no_method_message(x), call. = FALSE)
+view.default <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
+                         stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+                         palette = NULL, breaks = NULL, na_colour = "#999999",
+                         legend = TRUE, popup = TRUE, name = NULL, file = NULL,
+                         theme = c("auto", "light", "dark"),
+                         transport = getOption("aobview.transport", "auto")) {
+  if (!wk::is_handleable(x)) stop(no_method_message(x), call. = FALSE)
+  check_dots(..., what = "geometry")
+  view_vector(x, NULL, name %||% deparse_name(substitute(x)), crs = crs, densify = densify,
+              fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+              radius_px = radius_px, zcol = zcol, palette = palette, breaks = breaks,
+              na_colour = na_colour, legend = legend, popup = popup, file = file,
+              theme = match.arg(theme), transport = transport)
 }
 
 #' @rdname view
 #' @export
-view.sf <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                    stroke_width_px = NULL, radius_px = NULL, zcol = NULL, palette = NULL,
-                    breaks = NULL, na_colour = "#999999", legend = TRUE, popup = TRUE,
-                    name = NULL, file = NULL, theme = c("auto", "light", "dark"),
-                    transport = getOption("aobview.transport", "auto")) {
-  check_dots(..., what = "sf data")
-  need_sf()
-  name <- name %||% deparse_name(substitute(x))
-  theme <- match.arg(theme)
-  transport <- check_transport(transport)
-  v <- new_view(crs %||% view_crs(x), transport)
-  v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
-                  stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
-                  palette = palette, breaks = breaks, na_colour = na_colour,
-                  legend = legend, popup = popup)
-  finish_view(v, name, file, theme)
+view.data.frame <- function(x, ..., geometry = NULL, crs = NULL, densify = NULL, fill = NULL,
+                            stroke = NULL, stroke_width_px = NULL, radius_px = NULL,
+                            zcol = NULL, palette = NULL, breaks = NULL,
+                            na_colour = "#999999", legend = TRUE, popup = TRUE, name = NULL,
+                            file = NULL, theme = c("auto", "light", "dark"),
+                            transport = getOption("aobview.transport", "auto")) {
+  check_dots(..., what = "a data frame")
+  view_vector(x, geometry, name %||% deparse_name(substitute(x)), crs = crs,
+              densify = densify, fill = fill, stroke = stroke,
+              stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
+              palette = palette, breaks = breaks, na_colour = na_colour, legend = legend,
+              popup = popup, file = file, theme = match.arg(theme), transport = transport)
 }
 
-#' @rdname view
-#' @export
-view.sfc <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                     stroke_width_px = NULL, radius_px = NULL, name = NULL,
-                     file = NULL, theme = c("auto", "light", "dark"),
-                     transport = getOption("aobview.transport", "auto")) {
-  no_zcol_for_sfc(...)
-  check_dots(..., what = "sf data")
-  need_sf()
-  name <- name %||% deparse_name(substitute(x))
-  theme <- match.arg(theme)
+## One vector object in a view of its own (the default and data frame
+## methods, and SpatVector's).
+view_vector <- function(x, geometry, name, crs, ..., file, theme, transport) {
   transport <- check_transport(transport)
-  v <- new_view(crs %||% view_crs(x), transport)
-  v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
-                  stroke_width_px = stroke_width_px, radius_px = radius_px)
+  rec <- vector_record(x, geometry)
+  v <- new_view(crs %||% combined_view_crs(list(record_crs_facts(rec))), transport)
+  v <- add_record(rec, v, name, ..., source = x)
   finish_view(v, name, file, theme)
 }
 
@@ -258,40 +289,26 @@ add_layers.default <- function(x, v, name, ...) {
 }
 
 #' @export
-add_layers.sf <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
-                          stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
-                          palette = NULL, breaks = NULL, na_colour = "#999999",
-                          legend = TRUE, popup = TRUE) {
-  check_dots(..., what = "sf data")
-  need_sf()
-  add_sf(x, v, name, densify,
-         style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                      radius_px = radius_px),
-         zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour,
-         legend = legend, popup = popup)
+add_layers.default <- function(x, v, name, ..., geometry = NULL) {
+  if (!wk::is_handleable(x) && !is.data.frame(x)) stop(no_method_message(x), call. = FALSE)
+  add_record(vector_record(x, geometry), v, name, ..., source = x)
 }
 
-#' @export
-add_layers.sfc <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
-                           stroke_width_px = NULL, radius_px = NULL) {
-  no_zcol_for_sfc(...)
-  check_dots(..., what = "sf data")
-  need_sf()
-  add_sfc(x, v, name, densify,
-          style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                       radius_px = radius_px))
-}
-
-## An sf data frame's layers: its geometry, coloured by column `zcol` when
-## given, with a legend for those colours and popup attribute columns.
-## Shared by the sf and SpatVector methods.
-add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, breaks = NULL,
-                   na_colour = "#999999", legend = TRUE, popup = TRUE, source = x) {
+## A vector record's layers (see vector_record()): its geometry, coloured
+## by column `zcol` when given, with a legend for those colours and popup
+## attribute columns. Shared by every vector input.
+add_record <- function(rec, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
+                       stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
+                       palette = NULL, breaks = NULL, na_colour = "#999999", legend = TRUE,
+                       popup = TRUE, source) {
+  check_dots(..., what = if (is.null(rec$attrs)) "geometry" else "a data frame")
   force(source)
+  style <- list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+                radius_px = radius_px)
   check_flag(legend, "legend")
   rgba <- NULL
   if (!is.null(zcol)) {
-    values <- zcol_values(x, zcol)
+    values <- zcol_values(rec$attrs, zcol)
     if (!is.null(style$fill)) {
       stop("`fill` and `zcol` both set the fill colour; use one.", call. = FALSE)
     }
@@ -299,10 +316,10 @@ add_sf <- function(x, v, name, densify, style, zcol = NULL, palette = NULL, brea
   } else if (!is.null(palette) || !is.null(breaks)) {
     stop("`palette` and `breaks` colour a column: give `zcol` too.", call. = FALSE)
   }
-  attrs <- popup_attributes(x, popup)
+  attrs <- popup_attributes(rec$attrs, popup, rec$geometry)
   before <- layer_ids(v$scene)
-  v <- add_sfc(sf::st_geometry(x), v, name, densify, style, rgba = rgba, attrs = attrs,
-               source = source)
+  v <- add_geometry(rec$geom, v, name, densify, style, rgba = rgba, attrs = attrs,
+                    source = source)
   drawn <- v$drawn
   v$drawn <- NULL
   if (!is.null(rgba) && legend) {
@@ -323,19 +340,17 @@ check_flag <- function(x, arg) {
   if (!isTRUE(x) && !isFALSE(x)) stop("`", arg, "` must be TRUE or FALSE.", call. = FALSE)
 }
 
-no_zcol_for_sfc <- function(...) {
-  if ("zcol" %in% names(list(...))) {
-    stop("`zcol` needs a column to colour by; an sfc has none. Use an sf data frame.",
-         call. = FALSE)
-  }
-}
-
-## The values of column `zcol` of x (sf, or any data frame).
-zcol_values <- function(x, zcol) {
+## The values of column `zcol` of attribute data frame `attrs` (NULL for a
+## bare geometry vector, which has no columns).
+zcol_values <- function(attrs, zcol) {
   if (!is.character(zcol) || length(zcol) != 1L || is.na(zcol) || !nzchar(zcol)) {
     stop("`zcol` must be the name of one column.", call. = FALSE)
   }
-  cols <- setdiff(names(x), attr(x, "sf_column"))
+  if (is.null(attrs)) {
+    stop("`zcol` needs a column to colour by; a bare geometry vector has none. ",
+         "Use a data frame with a geometry column.", call. = FALSE)
+  }
+  cols <- names(attrs)
   if (!zcol %in% cols) {
     stop("`zcol` \"", zcol, "\" is not a column of `x`",
          if (length(cols)) paste0("; it has ", paste0("\"", utils::head(cols, 10L), "\"",
@@ -345,7 +360,7 @@ zcol_values <- function(x, zcol) {
          else "; it has no attribute columns",
          ".", call. = FALSE)
   }
-  x[[zcol]]
+  attrs[[zcol]]
 }
 
 ## `rgba`, when given, is an n x 4 matrix of colours, one row per element
@@ -359,19 +374,24 @@ zcol_values <- function(x, zcol) {
 ## Arrow data) came from row idx[i] of the source. Empty and untransformable
 ## geometries have no layer row; a geometry collection's parts can give one
 ## source row several (decision 0007, item 3). See selection().
-add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL, source = g) {
+add_geometry <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL, source = g) {
   force(source)
   if (length(g) == 0L) stop("`x` has no geometries to view.", call. = FALSE)
   rows <- seq_along(g)
-  keep <- !sf::st_is_empty(g)
+  keep <- !wk::wk_meta(g)$is_empty
   g <- g[keep]
   rows <- rows[keep]
   if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
   s <- v$scene
   view <- s$view$crs
-  warn_geographic_view(g, view)
-  g <- to_view_crs(g, view, densify)
-  lost <- sf::st_is_empty(g)
+  flat <- flatten_collections(g, rows)
+  g <- flat$g
+  rows <- flat$rows
+  if (length(g) == 0L) stop("Every geometry in `x` is empty.", call. = FALSE)
+  src <- source_crs(g, view)
+  warn_geographic_view(src, view)
+  g <- to_view_crs(g, src, view, densify)
+  lost <- !finite_envelope(g)
   if (all(lost)) {
     stop("No geometry in `x` could be transformed to the view CRS ", crs_text(view),
          " (is a datum grid PROJ needs missing?).", call. = FALSE)
@@ -392,8 +412,7 @@ add_sfc <- function(g, v, name, densify, style, rgba = NULL, attrs = NULL, sourc
   for (kind in names(parts)) {
     id <- if (multi) paste0(base, "_", kind) else base
     label <- if (multi) paste0(name, " (", kind_label[[kind]], ")") else name
-    geom <- wk::wk_set_crs(wk::as_wkb(parts[[kind]]), NULL)
-    geom <- wk::wk_set_crs(geom, view)
+    geom <- wk::wk_set_crs(parts[[kind]], view)
     style_k <- layer_style(kind, style)
     idx <- rows[split$rows[[kind]]]
     row_maps[[id]] <- as.integer(idx)
@@ -614,13 +633,13 @@ unique_name <- function(name, taken) {
 ## Columns carried for popup = TRUE; more are left out with a message.
 popup_max <- 20L
 
-## The popup columns of x as a data frame of writable columns, or NULL for
-## none. popup is TRUE (the first popup_max attribute columns), FALSE, or a
-## character vector of column names.
-popup_attributes <- function(x, popup) {
+## The popup columns of attribute data frame `df` (NULL for a bare geometry
+## vector) as a data frame of writable columns, or NULL for none. popup is
+## TRUE (the first popup_max attribute columns), FALSE, or a character
+## vector of column names.
+popup_attributes <- function(df, popup, geom = NULL) {
   if (isFALSE(popup) || is.null(popup)) return(NULL)
-  geom <- attr(x, "sf_column")
-  cols <- setdiff(names(x), geom)
+  cols <- names(df)
   if (isTRUE(popup)) {
     if (!length(cols)) return(NULL)
     if (length(cols) > popup_max) {
@@ -643,7 +662,6 @@ popup_attributes <- function(x, popup) {
   } else {
     stop("`popup` must be TRUE, FALSE or a character vector of column names.", call. = FALSE)
   }
-  df <- sf::st_drop_geometry(x)
   out <- lapply(cols, function(nm) popup_column(df[[nm]]))
   names(out) <- cols
   bad <- vapply(out, is.null, TRUE)
@@ -717,8 +735,16 @@ view_extent <- function(extents, bounds) {
 }
 
 bbox_extent <- function(g) {
-  bb <- sf::st_bbox(g)
-  as.numeric(bb[c("xmin", "xmax", "ymin", "ymax")])
+  bb <- unclass(wk::wk_bbox(g))
+  as.numeric(c(bb$xmin, bb$xmax, bb$ymin, bb$ymax))
+}
+
+## For each geometry, are its coordinates all finite? PROJ gives Inf for a
+## point it cannot transform (one outside an orthographic view's hemisphere,
+## say).
+finite_envelope <- function(g) {
+  e <- unclass(wk::wk_envelope(g))
+  is.finite(e$xmin) & is.finite(e$xmax) & is.finite(e$ymin) & is.finite(e$ymax)
 }
 
 ## A layer id from `base` that, with each of `suffixes`, is neither a layer
@@ -748,38 +774,29 @@ check_dots <- function(..., what) {
 
 no_method_message <- function(x) {
   paste0("view() has no method for class ", paste(class(x), collapse = "/"),
-         "; it draws sf and sfc objects, terra SpatRaster and SpatVector objects, ",
-         "and lists of them.")
+         "; it draws geometry that wk can read (sfc, wkb, wkt, xy, rct, geos, ...), ",
+         "data frames with such a column (sf included), terra SpatRaster and ",
+         "SpatVector objects, and lists of them.")
 }
 
-## Transform to the view CRS, densifying first (see ?view).
-to_view_crs <- function(g, view, densify) {
-  src <- sf::st_crs(g)
-  if (is.na(src)) {
-    stop("`x` has no CRS. Set one with sf::st_set_crs() before viewing it in ",
-         crs_text(view), ".", call. = FALSE)
-  }
-  target <- sf::st_crs(as.character(view))
-  if (isTRUE(src == target)) return(g)
-  step <- densify_step(densify, isTRUE(sf::st_is_longlat(g)))
-  if (step > 0) {
-    ## Planar segmentize in the source units: an edge in lon/lat is straight
-    ## in lon/lat (as GDAL's -segmentize), not a great circle.
-    sf::st_crs(g) <- NA
-    g <- sf::st_segmentize(g, step)
-    sf::st_crs(g) <- src
-  }
-  sf::st_transform(g, target)
+## Transform wkb g from CRS `src` to the view CRS with PROJ, densifying
+## first (see ?view).
+to_view_crs <- function(g, src, view, densify) {
+  if (same_crs(src, view)) return(g)
+  step <- densify_step(densify, crs_is_lonlat(src))
+  ## Planar densify in the source units: an edge in lon/lat is straight in
+  ## lon/lat (as GDAL's -segmentize), not a great circle.
+  if (step > 0) g <- aobcore::vector_densify(g, step)
+  proj_transform(g, src, view)
 }
 
 ## Decision 0004 rules out a per-coordinate transform of projected data into
 ## a geographic view: nothing cuts it at the antimeridian or the poles.
 ## (#9, item 2.) Warn, and say how to get a projected view.
-warn_geographic_view <- function(g, view) {
-  src <- sf::st_crs(g)
-  if (is.na(src) || isTRUE(sf::st_is_longlat(g))) return(invisible())
-  target <- tryCatch(sf::st_crs(as.character(view)), error = function(e) NULL)
-  if (is.null(target) || !isTRUE(target$IsGeographic)) return(invisible())
+warn_geographic_view <- function(src, view) {
+  if (crs_is_lonlat(src)) return(invisible())
+  geographic <- tryCatch(crs_is_lonlat(view), error = function(e) FALSE)
+  if (!geographic) return(invisible())
   warning("`x` is in a projected CRS but the view CRS ", crs_text(view), " is geographic: ",
           "its coordinates are transformed point by point, with nothing cut at the ",
           "antimeridian or the poles, so lines and polygons that cross them are drawn wrongly. ",
@@ -796,39 +813,57 @@ densify_step <- function(densify, longlat) {
   as.numeric(densify)
 }
 
-## Split geometry into point, line and polygon parts, bottom to top.
-## Returns the parts and, for each, the index into g of each part's row (a
-## collection's members share its row).
-split_kinds <- function(g) {
-  rows <- seq_along(g)
-  type <- as.character(sf::st_geometry_type(g, by_geometry = TRUE))
-  if (any(type == "GEOMETRYCOLLECTION")) {
-    is_gc <- type == "GEOMETRYCOLLECTION"
-    gc <- sf::st_sf(.row = rows[is_gc], geometry = g[is_gc])
-    parts <- lapply(c("POLYGON", "LINESTRING", "POINT"), function(t) {
-      suppressWarnings(sf::st_collection_extract(gc, t))
-    })
-    g <- do.call(c, c(list(g[!is_gc]), lapply(parts, sf::st_geometry)))
-    rows <- c(rows[!is_gc], unlist(lapply(parts, function(p) p$.row)))
-    keep <- !sf::st_is_empty(g)
+## wk geometry type codes.
+wk_types <- c(point = 1L, linestring = 2L, polygon = 3L, multipoint = 4L,
+              multilinestring = 5L, multipolygon = 6L, geometrycollection = 7L)
+
+## Replace each geometry collection by its members (nested collections
+## too), dropping empty members. Returns the geometries and, for each, the
+## index of its source row (a collection's members share its row).
+flatten_collections <- function(g, rows) {
+  repeat {
+    type <- wk::wk_meta(g)$geometry_type
+    is_gc <- type == wk_types[["geometrycollection"]]
+    if (!any(is_gc)) break
+    out <- unclass(g)
+    out_rows <- as.list(rows)
+    for (i in which(is_gc)) {
+      members <- wk::wk_flatten(g[i], max_depth = 1L)
+      out[[i]] <- list(unclass(members))
+      out_rows[[i]] <- rep(rows[i], length(members))
+    }
+    out <- unlist(lapply(seq_along(out), function(i) {
+      if (is_gc[i]) out[[i]][[1L]] else out[i]
+    }), recursive = FALSE)
+    g <- wk::wkb(out, crs = wk::wk_crs(g))
+    rows <- unlist(out_rows)
+    keep <- !wk::wk_meta(g)$is_empty
     g <- g[keep]
     rows <- rows[keep]
-    type <- as.character(sf::st_geometry_type(g, by_geometry = TRUE))
   }
-  kinds <- c(polygon = "POLYGON", path = "LINESTRING", point = "POINT")
+  list(g = g, rows = rows)
+}
+
+## Split geometry (no collections) into polygon, line and point parts,
+## bottom to top. Returns the parts and, for each, the indices into g.
+split_kinds <- function(g) {
+  type <- wk::wk_meta(g)$geometry_type
+  kinds <- list(polygon = wk_types[c("polygon", "multipolygon")],
+                path = wk_types[c("linestring", "multilinestring")],
+                point = wk_types[c("point", "multipoint")])
   out <- list()
   out_rows <- list()
   for (k in names(kinds)) {
-    keep <- type %in% c(kinds[[k]], paste0("MULTI", kinds[[k]]))
+    keep <- type %in% kinds[[k]]
     if (any(keep)) {
       out[[k]] <- g[keep]
-      out_rows[[k]] <- rows[keep]
+      out_rows[[k]] <- which(keep)
     }
   }
-  other <- setdiff(unique(type), c(kinds, paste0("MULTI", kinds)))
+  other <- setdiff(unique(type), unlist(kinds))
   if (length(other)) {
     stop("view() draws points, lines and polygons; `x` also has ",
-         paste(other, collapse = ", "), ". Convert those first (for example sf::st_cast()).",
+         paste(names(wk_types)[other], collapse = ", "), ". Convert those first.",
          call. = FALSE)
   }
   list(parts = out, rows = out_rows)
@@ -884,12 +919,6 @@ open_page <- function(file) {
                        normalizePath(tempdir(), mustWork = FALSE))
   if (is.function(viewer) && in_tmp) viewer(file) else utils::browseURL(file)
   invisible(file)
-}
-
-need_sf <- function() {
-  if (!requireNamespace("sf", quietly = TRUE)) {
-    stop("view() of sf data needs the 'sf' package.", call. = FALSE)
-  }
 }
 
 `%||%` <- function(x, y) if (is.null(x)) y else x

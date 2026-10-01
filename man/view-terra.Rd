@@ -50,9 +50,9 @@
 \code{SpatVector}: an argument caught there (a misspelled one, say) is an
 error.}
 
-\item{crs}{The view CRS: anything \code{\link[sf:st_crs]{sf::st_crs()}} and
-\code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ
-string. \code{NULL} (the default) uses \code{\link[=view_crs]{view_crs()}}.}
+\item{crs}{The view CRS: anything \code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} and 'PROJ'
+read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ string. \code{NULL} (the
+default) uses \code{\link[=view_crs]{view_crs()}}.}
 
 \item{layer}{The layer to draw through the palette (a number or name).
 Giving it draws that layer even when \code{x} is a colour image.}
@@ -106,7 +106,8 @@ ignored for lines.}
 \item{radius_px}{Point radius in pixels.}
 
 \item{zcol}{The name of a column of \code{x} to colour features by, or \code{NULL}
-(the default) for one colour. Not for an \code{sfc}, which has no columns.}
+(the default) for one colour. Not for a bare geometry vector, which
+has no columns.}
 
 \item{breaks}{With a numeric \code{zcol}: increasing break points that bin
 the values into classes, one colour each; see \code{\link[=view_colours]{view_colours()}}.}
@@ -160,9 +161,9 @@ popup on another layer) the ramp is written as the raster's legend with
 \code{\link[aobcore:scene_add_legend]{aobcore::scene_add_legend()}}. \code{legend = FALSE} leaves the ramp out,
 which needs scene spec 0.5. A colour image has no legend.
 
-A \code{SpatVector} is converted with \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and drawn as \code{sf} data
-is (see \code{\link[=view]{view()}}), coloured by an attribute with \code{zcol} (with a legend)
-and with its attributes as popups; it needs the 'sf' package.
+A \code{SpatVector} is read from terra's own WKB (\code{terra::geom(x, wkb = TRUE)}) with its attributes, and drawn as any vector data is (see
+\code{\link[=view]{view()}}), coloured by an attribute with \code{zcol} (with a legend) and with
+its attributes as popups. It does not need 'sf'.
 }
 \examples{
 \dontshow{if (requireNamespace("terra", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")) withAutoprint(\{ # examplesIf}

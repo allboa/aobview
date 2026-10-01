@@ -17,10 +17,11 @@
 #' the list's CRS is chosen from every element (below). Pass `crs =` to
 #' either form to fix it.
 #'
-#' Elements may be `sf` or `sfc` objects and 'terra' `SpatRaster` or
-#' `SpatVector` objects, in any mix of CRSs. Each is drawn as [view()] or
-#' [view-terra] draws it on its own, with its default style, and reprojected
-#' to the view CRS: vectors with [sf::st_transform()] (lon/lat edges
+#' Elements may be any vector input [view()] takes (geometry 'wk' can
+#' handle, or a data frame with such a column, `sf` included) and 'terra'
+#' `SpatRaster` or `SpatVector` objects, in any mix of CRSs. Each is drawn
+#' as [view()] or [view-terra] draws it on its own, with its default style,
+#' and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
 #' densified first), rasters by [aobcore::cog_plan()]'s meshes.
 #'
 #' **View CRS.** `crs` when given; otherwise [view_crs()] of the whole list:
@@ -153,12 +154,14 @@ add_list <- function(x, v, labels) {
 
 check_list <- function(x, labels) {
   if (!length(x)) stop("The list has nothing to view.", call. = FALSE)
-  ok <- vapply(x, function(el) inherits(el, c("sf", "sfc", "SpatRaster", "SpatVector")), TRUE)
+  ok <- vapply(x, function(el) {
+    inherits(el, c("SpatRaster", "SpatVector")) || is.data.frame(el) || wk::is_handleable(el)
+  }, TRUE)
   if (!all(ok)) {
     i <- which(!ok)[1]
     stop("List element ", i, " (", labels[i], ") is a ", paste(class(x[[i]]), collapse = "/"),
-         "; a list for view() holds sf and sfc objects, and terra SpatRaster and ",
-         "SpatVector objects.", call. = FALSE)
+         "; a list for view() holds geometry that wk can read, data frames with such a ",
+         "column (sf included), and terra SpatRaster and SpatVector objects.", call. = FALSE)
   }
   invisible(x)
 }
