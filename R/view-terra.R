@@ -98,10 +98,10 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
 
 #' @rdname view-terra
 #' @export
-view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, stroke = NULL,
-                            stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
-                            palette = NULL, breaks = NULL, na_colour = "#999999",
-                            legend = TRUE, popup = TRUE, name = NULL, file = NULL,
+view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, style = "default", fill = NULL,
+                            stroke = NULL, stroke_width_px = NULL, radius_px = NULL,
+                            zcol = NULL, palette = NULL, breaks = NULL, na_colour = "#999999",
+                            legend = TRUE, popup = NULL, name = NULL, file = NULL,
                             theme = c("auto", "light", "dark"),
                             transport = getOption("aobview.transport", "auto")) {
   check_dots(..., what = "a SpatVector")
@@ -112,7 +112,7 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, str
   transport <- check_transport(transport)
   check_terra_crs(x)
   v <- new_view(crs %||% view_crs(x), transport)
-  v <- add_layers(x, v, name, densify = densify, fill = fill, stroke = stroke,
+  v <- add_layers(x, v, name, densify = densify, style = style, fill = fill, stroke = stroke,
                   stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
                   palette = palette, breaks = breaks, na_colour = na_colour,
                   legend = legend, popup = popup)
@@ -120,17 +120,17 @@ view.SpatVector <- function(x, ..., crs = NULL, densify = NULL, fill = NULL, str
 }
 
 #' @export
-add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, fill = NULL, stroke = NULL,
-                                  stroke_width_px = NULL, radius_px = NULL, zcol = NULL,
-                                  palette = NULL, breaks = NULL, na_colour = "#999999",
-                                  legend = TRUE, popup = TRUE) {
+add_layers.SpatVector <- function(x, v, name, ..., densify = NULL, style = "default",
+                                  fill = NULL, stroke = NULL, stroke_width_px = NULL,
+                                  radius_px = NULL, zcol = NULL, palette = NULL, breaks = NULL,
+                                  na_colour = "#999999", legend = TRUE, popup = NULL) {
   check_dots(..., what = "a SpatVector")
   need_terra()
   need_sf()
   check_terra_crs(x)
   add_sf(sf::st_as_sf(x), v, name, densify,
-         style = list(fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
-                      radius_px = radius_px),
+         style = list(preset = check_style(style), fill = fill, stroke = stroke,
+                      stroke_width_px = stroke_width_px, radius_px = radius_px),
          zcol = zcol, palette = palette, breaks = breaks, na_colour = na_colour,
          legend = legend, popup = popup, source = x)
 }
