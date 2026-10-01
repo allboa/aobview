@@ -33,7 +33,7 @@ test_that("a data frame's geometry column is found or named, the rest are attrib
   v <- view(df, zcol = "base", file = html())
   expect_identical(v$scene$view$crs, "EPSG:3031")
   expect_identical(blob_names(v, "df"), c("base", "staff", "geometry", "color"))
-  expect_identical(blob_column(v, "df", "staff"), c(70, 80))
+  expect_identical(blob_df(v, "df")$staff, c(70, 80))
   expect_length(v$scene$legends, 1L)
   expect_identical(v$sources[[1]]$object, df)
   ## Two geometry columns: the first, or the one named.
@@ -117,7 +117,7 @@ test_that("a SpatVector is read through terra's WKB, without sf", {
   expect_s3_class(rec$geom, "wk_wkb")
   expect_identical(rec$attrs$base, c("Casey", "Davis"))
   v <- view(sv, popup = "base", file = html())
-  expect_identical(blob_column(v, "sv", "base"), c("Casey", "Davis"))
+  expect_identical(blob_df(v, "sv")$base, c("Casey", "Davis"))
   expect_s4_class(v$sources[[1]]$object, "SpatVector")
 })
 
