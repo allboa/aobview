@@ -2,6 +2,22 @@
 
 ## aobview 0.0.0.9000
 
+- [`view()`](https://allboa.github.io/aobview/reference/view.md) of a
+  `SpatRaster` read unchanged from a GDAL dataset that is not a usable
+  COG and whose full grid is more than the tile plan can draw (a WMS or
+  TMS tile service, a VRT, any huge virtual grid) no longer has terra
+  write the whole grid
+  ([\#21](https://github.com/allboa/aobview/issues/21)). GDAL reads only
+  the planned extent, at the finest power-of-two reduction whose
+  temporary COG fits `max_tiles`
+  ([`gdalraster::translate()`](https://firelab.github.io/gdalraster/reference/translate.html),
+  which takes the dataset’s overviews or zoom levels), with a message
+  saying how much was read; `extent` reads part of the grid in more
+  detail. The choice is made from the dataset’s size, and no cell is
+  scanned: a colour image’s alpha is the dataset’s mask. Smaller
+  datasets are written by terra as before. Pointing the renderer at a
+  service’s own tile pyramid is left for later.
+
 - The server’s state is read through aobcore’s `serve_scene()` handle
   methods `running()` and `status()` rather than its internal `state`
   ([\#20](https://github.com/allboa/aobview/issues/20)).

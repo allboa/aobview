@@ -213,6 +213,27 @@ embedded, so the page opens from disk with no server, the temporary COG
 is deleted once the layer is added; when the view is served, the server
 keeps it until it stops.
 
+**Datasets too large to write whole.** When `x` is read unchanged from
+one GDAL dataset that is not such a COG (a tile service such as WMS or
+TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would
+hold more tiles than the plan's `max_tiles` (1024 by default) can draw,
+terra does not write it. GDAL reads the dataset itself
+([`gdalraster::translate()`](https://firelab.github.io/gdalraster/reference/translate.html),
+in the dataset's own grid and CRS) into the temporary COG, at the finest
+power-of-two reduction whose COG fits `max_tiles`; GDAL takes the
+dataset's overviews or zoom levels for that. With `extent` (in the view
+CRS, passed to
+[`aobcore::cog_plan()`](https://rdrr.io/pkg/aobcore/man/cog_plan.html))
+only that part of the grid is read, so a smaller extent shows more
+detail, and with `units_per_pixel` as well, no finer than that view
+needs. A message says how much was read. The choice is made from the
+dataset's size, before any cell is read, and no cell is scanned: a
+colour image's transparency is the dataset's mask (its no-data value,
+mask band or alpha band), written as an alpha band. A service whose mask
+says every cell is valid (as a WMS or TMS of three bands usually does)
+draws a missing tile as black (zero), not transparent. A dataset whose
+full grid fits is written by terra as above.
+
 **Colour or palette.** A raster of 3 or 4 layers with values 0 to 255
 (Byte) and colour interpretation red, green, blue (and alpha), set with
 [`terra::RGB()`](https://rspatial.github.io/terra/reference/RGB.html)
@@ -253,5 +274,5 @@ m <- terra::rast(ncols = 72, nrows = 20, xmin = -180, xmax = 180, ymin = -90, ym
                  vals = 1:1440, crs = "OGC:CRS84")
 view(m)
 #> <view> m: 1 layer in EPSG:3031
-#>   /tmp/RtmpECQD6X/view-1e0132d40f39.html
+#>   /tmp/Rtmp0ziO15/view-1dba5b43bfe0.html
 ```

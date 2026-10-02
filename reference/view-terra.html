@@ -266,6 +266,24 @@ with <code>terra::writeRaster(filetype = "COG")</code>. When its planned tiles a
 embedded, so the page opens from disk with no server, the temporary COG
 is deleted once the layer is added; when the view is served, the server
 keeps it until it stops.</p>
+<p><strong>Datasets too large to write whole.</strong> When <code>x</code> is read unchanged from
+one GDAL dataset that is not such a COG (a tile service such as WMS or
+TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would
+hold more tiles than the plan's <code>max_tiles</code> (1024 by default) can draw,
+terra does not write it. GDAL reads the dataset itself
+(<code><a href="https://firelab.github.io/gdalraster/reference/translate.html" class="external-link">gdalraster::translate()</a></code>, in the dataset's own grid and CRS) into the
+temporary COG, at the finest power-of-two reduction whose COG fits
+<code>max_tiles</code>; GDAL takes the dataset's overviews or zoom levels for that.
+With <code>extent</code> (in the view CRS, passed to <code><a href="https://rdrr.io/pkg/aobcore/man/cog_plan.html" class="external-link">aobcore::cog_plan()</a></code>) only that
+part of the grid is read, so a smaller extent shows more detail, and with
+<code>units_per_pixel</code> as well, no finer than that view needs. A message says
+how much was read. The choice is made from the dataset's size, before any
+cell is read, and no cell is scanned: a colour image's transparency is
+the dataset's mask (its no-data value, mask band or alpha band), written
+as an alpha band. A service whose mask says every cell is valid (as a
+WMS or TMS of three bands usually does) draws a missing tile as black
+(zero), not transparent. A dataset whose full grid fits is written by
+terra as above.</p>
 <p><strong>Colour or palette.</strong> A raster of 3 or 4 layers with values 0 to 255
 (Byte) and colour interpretation red, green, blue (and alpha), set with
 <code><a href="https://rspatial.github.io/terra/reference/RGB.html" class="external-link">terra::RGB()</a></code> (in its order) or else from the file, is drawn as a
@@ -299,7 +317,7 @@ its attributes as popups. It does not need 'sf'.</p>
 <span class="r-in"><span>                 vals <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">1440</span>, crs <span class="op">=</span> <span class="st">"OGC:CRS84"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="view.html">view</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;view&gt; m: 1 layer in EPSG:3031</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   /tmp/RtmpECQD6X/view-1e0132d40f39.html</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   /tmp/Rtmp0ziO15/view-1dba5b43bfe0.html</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
