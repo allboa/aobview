@@ -108,9 +108,9 @@ test_that("rmarkdown renders two views with one copy of the renderer", {
   # As wide as the document's column, whatever fig.retina makes of out.width.
   expect_match(page, "<div class=\"aob-fragment\" style=\"width:100%;height:480px;\" data-aob-scene=",
                fixed = TRUE)
-  # The bundle's banner, once (inlined or as a data URI, the document is
-  # self-contained either way).
-  n <- lengths(regmatches(page, gregexpr("aob-renderer [0-9.]+: allonboard", page)))
-  n64 <- lengths(regmatches(page, gregexpr("data:application/javascript;base64,", page, fixed = TRUE)))
-  expect_identical(n + min(n64, 1L), 1L)
+  # The bundle's banner, once: inlined as text, or (by pandoc's
+  # self-contained mode) in a data URI, base64 or percent-encoded.
+  forms <- c("/* aob-renderer ", "LyogYW9iLXJlbmRlcmVy", "/*%20aob-renderer%20")
+  n <- vapply(forms, function(f) lengths(regmatches(page, gregexpr(f, page, fixed = TRUE))), 0L)
+  expect_identical(sum(n), 1L, info = paste(names(n), n, sep = ": ", collapse = "; "))
 })
