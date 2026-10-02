@@ -81,7 +81,8 @@ xyz_tiles <- function(zmax = 2L, missing = c(2L, 3L, 3L)) {
 
 # A GDAL WMS description (TMS minidriver) of XYZ tiles under `url`: the
 # whole Web Mercator square to zoom 18 (2^26 cells on a side), 3 bands,
-# with a 404 read as an empty (zero) tile, as tile services are described.
+# with a 404 read as an empty (zero) tile, as tile services are described,
+# and a 10 s timeout so a stalled server cannot hang the tests.
 tms_xml <- function(url) {
   paste0(
     '<GDAL_WMS><Service name="TMS"><ServerUrl>', url, "/${z}/${x}/${y}.png</ServerUrl></Service>",
@@ -90,7 +91,8 @@ tms_xml <- function(url) {
     "<TileLevel>18</TileLevel><TileCountX>1</TileCountX><TileCountY>1</TileCountY>",
     "<YOrigin>top</YOrigin></DataWindow>",
     "<Projection>EPSG:3857</Projection><BlockSizeX>256</BlockSizeX><BlockSizeY>256</BlockSizeY>",
-    "<BandsCount>3</BandsCount><ZeroBlockHttpCodes>204,404</ZeroBlockHttpCodes></GDAL_WMS>")
+    "<BandsCount>3</BandsCount><ZeroBlockHttpCodes>204,404</ZeroBlockHttpCodes>",
+    "<Timeout>10</Timeout></GDAL_WMS>")
 }
 
 # Run view() and record what gdal_temp_cog() wrote: its path, structure,

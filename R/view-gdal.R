@@ -44,7 +44,7 @@ raster_gdal_source <- function(x, crs, plan_args) {
   factor <- read_factor(info, window, crs, plan_args, max_tiles)
   size <- pmax(1, ceiling(window[3:4] / factor))
   list(dsn = dsn, bands = bands, cog = info, window = window, size = size, factor = factor,
-       max_tiles = max_tiles)
+       max_tiles = max_tiles, extent_given = !is.null(plan_args$extent))
 }
 
 ## A cog_plan() argument as given, or its default.
@@ -129,9 +129,8 @@ extent_in_source <- function(info, crs, extent) {
   view_wkt <- tryCatch(gdalraster::srs_to_wkt(as.character(crs)), error = function(e) "")
   if (!nzchar(view_wkt)) return(NULL)
   if (isTRUE(gdalraster::srs_is_same(view_wkt, info$wkt))) return(as.numeric(extent))
-  bb <- tryCatch(suppressWarnings(
-    gdalraster::transform_bounds(extent[c(1, 3, 2, 4)], view_wkt, info$wkt)
-  ), error = function(e) NULL)
+  bb <- tryCatch(gdalraster::transform_bounds(extent[c(1, 3, 2, 4)], view_wkt, info$wkt),
+                 error = function(e) NULL)
   if (length(bb) != 4L || any(!is.finite(bb)) || bb[3] <= bb[1] || bb[4] <= bb[2]) {
     return(NULL)
   }
@@ -167,13 +166,20 @@ gdal_temp_cog <- function(gs, bands, rgb, name) {
   f <- tempfile("view-", tmpdir = temp_cog_dir(), fileext = ".tif")
   full <- gs$cog$levels[[1]]$dim
   n <- function(x) paste(format(x, scientific = FALSE, trim = TRUE), collapse = " x ")
+  part <- any(gs$window[3:4] < full)
+  hint <- if (part) {
+    "A smaller `extent` (or a larger `max_tiles`) shows more detail."
+  } else if (isTRUE(gs$extent_given)) {
+    ## The extent covers the whole grid, or missed it and the whole grid was read.
+    "A larger `max_tiles` shows more detail."
+  } else {
+    "Passing `extent` (or a larger `max_tiles`) shows more detail."
+  }
   message("\"", name, "\" is read through GDAL from a dataset of ", n(full), " cells, ",
           if (gs$factor > 1) paste0("at 1/", n(gs$factor), " resolution ") else "",
-          if (any(gs$window[3:4] < full)) paste0("over ", n(gs$window[3:4]), " cells ") else "",
+          if (part) paste0("over ", n(gs$window[3:4]), " cells ") else "",
           "(", n(gs$size), "): its full grid is more than `max_tiles` ",
-          "(", gs$max_tiles, ") can draw. ",
-          if (any(gs$window[3:4] < full)) "A smaller `extent`" else "Passing `extent`",
-          " (or a larger `max_tiles`) shows more detail.")
+          "(", gs$max_tiles, ") can draw. ", hint)
   args <- c("-of", "COG", "-co", paste0("BLOCKSIZE=", temp_cog_block),
             "-srcwin", format(gs$window, scientific = FALSE, trim = TRUE),
             "-outsize", format(gs$size, scientific = FALSE, trim = TRUE),
@@ -196,7 +202,10 @@ gdal_temp_cog <- function(gs, bands, rgb, name) {
     unlink(f)
     stop("GDAL could not read \"", name, "\" from its dataset.", call. = FALSE)
   }
-  aobcore::cog_info(f)
+  tryCatch(aobcore::cog_info(f), error = function(e) {
+    unlink(f)
+    stop(e)
+  })
 }
 
 ## Is gdalraster's GDAL at least version `v`?

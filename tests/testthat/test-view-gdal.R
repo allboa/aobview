@@ -48,8 +48,9 @@ test_that("with `extent`, only that part of the grid is read, in more detail", {
                                                 max_tiles = 64))
   expect_true(all(ll$window[3:4] < 2^24 / 4))
   expect_true(all(ll$size <= 4096))
-  seen <- gdal_temp_seen(suppressMessages(
-    v <- view(r, extent = ext, max_tiles = 64, file = html())
+  seen <- gdal_temp_seen(expect_message(
+    v <- view(r, extent = ext, max_tiles = 64, file = html()),
+    "over 1048576 x 524288 cells .*A smaller `extent`"
   ))
   expect_equal(seen$dim, c(4096, 2048))
   ## A plan for one view reads no finer than its pixel needs.
@@ -57,13 +58,22 @@ test_that("with `extent`, only that part of the grid is read, in more detail", {
                                                  max_tiles = 64))
   expect_equal(one$factor, 2^13)
   expect_lte(2 * merc / 2^24 * one$factor, 20000)
+  ## An extent that misses the grid reads the whole grid, and the message
+  ## does not suggest passing `extent`.
+  miss <- c(3e7, 3.1e7, 3e7, 3.1e7)
+  gs <- raster_gdal_source(r, "EPSG:3857", list(extent = miss, max_tiles = 16))
+  expect_equal(gs$window, c(0, 0, 2^24, 2^24))
+  expect_message(cog <- gdal_temp_cog(gs, 1L, rgb = FALSE, name = "r"),
+                 "\\(1024 x 1024\\): .* can draw\\. A larger `max_tiles` shows more detail")
+  unlink(cog$dsn)
 })
 
 test_that("a huge colour image takes its alpha from the dataset's mask, not a cell scan", {
   skip_if_no_terra()
   src <- small_merc_tif(3L, nodata = 0)
   r <- terra::rast(huge_vrt(src, 3L, interp = c("Red", "Green", "Blue"), nodata = 0))
-  seen <- gdal_temp_seen(suppressMessages(v <- view(r, max_tiles = 16, file = html())))
+  seen <- gdal_temp_seen(expect_message(v <- view(r, max_tiles = 16, file = html()),
+                                        "read through GDAL"))
   expect_identical(v$scene$layers[[1]]$rgb, list(bands = 1:3, alpha = 4L))
   expect_equal(seen$cog$samples_per_pixel, 4L)
   alpha <- seen$values[, 4]

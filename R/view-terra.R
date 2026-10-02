@@ -37,8 +37,10 @@
 #' how much was read. The choice is made from the dataset's size, before any
 #' cell is read, and no cell is scanned: a colour image's transparency is
 #' the dataset's mask (its no-data value, mask band or alpha band), written
-#' as an alpha band. A dataset whose full grid fits is written by terra as
-#' above.
+#' as an alpha band. A service whose mask says every cell is valid (as a
+#' WMS or TMS of three bands usually does) draws a missing tile as black
+#' (zero), not transparent. A dataset whose full grid fits is written by
+#' terra as above.
 #'
 #' **Colour or palette.** A raster of 3 or 4 layers with values 0 to 255
 #' (Byte) and colour interpretation red, green, blue (and alpha), set with
