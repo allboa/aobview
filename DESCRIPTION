@@ -28,10 +28,11 @@ Suggests:
     later,
     rmarkdown,
     sf,
+    shiny,
     terra,
     testthat (>= 3.0.0)
 Remotes:
-    allboa/aobcore@knitr-fragment
+    allboa/aobcore@shiny-channel
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

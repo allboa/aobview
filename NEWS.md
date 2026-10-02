@@ -1,5 +1,17 @@
 # aobview 0.0.0.9000
 
+* Views in Shiny apps (allboa/design decision 0009): `aobviewOutput()` and
+  `renderAobview()` (shiny in Suggests), with aobview's own output binding.
+  The scene travels as the render value over the Shiny session, and the
+  renderer is loaded once per app. Every vector layer can be selected; the
+  page sends each selection and settled camera as the input values
+  `input$<id>_aob_select` and `input$<id>_aob_view` (protocol 1 messages),
+  and `aobview_selection()`, `aobview_selected()` and
+  `aobview_view_state()` read them reactively, mapped through the rendered
+  view as `selection()`, `selected()` and `view_state()` are for a served
+  view. While Shiny runs, `transport = "auto"` never serves, and a served
+  view cannot be rendered (an error).
+
 * A view printed in a chunk of an R Markdown or Quarto document is drawn in
   the document (allboa/design decision 0009): `knit_print()` is registered
   for views when knitr is loaded (knitr in Suggests) and prints

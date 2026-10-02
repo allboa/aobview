@@ -117,7 +117,7 @@ choose_embed <- function(v, cog, plan, name) {
     v$local_bytes <- total
     return(list(v = v, embed = TRUE))
   }
-  if (is_interactive() && has_httpuv() && !in_document()) {
+  if (is_interactive() && has_httpuv() && !in_document() && !in_shiny()) {
     v$serve <- list(on = TRUE, reason = "auto", bytes = total, max = max)
     return(list(v = v, embed = FALSE))
   }
@@ -126,6 +126,8 @@ choose_embed <- function(v, cog, plan, name) {
           "in the page, because ",
           if (in_document()) {
             "the view is being knitted into a document, which has no R session to serve them"
+          } else if (in_shiny()) {
+            "the view is made in a Shiny app, whose browser reaches only the app's server"
           } else if (!has_httpuv()) {
             "serving them needs the 'httpuv' package (install.packages(\"httpuv\"))"
           } else {

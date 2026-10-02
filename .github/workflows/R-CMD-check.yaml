@@ -73,3 +73,16 @@ jobs:
           echo '{"type":"module","private":true}' > package.json
           npm install --no-audit --no-fund playwright-core@1.56.1
           CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node popup-check.mjs "$RUNNER_TEMP/views"
+
+      # A view in a Shiny app (decision 0009): tools/shiny-check.R runs the
+      # app, and tools/shiny-check.mjs clicks stations in headless Chrome and
+      # checks that each selection comes back to R through Shiny's input
+      # values (the app prints what aobview_selected() reads). Linux only,
+      # after the step above has installed the package and playwright-core.
+      - name: Check a view in Shiny headless
+        if: runner.os == 'Linux'
+        run: |
+          Rscript tools/shiny-check.R 7311 > "$RUNNER_TEMP/shiny.log" 2>&1 &
+          cp tools/shiny-check.mjs "$RUNNER_TEMP/pw/"
+          cd "$RUNNER_TEMP/pw"
+          CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node shiny-check.mjs http://127.0.0.1:7311 || { cat "$RUNNER_TEMP/shiny.log"; exit 1; }
