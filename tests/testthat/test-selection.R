@@ -265,7 +265,7 @@ test_that("without jsonlite the functions say what is missing", {
   on.exit(aobcore::stop_scene_servers(), add = TRUE)
   local_mocked_bindings(has_jsonlite = function() FALSE, .package = "aobcore")
   v <- suppressMessages(serve(lonlat(list(pt(0, -70)))))
-  expect_false(isTRUE(v$server$state$socket))
+  expect_false(isTRUE(v$server$status()$socket))
   expect_error(selection(v), "without the 'jsonlite' package")
 })
 
@@ -286,7 +286,7 @@ test_that("wait_for_selection() takes in a page that connected while R was busy"
     "GET /", srv$token, "/ws HTTP/1.1\r\nHost: 127.0.0.1:", srv$port, "\r\n",
     "Upgrade: websocket\r\nConnection: Upgrade\r\nOrigin: http://127.0.0.1:", srv$port, "\r\n",
     "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n")), con)
-  expect_identical(length(srv$state$conns), 0L)
+  expect_identical(srv$status()$connections, 0L)
   ## Once the socket is open, the page says hello and selects (scheduled on
   ## the loop the wait runs).
   cancel <- later::later(function() {

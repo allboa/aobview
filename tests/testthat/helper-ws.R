@@ -5,7 +5,7 @@
 
 # Skip unless the view's server takes a websocket (it needs jsonlite).
 skip_if_no_socket <- function(v) {
-  skip_if_not(isTRUE(v$server$state$socket), "the server has no websocket (no jsonlite)")
+  skip_if_not(isTRUE(v$server$status()$socket), "the server has no websocket (no jsonlite)")
 }
 
 # A masked client text frame (RFC 6455 5.2).
@@ -99,7 +99,7 @@ page_send <- function(page, text) {
 # waits for whatever runs the loop next.
 page_select <- function(page, items, scene, trigger = "click", at = c(1, 2), srv = NULL) {
   on.exit(if (!is.null(srv)) page_until_received(page, srv, "select", before))
-  before <- if (!is.null(srv)) srv$state$received[["select"]]
+  before <- if (!is.null(srv)) srv$status()$received[["select"]]
   page$seq <- page$seq + 1L
   it <- vapply(names(items), function(id) {
     sprintf('{"layer":"%s","rows":[%s]}', id, paste(items[[id]], collapse = ","))
@@ -111,12 +111,12 @@ page_select <- function(page, items, scene, trigger = "click", at = c(1, 2), srv
 }
 
 page_until_received <- function(page, srv, type, before, wait = 3) {
-  page_pump(page, wait = wait, until = function(p) srv$state$received[[type]] > before)
+  page_pump(page, wait = wait, until = function(p) srv$status()$received[[type]] > before)
 }
 
 page_view <- function(page, scene, extent = c(-1, 1, -2, 2), srv = NULL) {
   on.exit(if (!is.null(srv)) page_until_received(page, srv, "view", before))
-  before <- if (!is.null(srv)) srv$state$received[["view"]]
+  before <- if (!is.null(srv)) srv$status()$received[["view"]]
   page$seq <- page$seq + 1L
   page_send(page, sprintf(
     '{"type":"view","scene":%d,"seq":%d,"extent":[%s],"zoom":-3.5,"units_per_pixel":12.5,"size_px":[800,600]}',

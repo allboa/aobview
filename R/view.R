@@ -273,7 +273,7 @@ print.aob_view <- function(x, ...) {
   cat("<view> ", x$name, ": ", length(x$scene$layers), " layer",
       if (length(x$scene$layers) != 1L) "s", " in ", crs_text(x$scene$view$crs), "\n", sep = "")
   if (!is.null(x$server)) {
-    running <- isTRUE(x$server$state$running)
+    running <- isTRUE(x$server$running())
     cat("  served at ", x$server$url, if (!running) " (stopped)", "\n", sep = "")
     ## A page already showing the server follows a changed scene by reload
     ## (decision 0007, item 5), so open one only when none is connected.
@@ -556,7 +556,7 @@ finish_view <- function(v, name, file, theme) {
   }
   structure(list(scene = s, file = file, server = server, name = name, theme = theme,
                  extents = v$extents, keys = v$keys, local_bytes = v$local_bytes %||% 0,
-                 sources = v$sources, serial = if (!is.null(server)) server$state$serial),
+                 sources = v$sources, serial = if (!is.null(server)) server$status()$serial),
             class = "aob_view")
 }
 
