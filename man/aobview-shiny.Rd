@@ -44,7 +44,8 @@ return rows of, as for \code{\link[=selected]{selected()}}.}
 \value{
 \code{aobviewOutput()}: a UI element. \code{renderAobview()}: a render
 function for \verb{output$<outputId>}. \code{aobview_selection()}: a data frame
-(\code{source}, \code{layer}, \code{row}) with attributes \code{at} and \code{trigger}.
+(\code{source}, \code{layer}, \code{row}) with attributes \code{at} and \code{trigger}, or
+\code{NULL} until the output has rendered a view.
 \code{aobview_selected()}: rows of the viewed object, or \code{NULL}.
 \code{aobview_view_state()}: a list, or \code{NULL}.
 }
@@ -80,7 +81,10 @@ read those inputs, so they are reactive, and return what \code{\link[=selection]
 rows of the objects that were viewed, mapped through the rendered view.
 A new render (a \code{NULL} one too) clears the selection, and the functions
 re-run when it happens; a message from an older render is ignored. They
-work inside a module (\code{outputId} as given to the module's \code{output}).
+return \code{NULL} until the output has rendered a view (and after a \code{NULL}
+render). They work inside a module (\code{outputId} as given to the module's
+\code{output}); a module's output is never confused with an output of the
+same id elsewhere in the app.
 
 \strong{Files.} \code{\link[=view]{view()}} writes a page to the temporary directory as usual;
 for a view rendered here that page is deleted when the output renders

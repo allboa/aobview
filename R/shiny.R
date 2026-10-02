@@ -30,7 +30,10 @@
 #' rows of the objects that were viewed, mapped through the rendered view.
 #' A new render (a `NULL` one too) clears the selection, and the functions
 #' re-run when it happens; a message from an older render is ignored. They
-#' work inside a module (`outputId` as given to the module's `output`).
+#' return `NULL` until the output has rendered a view (and after a `NULL`
+#' render). They work inside a module (`outputId` as given to the module's
+#' `output`); a module's output is never confused with an output of the
+#' same id elsewhere in the app.
 #'
 #' **Files.** [view()] writes a page to the temporary directory as usual;
 #' for a view rendered here that page is deleted when the output renders
@@ -49,7 +52,8 @@
 #' @param session The Shiny session.
 #' @return `aobviewOutput()`: a UI element. `renderAobview()`: a render
 #'   function for `output$<outputId>`. `aobview_selection()`: a data frame
-#'   (`source`, `layer`, `row`) with attributes `at` and `trigger`.
+#'   (`source`, `layer`, `row`) with attributes `at` and `trigger`, or
+#'   `NULL` until the output has rendered a view.
 #'   `aobview_selected()`: rows of the viewed object, or `NULL`.
 #'   `aobview_view_state()`: a list, or `NULL`.
 #' @name aobview-shiny
@@ -209,13 +213,21 @@ shiny_value <- function(value, session, name) {
 
 ## The full id of output `outputId` as the render function sees it: the
 ## module's namespace applied (session$ns(), the identity at the top level
-## of an app). shiny::testServer()'s mock sessions apply a namespace their
-## outputs may not use, so an output already rendered under the bare id is
-## taken then.
+## of an app). shiny::testServer()'s top-level mock session applies a
+## namespace ("mock-session") that its own outputs do not use, so there,
+## and only there, an output already rendered under the bare id is taken.
+## A module's session is never a MockShinySession (it is a session proxy,
+## also under testServer()), so a module reader never falls back to a
+## top-level output of the same id.
 output_key <- function(outputId, session) {
   key <- session$ns(outputId)
-  states <- session$userData$aobview_states
-  if (!is.null(states) && is.null(states[[key]]) && !is.null(states[[outputId]])) outputId else key
+  if (inherits(session, "MockShinySession")) {
+    states <- session$userData$aobview_states
+    if (!is.null(states) && is.null(states[[key]]) && !is.null(states[[outputId]])) {
+      return(outputId)
+    }
+  }
+  key
 }
 
 ## The output's rendered view and serial (reactive), or NULL before a view

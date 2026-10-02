@@ -149,6 +149,43 @@ test_that("the selection functions work inside a module", {
   })
 })
 
+test_that("a module output is not confused with a top-level output of the same id", {
+  skip_if_not_installed("shiny")
+  d <- shiny_bases()
+  e <- data.frame(name = c("A", "B", "C"))
+  e$geom <- wk::xy(c(0, 10, 20), c(-70, -71, -72), crs = "OGC:CRS84")
+  got <- new.env()
+  mod <- function(id) {
+    shiny::moduleServer(id, function(input, output, session) {
+      output$map <- renderAobview({
+        shiny::req(input$go)
+        view(e, crs = "EPSG:3031")
+      })
+      got$session <- session
+    })
+  }
+  server <- function(input, output, session) {
+    output$map <- renderAobview(view(d, crs = "EPSG:3031"))
+    mod("m")
+  }
+  shiny::testServer(server, {
+    invisible(output$map)
+    ms <- got$session
+    session$setInputs(`m-map_aob_select` = list(type = "select", scene = 1L, seq = 1L, trigger = "click",
+                                                items = list(list(layer = "e", rows = list(1L)))))
+    # The module's output has not rendered (req()): nothing, not the
+    # top-level "map" view.
+    expect_null(aobview_selection("map", session = ms))
+    expect_null(aobview_selected("map", session = ms))
+    expect_null(aobview_view_state("map", session = ms))
+    # The top-level reader still sees its own output.
+    expect_identical(nrow(aobview_selection("map", session = session)), 0L)
+    session$setInputs(`m-go` = TRUE)
+    expect_identical(aobview_selected("map", session = ms)$name, "B")
+    expect_identical(nrow(aobview_selection("map", session = session)), 0L)
+  })
+})
+
 test_that("the temporary page of a rendered view is deleted on the next render and at the end", {
   skip_if_not_installed("shiny")
   d <- shiny_bases()
