@@ -103,7 +103,8 @@
 #'
 #' **Documents.** A view printed in a chunk of an R Markdown or Quarto
 #' document is drawn in the document, always embedded: while knitr runs,
-#' `"auto"` never serves (see [knit_print.aob_view]).
+#' `"auto"` never serves (see [knit_print.aob_view]). In a Shiny app, draw
+#' a view with [renderAobview()] and [aobviewOutput()].
 #'
 #' **Selections.** A served view's page sends the features the viewer
 #' selects (a click, Shift-click to add or remove) back to R: every vector

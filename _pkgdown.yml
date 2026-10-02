@@ -62,6 +62,7 @@ reference:
   - view-terra
   - view-layers
   - selection
+  - aobview-shiny
 - title: View CRS and colours
   contents:
   - view_crs

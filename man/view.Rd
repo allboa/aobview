@@ -247,7 +247,8 @@ the server stops.
 
 \strong{Documents.} A view printed in a chunk of an R Markdown or Quarto
 document is drawn in the document, always embedded: while knitr runs,
-\code{"auto"} never serves (see \link{knit_print.aob_view}).
+\code{"auto"} never serves (see \link{knit_print.aob_view}). In a Shiny app, draw
+a view with \code{\link[=renderAobview]{renderAobview()}} and \code{\link[=aobviewOutput]{aobviewOutput()}}.
 
 \strong{Selections.} A served view's page sends the features the viewer
 selects (a click, Shift-click to add or remove) back to R: every vector
