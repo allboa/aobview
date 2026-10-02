@@ -1,5 +1,17 @@
 # aobview 0.0.0.9000
 
+* `view()` of a `SpatRaster` read unchanged from a GDAL dataset that is not
+  a usable COG and whose full grid is more than the tile plan can draw (a
+  WMS or TMS tile service, a VRT, any huge virtual grid) no longer has terra
+  write the whole grid (#21). GDAL reads only the planned extent, at the
+  finest power-of-two reduction whose temporary COG fits `max_tiles`
+  (`gdalraster::translate()`, which takes the dataset's overviews or zoom
+  levels), with a message saying how much was read; `extent` reads part of
+  the grid in more detail. The choice is made from the dataset's size, and
+  no cell is scanned: a colour image's alpha is the dataset's mask. Smaller
+  datasets are written by terra as before. Pointing the renderer at a
+  service's own tile pyramid is left for later.
+
 * Transport and selection follow-ups (#20, #24). A temporary COG written
   while a view is built is deleted when anything fails before a server
   owns it (a later list element, a port that will not bind), and

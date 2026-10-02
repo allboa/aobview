@@ -152,6 +152,23 @@ embedded, so the page opens from disk with no server, the temporary COG
 is deleted once the layer is added; when the view is served, the server
 keeps it until it stops.
 
+\strong{Datasets too large to write whole.} When \code{x} is read unchanged from
+one GDAL dataset that is not such a COG (a tile service such as WMS or
+TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would
+hold more tiles than the plan's \code{max_tiles} (1024 by default) can draw,
+terra does not write it. GDAL reads the dataset itself
+(\code{gdalraster::translate()}, in the dataset's own grid and CRS) into the
+temporary COG, at the finest power-of-two reduction whose COG fits
+\code{max_tiles}; GDAL takes the dataset's overviews or zoom levels for that.
+With \code{extent} (in the view CRS, passed to \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}) only that
+part of the grid is read, so a smaller extent shows more detail, and with
+\code{units_per_pixel} as well, no finer than that view needs. A message says
+how much was read. The choice is made from the dataset's size, before any
+cell is read, and no cell is scanned: a colour image's transparency is
+the dataset's mask (its no-data value, mask band or alpha band), written
+as an alpha band. A dataset whose full grid fits is written by terra as
+above.
+
 \strong{Colour or palette.} A raster of 3 or 4 layers with values 0 to 255
 (Byte) and colour interpretation red, green, blue (and alpha), set with
 \code{terra::RGB()} (in its order) or else from the file, is drawn as a
