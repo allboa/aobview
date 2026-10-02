@@ -1,5 +1,9 @@
 # aobview 0.0.0.9000
 
+* The server's state is read through aobcore's `serve_scene()` handle
+  methods `running()` and `status()` rather than its internal `state`
+  (#20).
+
 * Transport and selection follow-ups (#20, #24). A temporary COG written
   while a view is built is deleted when anything fails before a server
   owns it (a later list element, a port that will not bind), and

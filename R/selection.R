@@ -176,12 +176,12 @@ selectable_server <- function(v) {
          "View it with `transport = \"serve\"` (needs the 'httpuv' and 'jsonlite' packages).",
          call. = FALSE)
   }
-  if (!isTRUE(srv$state$running)) {
+  if (!isTRUE(srv$running())) {
     stop("This view's server has stopped, and its selection and view went with it. ",
          "View the data again with `transport = \"serve\"`.", call. = FALSE)
   }
   check_current(v)
-  if (!isTRUE(srv$state$socket)) {
+  if (!isTRUE(srv$status()$socket)) {
     stop("This view's page cannot send selections back to R without the 'jsonlite' ",
          "package. Install it with install.packages(\"jsonlite\") and view the data again.",
          call. = FALSE)
@@ -192,7 +192,7 @@ selectable_server <- function(v) {
 ## A view whose server now serves another scene (view_add() replaced it)
 ## has row maps for the old one: never map through them.
 check_current <- function(v) {
-  if (!identical(v$serial, v$server$state$serial)) {
+  if (!identical(v$serial, v$server$status()$serial)) {
     stop("This view was replaced by view_add(); use the view it returned.", call. = FALSE)
   }
   invisible(v)
@@ -204,13 +204,13 @@ page_count <- function(srv) {
 }
 
 pages_now <- function(srv) {
-  tryCatch(length(srv$state$conns), error = function(e) 0L)
+  tryCatch(srv$status()$connections, error = function(e) 0L)
 }
 
 ## How many selections the server has taken in (aobcore's count, which
 ## srv$wait() also compares against).
 received_selects <- function(srv) {
-  n <- srv$state$received[["select"]]
+  n <- srv$status()$received[["select"]]
   if (is.null(n)) 0 else n
 }
 
