@@ -30,7 +30,7 @@ u <- terra::rast("/vsicurl/https://example.org/some.tif")
 view(u)                           # a remote COG: the page references it by URL
 ```
 
-`view()` returns a view with the `scene` and the `file` it wrote. Printing it in an interactive session opens the page in the IDE's viewer or the browser. The page needs no server, and no network unless it references a remote COG.
+`view()` returns a view with the `scene` and the `file` it wrote. Printing it in an interactive session opens the page in the IDE's viewer or the browser. In an R Markdown or Quarto document, a view printed in a chunk is drawn in the document itself, its data embedded and the renderer carried once for every view. The page needs no server, and no network unless it references a remote COG.
 
 ### Several layers
 

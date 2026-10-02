@@ -45,6 +45,11 @@ embed_max <- function() {
 is_interactive <- function() interactive()
 has_httpuv <- function() requireNamespace("httpuv", quietly = TRUE)
 
+## Is knitr knitting a document (decision 0009)? A rendered document has
+## no R behind it, so "auto" never serves then, even in an interactive
+## session (the console's rmarkdown::render()).
+in_document <- function() isTRUE(getOption("knitr.in.progress"))
+
 ## Is the view served, or to be served once its layers are added?
 is_served <- function(v) !is.null(v$server) || isTRUE(v$serve$on)
 
@@ -112,14 +117,16 @@ choose_embed <- function(v, cog, plan, name) {
     v$local_bytes <- total
     return(list(v = v, embed = TRUE))
   }
-  if (is_interactive() && has_httpuv()) {
+  if (is_interactive() && has_httpuv() && !in_document()) {
     v$serve <- list(on = TRUE, reason = "auto", bytes = total, max = max)
     return(list(v = v, embed = FALSE))
   }
   warning("The view's local raster tiles come to ", format_bytes(total), ", over ",
           "getOption(\"aobview.embed_max\") (", format_bytes(max), "), but they are embedded ",
           "in the page, because ",
-          if (!has_httpuv()) {
+          if (in_document()) {
+            "the view is being knitted into a document, which has no R session to serve them"
+          } else if (!has_httpuv()) {
             "serving them needs the 'httpuv' package (install.packages(\"httpuv\"))"
           } else {
             "the session is not interactive, and a server would stop when it ends"
