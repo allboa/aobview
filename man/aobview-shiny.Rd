@@ -67,13 +67,25 @@ in a served view: a click on a feature selects it and only it, Shift (or
 Cmd) and click adds or removes it, and a click on nothing or Escape
 clears. The page sends each change as the input value
 \verb{input$<outputId>_aob_select} and the settled camera as
-\verb{input$<outputId>_aob_view} (protocol 1 messages, decision 0007).
+\verb{input$<outputId>_aob_view} (protocol 1 messages, decision 0007). A
+select message is a list with \code{scene} (the serial of the render it was
+made on), \code{seq}, \code{trigger} (\code{"click"}, \code{"toggle"} or \code{"clear"}), \code{at}
+(the pressed point in view CRS units) and \code{items}, one per layer with
+its \code{layer} id and \code{rows}, which are 0-based row indices into that
+layer's data, not rows of your object: read them through the functions
+below.
 \code{aobview_selection()}, \code{aobview_selected()} and \code{aobview_view_state()}
 read those inputs, so they are reactive, and return what \code{\link[=selection]{selection()}},
 \code{\link[=selected]{selected()}} and \code{\link[=view_state]{view_state()}} return for a served view: the selected
 rows of the objects that were viewed, mapped through the rendered view.
-A new render clears the selection; a message from an older render is
-ignored.
+A new render (a \code{NULL} one too) clears the selection, and the functions
+re-run when it happens; a message from an older render is ignored. They
+work inside a module (\code{outputId} as given to the module's \code{output}).
+
+\strong{Files.} \code{\link[=view]{view()}} writes a page to the temporary directory as usual;
+for a view rendered here that page is deleted when the output renders
+again and when the session ends, since the scene travels as the render
+value. A page written to a \code{file} you named is left alone.
 }
 \examples{
 \dontshow{if (interactive() && requireNamespace("shiny", quietly = TRUE)) withAutoprint(\{ # examplesIf}

@@ -57,6 +57,10 @@
     return window.jQuery(scope).find(".aobview-output");
   };
   binding.renderValue = function (el, x) {
+    // Each render has a token: a render that finishes after a newer one
+    // started is finalized rather than kept.
+    var token = (el.aobToken || 0) + 1;
+    el.aobToken = token;
     if (el.aob) {
       el.aob.finalize();
       el.aob = null;
@@ -78,9 +82,13 @@
     }
     var blobs = x.blobs && typeof x.blobs === "object" && !Array.isArray(x.blobs) ? x.blobs : {};
     window.aob.render(el, scene, { blobs: blobs, channel: channelFor(el, x), serial: x.serial })
-      .then(function (h) { el.aob = h; }, function () {});
+      .then(function (h) {
+        if (el.aobToken === token) el.aob = h;
+        else h.finalize();
+      }, function () {});
   };
   binding.renderError = function (el, err) {
+    el.aobToken = (el.aobToken || 0) + 1;
     if (el.aob) {
       el.aob.finalize();
       el.aob = null;

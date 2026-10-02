@@ -9,8 +9,11 @@
   and `aobview_selection()`, `aobview_selected()` and
   `aobview_view_state()` read them reactively, mapped through the rendered
   view as `selection()`, `selected()` and `view_state()` are for a served
-  view. While Shiny runs, `transport = "auto"` never serves, and a served
-  view cannot be rendered (an error).
+  view. They work inside modules. A new render (a `NULL` one too) clears
+  the selection and re-runs them. The temporary page `view()` writes for a
+  rendered view is deleted on the output's next render and when the
+  session ends. While Shiny runs, `transport = "auto"` never serves, and a
+  served view cannot be rendered (an error).
 
 * A view printed in a chunk of an R Markdown or Quarto document is drawn in
   the document (allboa/design decision 0009): `knit_print()` is registered

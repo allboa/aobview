@@ -17,13 +17,25 @@
 #' Cmd) and click adds or removes it, and a click on nothing or Escape
 #' clears. The page sends each change as the input value
 #' `input$<outputId>_aob_select` and the settled camera as
-#' `input$<outputId>_aob_view` (protocol 1 messages, decision 0007).
+#' `input$<outputId>_aob_view` (protocol 1 messages, decision 0007). A
+#' select message is a list with `scene` (the serial of the render it was
+#' made on), `seq`, `trigger` (`"click"`, `"toggle"` or `"clear"`), `at`
+#' (the pressed point in view CRS units) and `items`, one per layer with
+#' its `layer` id and `rows`, which are 0-based row indices into that
+#' layer's data, not rows of your object: read them through the functions
+#' below.
 #' `aobview_selection()`, `aobview_selected()` and `aobview_view_state()`
 #' read those inputs, so they are reactive, and return what [selection()],
 #' [selected()] and [view_state()] return for a served view: the selected
 #' rows of the objects that were viewed, mapped through the rendered view.
-#' A new render clears the selection; a message from an older render is
-#' ignored.
+#' A new render (a `NULL` one too) clears the selection, and the functions
+#' re-run when it happens; a message from an older render is ignored. They
+#' work inside a module (`outputId` as given to the module's `output`).
+#'
+#' **Files.** [view()] writes a page to the temporary directory as usual;
+#' for a view rendered here that page is deleted when the output renders
+#' again and when the session ends, since the scene travels as the render
+#' value. A page written to a `file` you named is left alone.
 #'
 #' @param outputId The output's id.
 #' @param width,height CSS sizes, such as `"100%"` or `"480px"`; a number
@@ -131,23 +143,62 @@ binding_dependency <- function() {
   )
 }
 
+## Per output (by its full, namespaced id): the rendered view, the serial
+## of its render and the page view() wrote for it, in a reactive value, so
+## the selection functions re-run when the output renders again (which
+## clears the selection) and not only when the page sends a message. The
+## serial counts every render, NULL ones too, so a message made on an
+## older render never matches the current one.
+render_state <- function(session, key) {
+  states <- session$userData$aobview_states
+  if (is.null(states)) {
+    states <- new.env(parent = emptyenv())
+    session$userData$aobview_states <- states
+    ## The pages view() wrote for rendered views go with the session.
+    session$onSessionEnded(function() {
+      for (k in ls(states)) drop_page(shiny::isolate(states[[k]]())$file)
+    })
+  }
+  if (is.null(states[[key]])) {
+    states[[key]] <- shiny::reactiveVal(list(view = NULL, serial = 0L, file = NULL))
+  }
+  states[[key]]
+}
+
+## The temporary page view() wrote (its default file, view-*.html in the
+## session's temporary directory), or NULL for a file the user named.
+temp_view_page <- function(file) {
+  if (is.null(file)) return(NULL)
+  same <- identical(normalizePath(dirname(file), winslash = "/", mustWork = FALSE),
+                    normalizePath(tempdir(), winslash = "/", mustWork = FALSE))
+  if (same && grepl("^view-.*\\.html$", basename(file))) file else NULL
+}
+
+drop_page <- function(file) {
+  if (!is.null(file)) unlink(file)
+  invisible()
+}
+
 ## The render value for a view, and the view kept for the selection
-## functions under the output's name, with the serial of this render.
+## functions (render_state()). The page view() wrote for the output's
+## previous render is deleted: in Shiny the scene travels as the value.
 shiny_value <- function(value, session, name) {
-  key <- paste0("aobview_", name)
-  if (is.null(value)) {
-    session$userData[[key]] <- NULL
-    return(NULL)
+  if (!is.null(value)) {
+    if (!inherits(value, "aob_view")) {
+      stop("renderAobview() needs a view from view() or view_add(), or NULL.", call. = FALSE)
+    }
+    if (!is.null(value$server)) {
+      stop("A served view cannot be shown in a Shiny app, whose browser reaches only the ",
+           "app's server. Make the view with `transport = \"embed\"`.", call. = FALSE)
+    }
   }
-  if (!inherits(value, "aob_view")) {
-    stop("renderAobview() needs a view from view() or view_add(), or NULL.", call. = FALSE)
-  }
-  if (!is.null(value$server)) {
-    stop("A served view cannot be shown in a Shiny app, whose browser reaches only the ",
-         "app's server. Make the view with `transport = \"embed\"`.", call. = FALSE)
-  }
-  serial <- (session$userData[[key]]$serial %||% 0L) + 1L
-  session$userData[[key]] <- list(view = value, serial = serial)
+  state <- render_state(session, name)
+  old <- shiny::isolate(state())
+  serial <- old$serial + 1L
+  file <- if (!is.null(value)) temp_view_page(value$file)
+  if (!identical(old$file, file)) drop_page(old$file)
+  state(list(view = value, serial = serial, file = file))
+  if (is.null(value)) return(NULL)
   s <- value$scene
   blobs <- attr(s, "blobs") %||% list()
   vector <- vapply(s$layers, function(l) l$kind %in% c("polygon", "path", "point"), TRUE)
@@ -156,11 +207,25 @@ shiny_value <- function(value, session, name) {
        select = I(ids[vector]), serial = serial)
 }
 
+## The full id of output `outputId` as the render function sees it: the
+## module's namespace applied (session$ns(), the identity at the top level
+## of an app). shiny::testServer()'s mock sessions apply a namespace their
+## outputs may not use, so an output already rendered under the bare id is
+## taken then.
+output_key <- function(outputId, session) {
+  key <- session$ns(outputId)
+  states <- session$userData$aobview_states
+  if (!is.null(states) && is.null(states[[key]]) && !is.null(states[[outputId]])) outputId else key
+}
+
+## The output's rendered view and serial (reactive), or NULL before a view
+## is rendered or after a NULL render.
 rendered_view <- function(outputId, session) {
   if (is.null(session)) {
     stop("No Shiny session: call this inside a Shiny server function.", call. = FALSE)
   }
-  session$userData[[paste0("aobview_", outputId)]]
+  st <- render_state(session, output_key(outputId, session))()
+  if (is.null(st$view)) NULL else st
 }
 
 ## A select message from the page (as Shiny parsed it) as the server's

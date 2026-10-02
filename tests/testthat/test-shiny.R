@@ -29,7 +29,8 @@ test_that("renderAobview() sends the scene, and the selection functions map the 
   shiny::testServer(server, {
     value <- output$map
     expect_type(value, "list")
-    expect_identical(value$scene, aobcore::scene_json(session$userData$aobview_map$view$scene))
+    rendered <- shiny::isolate(rendered_view("map", session))
+    expect_identical(value$scene, aobcore::scene_json(rendered$view$scene))
     expect_identical(value$theme, "dark")
     expect_identical(value$serial, 1L)
     expect_identical(as.character(value$select), "d")
@@ -93,3 +94,91 @@ test_that("while Shiny runs, \"auto\" embeds over the threshold with a warning n
   expect_warning(v <- view(sst, file = html()), "over getOption.*made in a Shiny app")
   expect_null(v$server)
 })
+
+test_that("a new render clears the selection for every reader, NULL renders included", {
+  skip_if_not_installed("shiny")
+  d <- shiny_bases()
+  server <- function(input, output, session) {
+    output$map <- renderAobview(if (isTRUE(input$show)) view(d, crs = "EPSG:3031") else NULL)
+    output$picked <- shiny::renderText(paste(aobview_selected("map")$base, collapse = ","))
+  }
+  select <- function(session, scene, rows) {
+    session$setInputs(map_aob_select = list(type = "select", scene = scene, seq = 1L, trigger = "click",
+                                            items = list(list(layer = "d", rows = as.list(rows)))))
+  }
+  shiny::testServer(server, {
+    session$setInputs(show = TRUE)
+    invisible(output$map)
+    select(session, 1L, 1L)
+    expect_identical(output$picked, "Davis")
+    # Render again (a NULL render, then a view) with no new message from
+    # the page: the reader re-runs and nothing is selected.
+    session$setInputs(show = FALSE)
+    invisible(output$map)
+    expect_identical(output$picked, "")
+    expect_null(aobview_selection("map"))
+    session$setInputs(show = TRUE)
+    invisible(output$map)
+    expect_identical(output$picked, "")
+    # The serial counted the NULL render: the old message (scene 1) is stale.
+    expect_identical(shiny::isolate(rendered_view("map", session))$serial, 3L)
+    expect_identical(nrow(aobview_selection("map")), 0L)
+    select(session, 3L, 2L)
+    expect_identical(output$picked, "Mawson")
+  })
+})
+
+test_that("the selection functions work inside a module", {
+  skip_if_not_installed("shiny")
+  d <- shiny_bases()
+  mod <- function(id) {
+    shiny::moduleServer(id, function(input, output, session) {
+      output$map <- renderAobview(view(d, crs = "EPSG:3031"))
+      output$picked <- shiny::renderText(paste(aobview_selected("map")$base, collapse = ","))
+    })
+  }
+  shiny::testServer(mod, args = list(id = "m"), {
+    invisible(output$map)
+    # (testServer()'s body runs in the app's root domain: pass the module's
+    # session, as code inside the module gets it by default.)
+    expect_identical(nrow(aobview_selection("map", session = session)), 0L)
+    session$setInputs(map_aob_select = list(type = "select", scene = 1L, seq = 1L, trigger = "click",
+                                            items = list(list(layer = "d", rows = list(0L)))))
+    expect_identical(output$picked, "Casey")
+    expect_identical(aobview_selected("map", session = session)$base, "Casey")
+  })
+})
+
+test_that("the temporary page of a rendered view is deleted on the next render and at the end", {
+  skip_if_not_installed("shiny")
+  d <- shiny_bases()
+  pages <- character()
+  server <- function(input, output, session) {
+    output$map <- renderAobview({
+      input$again
+      v <- view(d)
+      pages <<- c(pages, v$file)
+      v
+    })
+  }
+  mine <- html()
+  shiny::testServer(server, {
+    session$setInputs(again = 1)
+    invisible(output$map)
+    expect_true(file.exists(pages[1]))
+    session$setInputs(again = 2)
+    invisible(output$map)
+    expect_false(file.exists(pages[1]))
+    expect_true(file.exists(pages[2]))
+    session$close()
+  })
+  expect_false(file.exists(pages[2]))
+  # A page written to a file the user named is left alone.
+  v <- view(d, file = mine)
+  shiny::testServer(function(input, output, session) output$map <- renderAobview(v), {
+    invisible(output$map)
+    session$close()
+  })
+  expect_true(file.exists(mine))
+})
+

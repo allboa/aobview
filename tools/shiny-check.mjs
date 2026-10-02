@@ -1,7 +1,8 @@
 // The page side of tools/shiny-check.R (see there): opens the app in
 // headless Chromium, waits for the view, clicks the stations and checks that
 // the selection comes back through Shiny's input values to R and out again
-// as text, then renders again and checks that the selection is cleared.
+// as text, renders again with a selection and checks that R's selection is
+// cleared, then selects on the new view and clears with Escape.
 //
 //   node tools/shiny-check.mjs http://127.0.0.1:<port> [screenshot.png]
 //
@@ -59,18 +60,25 @@ try {
     null, { timeout: 15000 });
   console.log("ok   the settled camera arrives as input$map_aob_view");
   if (shot) await page.screenshot({ path: shot, fullPage: true });
-  await page.keyboard.press("Escape");
-  t = await until(/trigger=clear/);
-  assert.match(t, /^trigger=clear; layers=; bases=$/);
-  console.log(`ok   Escape clears: ${t}`);
+  // Render again with two stations selected: R's selection is cleared by
+  // the render itself, with no message from the page.
   await page.click("#again");
-  await page.waitForTimeout(500);
+  t = await until(/^trigger=none; layers=; bases=$/);
+  console.log(`ok   a new render clears the selection in R: ${t}`);
   await ready();
   await page.waitForTimeout(400);
   const [cx, cy] = await screen(targets[0]);
   await page.mouse.click(cx, cy);
   t = await until(/bases=Casey$/);
+  assert.match(t, /^trigger=click; layers=bases; bases=Casey$/);
   console.log(`ok   after a new render the selection works on the new view: ${t}`);
+  await page.waitForTimeout(400);
+  await page.keyboard.press("Escape"); // closes Casey's popup
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  t = await until(/trigger=clear/);
+  assert.match(t, /^trigger=clear; layers=; bases=$/);
+  console.log(`ok   Escape clears: ${t}`);
   assert.deepEqual(errors, []);
   console.log("done");
 } finally {
