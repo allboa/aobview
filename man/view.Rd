@@ -245,6 +245,10 @@ answers only while R is idle. A temporary COG (see \link{view-terra}) of a
 served layer is kept in \code{file.path(tempdir(), "aobview-cogs")} until
 the server stops.
 
+\strong{Documents.} A view printed in a chunk of an R Markdown or Quarto
+document is drawn in the document, always embedded: while knitr runs,
+\code{"auto"} never serves (see \link{knit_print.aob_view}).
+
 \strong{Selections.} A served view's page sends the features the viewer
 selects (a click, Shift-click to add or remove) back to R: every vector
 layer can be selected. Read them with \code{\link[=selection]{selection()}}, \code{\link[=selected]{selected()}} and

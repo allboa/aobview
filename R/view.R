@@ -101,6 +101,10 @@
 #' served layer is kept in `file.path(tempdir(), "aobview-cogs")` until
 #' the server stops.
 #'
+#' **Documents.** A view printed in a chunk of an R Markdown or Quarto
+#' document is drawn in the document, always embedded: while knitr runs,
+#' `"auto"` never serves (see [knit_print.aob_view]).
+#'
 #' **Selections.** A served view's page sends the features the viewer
 #' selects (a click, Shift-click to add or remove) back to R: every vector
 #' layer can be selected. Read them with [selection()], [selected()] and
@@ -280,7 +284,7 @@ print.aob_view <- function(x, ...) {
     if (can_open() && running && page_count(x$server) == 0L) open_url(x$server$url)
   } else {
     cat("  ", x$file, "\n", sep = "")
-    if (interactive()) open_page(x$file)
+    if (can_open()) open_page(x$file)
   }
   invisible(x)
 }
@@ -971,7 +975,10 @@ crs_text <- function(crs) {
 
 ## Whether print() opens the page: wrapped so tests can stand in for an
 ## interactive session.
-can_open <- function() interactive()
+## Printing opens a page only in an interactive session, and never while
+## knitr renders a document (an explicit print(v) in a chunk, from the
+## console's rmarkdown::render()): the document shows the view itself.
+can_open <- function() interactive() && !in_document()
 
 open_page <- function(file) {
   viewer <- getOption("viewer")

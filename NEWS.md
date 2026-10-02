@@ -1,5 +1,17 @@
 # aobview 0.0.0.9000
 
+* A view printed in a chunk of an R Markdown or Quarto document is drawn in
+  the document (allboa/design decision 0009): `knit_print()` is registered
+  for views when knitr is loaded (knitr in Suggests) and prints
+  `aobcore::scene_tag()`, so each view's data are embedded and the document
+  carries the renderer once. The view is `"100%"` wide (or the chunk's
+  `out.width`) and `fig.height` inches tall at 96 pixels per inch (or
+  `out.height`), in the view's `theme`. While knitr runs, `transport =
+  "auto"` never serves: over `getOption("aobview.embed_max")` the tiles are
+  embedded with a warning naming the document. A served view cannot be
+  knitted (an error). An explicit `print(v)` in a chunk opens no page
+  while knitr renders the document.
+
 * `view()` of a `SpatRaster` read unchanged from a GDAL dataset that is not
   a usable COG and whose full grid is more than the tile plan can draw (a
   WMS or TMS tile service, a VRT, any huge virtual grid) no longer has terra

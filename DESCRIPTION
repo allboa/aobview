@@ -22,8 +22,11 @@ Imports:
     wk
 Suggests:
     gdalraster (>= 2.0.0),
+    htmltools,
     httpuv,
+    knitr,
     later,
+    rmarkdown,
     sf,
     terra,
     testthat (>= 3.0.0)
