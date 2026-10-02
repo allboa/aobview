@@ -9,7 +9,8 @@
   `out.height`), in the view's `theme`. While knitr runs, `transport =
   "auto"` never serves: over `getOption("aobview.embed_max")` the tiles are
   embedded with a warning naming the document. A served view cannot be
-  knitted (an error).
+  knitted (an error). An explicit `print(v)` in a chunk opens no page
+  while knitr renders the document.
 
 * `view()` of a `SpatRaster` read unchanged from a GDAL dataset that is not
   a usable COG and whose full grid is more than the tile plan can draw (a

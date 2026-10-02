@@ -114,3 +114,15 @@ test_that("rmarkdown renders two views with one copy of the renderer", {
   n <- vapply(forms, function(f) lengths(regmatches(page, gregexpr(f, page, fixed = TRUE))), 0L)
   expect_identical(sum(n), 1L, info = paste(names(n), n, sep = ": ", collapse = "; "))
 })
+
+test_that("print(v) opens no page while knitr renders a document", {
+  v <- view(bases_df(), file = html())
+  opened <- character()
+  local_mocked_bindings(is_interactive = function() TRUE, in_document = function() TRUE,
+                        open_page = function(file) opened <<- c(opened, file))
+  expect_output(print(v), "<view>", fixed = TRUE)
+  expect_length(opened, 0L)
+  local_mocked_bindings(in_document = function() FALSE)
+  expect_output(print(v), "<view>", fixed = TRUE)
+  expect_identical(opened, v$file)
+})
