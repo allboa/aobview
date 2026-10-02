@@ -154,7 +154,7 @@ is_temp_cog <- function(path) {
 ## else an error naming the first that is gone. Called before view_add()
 ## writes anything, and again by serve_view().
 check_stopped_files <- function(srv, files) {
-  if (is.null(srv) || isTRUE(srv$state$running)) return(invisible())
+  if (is.null(srv) || isTRUE(srv$running())) return(invisible())
   gone <- Filter(function(f) !file.exists(f$path), files)
   if (!length(gone)) return(invisible())
   path <- gone[[1]]$path
@@ -185,7 +185,7 @@ drop_pending <- function(v) {
 ## the view's pending temporary COGs.
 serve_view <- function(v, s, name, theme) {
   srv <- v$server
-  if (!is.null(srv) && !isTRUE(srv$state$running)) {
+  if (!is.null(srv) && !isTRUE(srv$running())) {
     check_stopped_files(srv, attr(s, "files"))
     message("The view's server at ", srv$url, " was stopped; serving the view on a new one.")
     srv <- NULL

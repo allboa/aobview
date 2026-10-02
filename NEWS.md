@@ -12,6 +12,10 @@
   datasets are written by terra as before. Pointing the renderer at a
   service's own tile pyramid is left for later.
 
+* The server's state is read through aobcore's `serve_scene()` handle
+  methods `running()` and `status()` rather than its internal `state`
+  (#20).
+
 * Transport and selection follow-ups (#20, #24). A temporary COG written
   while a view is built is deleted when anything fails before a server
   owns it (a later list element, a port that will not bind), and
