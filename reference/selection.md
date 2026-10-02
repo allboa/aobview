@@ -53,10 +53,12 @@ viewed under, as the layer label; a name used twice in one view gets
 `_2`, `_3`, ...), `layer` (the layer id) and `row` (1-based, into that
 object), with one row per selected row of each layer, ordered by source,
 layer and row. A feature drawn in pieces (the parts of a geometry
-collection) is one row. Attributes `at` (the pressed point, in view CRS
-units, or `NULL`), `trigger` (`"click"`, `"toggle"` or `"clear"`),
-`connection` (which page), `seq` and `time` say where it came from. It
-has zero rows when nothing is selected.
+collection) is one row per layer: a collection with polygon and point
+parts, both selected, gives a row under each of the two layers, with the
+same `source` and `row` (`selected()` returns it once). Attributes `at`
+(the pressed point, in view CRS units, or `NULL`), `trigger` (`"click"`,
+`"toggle"` or `"clear"`), `connection` (which page), `seq` and `time`
+say where it came from. It has zero rows when nothing is selected.
 
 `selected(v)` gives the selected rows themselves: `x[rows, ]` of the
 data frame (`sf` included) or `SpatVector` that was viewed, or `x[rows]`
@@ -70,10 +72,13 @@ rows of the view's only object, or `NULL` when the view has several.
 click, a toggle or a clear), then returns `selected(v)`. It services R's
 event loop itself, so call it at the prompt or in a script and click in
 the page; an interrupt (Esc, Ctrl-C) ends it. After `timeout` seconds it
-returns `NULL` with a message. With no page connected it says it is
-waiting for one; in a non-interactive session with no page connected it
-is an error unless `timeout` is finite, so a script cannot hang on a
-page nobody will open.
+returns `NULL` with a message. With no page connected it first takes in
+what has arrived: a page that connected while R was busy counts, and a
+selection it sent then is returned at once. With still no page connected
+it says it is waiting for one; in a non-interactive session it is then
+an error unless `timeout` is finite, so a script cannot hang on a page
+nobody will open. On a view with no vector layers it is an error at
+once.
 
 `view_state(v)` gives the page's last settled view (sent 250 ms after
 the camera stops): a list with `extent` (`c(xmin, xmax, ymin, ymax)` in

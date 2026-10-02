@@ -193,8 +193,12 @@ A view: a list of class `"aob_view"` with the `scene` (an
 or `NULL` when embedded), its `name` (the page title), `theme`,
 `extents`, each layer's extent in the view CRS (from which the initial
 view is set), `sources`, each vector object viewed with its name and the
-map from its layers' rows to its own rows, and `serial`, the scene
-serial the server gave the scene (`NULL` when embedded). Add to it with
+map from its layers' rows to its own rows, `serial`, the scene serial
+the server gave the scene (`NULL` when embedded), and `local_bytes`, the
+bytes of local raster tiles embedded in the page so far, which
+[`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
+adds to when it chooses between embedding and serving (see Transport).
+Add to it with
 [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md).
 Printing it opens the page when the session is interactive; a served
 view's URL is opened only when no page is connected to its server, since

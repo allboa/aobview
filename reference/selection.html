@@ -127,7 +127,9 @@ viewed under, as the layer label; a name used twice in one view gets
 <code>_2</code>, <code>_3</code>, ...), <code>layer</code> (the layer id) and <code>row</code> (1-based, into that
 object), with one row per selected row of each layer, ordered by source,
 layer and row. A feature drawn in pieces (the parts of a geometry
-collection) is one row. Attributes <code>at</code> (the pressed point, in view CRS
+collection) is one row per layer: a collection with polygon and point
+parts, both selected, gives a row under each of the two layers, with the
+same <code>source</code> and <code>row</code> (<code>selected()</code> returns it once). Attributes <code>at</code> (the pressed point, in view CRS
 units, or <code>NULL</code>), <code>trigger</code> (<code>"click"</code>, <code>"toggle"</code> or <code>"clear"</code>),
 <code>connection</code> (which page), <code>seq</code> and <code>time</code> say where it came from. It
 has zero rows when nothing is selected.</p>
@@ -143,10 +145,12 @@ only object, or <code>NULL</code> when the view has several.</p>
 click, a toggle or a clear), then returns <code>selected(v)</code>. It services R's
 event loop itself, so call it at the prompt or in a script and click in
 the page; an interrupt (Esc, Ctrl-C) ends it. After <code>timeout</code> seconds it
-returns <code>NULL</code> with a message. With no page connected it says it is
-waiting for one; in a non-interactive session with no page connected it
-is an error unless <code>timeout</code> is finite, so a script cannot hang on a page
-nobody will open.</p>
+returns <code>NULL</code> with a message. With no page connected it first takes in
+what has arrived: a page that connected while R was busy counts, and a
+selection it sent then is returned at once. With still no page connected
+it says it is waiting for one; in a non-interactive session it is then an
+error unless <code>timeout</code> is finite, so a script cannot hang on a page
+nobody will open. On a view with no vector layers it is an error at once.</p>
 <p><code>view_state(v)</code> gives the page's last settled view (sent 250 ms after the
 camera stops): a list with <code>extent</code> (<code>c(xmin, xmax, ymin, ymax)</code> in view
 CRS units), <code>zoom</code>, <code>units_per_pixel</code> and <code>size_px</code> (or <code>center</code> and

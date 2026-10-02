@@ -254,8 +254,11 @@ the <code>server</code> serving it (an <code>"aob_server"</code> from
 page title), <code>theme</code>, <code>extents</code>, each layer's extent in the view
 CRS (from which the initial view is set), <code>sources</code>, each vector
 object viewed with its name and the map from its layers' rows to its
-own rows, and <code>serial</code>, the scene serial the server gave the scene
-(<code>NULL</code> when embedded). Add to it with <code><a href="view-layers.html">view_add()</a></code>. Printing it opens
+own rows, <code>serial</code>, the scene serial the server gave the scene
+(<code>NULL</code> when embedded), and <code>local_bytes</code>, the bytes of local raster
+tiles embedded in the page so far, which <code><a href="view-layers.html">view_add()</a></code> adds to when it
+chooses between embedding and serving (see Transport). Add to it with
+<code><a href="view-layers.html">view_add()</a></code>. Printing it opens
 the page when the session is interactive; a served view's URL is
 opened only when no page is connected to its server, since an open
 page follows the view (see <code><a href="selection.html">selection()</a></code>).</p>

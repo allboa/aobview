@@ -2,6 +2,32 @@
 
 ## aobview 0.0.0.9000
 
+- Transport and selection follow-ups
+  ([\#20](https://github.com/allboa/aobview/issues/20),
+  [\#24](https://github.com/allboa/aobview/issues/24)). A temporary COG
+  written while a view is built is deleted when anything fails before a
+  server owns it (a later list element, a port that will not bind), and
+  [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
+  on a stopped view whose registered file is gone errors before it
+  writes anything. That error calls the file a temporary COG only when
+  it was one. A `/vsi` COG over `aobview.embed_max` under `"auto"` warns
+  that the page may be slow (a server cannot deliver it), and on a
+  served view no longer adds to `local_bytes`, now documented with the
+  view object.
+  [`wait_for_selection()`](https://allboa.github.io/aobview/reference/selection.md)
+  on a view with no vector layers errors before waiting, and with no
+  page counted it first runs the event loop briefly, so a page that
+  connected (or selected) while R was busy is taken in rather than
+  refused in a non-interactive session. The docs say a geometry
+  collection’s parts give one
+  [`selection()`](https://allboa.github.io/aobview/reference/selection.md)
+  row per layer, and what
+  [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
+  on an already replaced view does. `tools/selection-check.R`/`.mjs`
+  wait for the page’s selection to change instead of sleeping, and also
+  check a click on empty map, one `view` message per settled pan, and
+  that [`print()`](https://rdrr.io/r/base/print.html) opens no new tab.
+
 - Vector input is wk first (allboa/design decision 0008):
   [`view()`](https://allboa.github.io/aobview/reference/view.md),
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md),
