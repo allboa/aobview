@@ -47,7 +47,9 @@ viewed under, as the layer label; a name used twice in one view gets
 \verb{_2}, \verb{_3}, ...), \code{layer} (the layer id) and \code{row} (1-based, into that
 object), with one row per selected row of each layer, ordered by source,
 layer and row. A feature drawn in pieces (the parts of a geometry
-collection) is one row. Attributes \code{at} (the pressed point, in view CRS
+collection) is one row per layer: a collection with polygon and point
+parts, both selected, gives a row under each of the two layers, with the
+same \code{source} and \code{row} (\code{selected()} returns it once). Attributes \code{at} (the pressed point, in view CRS
 units, or \code{NULL}), \code{trigger} (\code{"click"}, \code{"toggle"} or \code{"clear"}),
 \code{connection} (which page), \code{seq} and \code{time} say where it came from. It
 has zero rows when nothing is selected.
@@ -65,10 +67,12 @@ only object, or \code{NULL} when the view has several.
 click, a toggle or a clear), then returns \code{selected(v)}. It services R's
 event loop itself, so call it at the prompt or in a script and click in
 the page; an interrupt (Esc, Ctrl-C) ends it. After \code{timeout} seconds it
-returns \code{NULL} with a message. With no page connected it says it is
-waiting for one; in a non-interactive session with no page connected it
-is an error unless \code{timeout} is finite, so a script cannot hang on a page
-nobody will open.
+returns \code{NULL} with a message. With no page connected it first takes in
+what has arrived: a page that connected while R was busy counts, and a
+selection it sent then is returned at once. With still no page connected
+it says it is waiting for one; in a non-interactive session it is then an
+error unless \code{timeout} is finite, so a script cannot hang on a page
+nobody will open. On a view with no vector layers it is an error at once.
 
 \code{view_state(v)} gives the page's last settled view (sent 250 ms after the
 camera stops): a list with \code{extent} (\code{c(xmin, xmax, ymin, ymax)} in view

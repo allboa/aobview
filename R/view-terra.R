@@ -92,6 +92,7 @@ view.SpatRaster <- function(x, ..., crs = NULL, layer = NULL, rgb = NULL, palett
   transport <- check_transport(transport)
   check_raster(x)
   v <- new_view(crs %||% view_crs(x), transport)
+  on.exit(drop_pending(v), add = TRUE)
   v <- add_layers(x, v, name, ..., layer = layer, rgb = rgb, palette = palette, range = range,
                   legend = legend)
   finish_view(v, name, file, theme)
@@ -198,7 +199,7 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
                                        embed = chosen$embed, label = name)
   if (!is.null(temp) && isFALSE(chosen$embed)) {
     keep <- TRUE
-    v$own <- c(v$own, temp$dsn)
+    v$pending$own <- c(v$pending$own, temp$dsn)
   }
   v$scene <- s
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)

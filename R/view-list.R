@@ -7,7 +7,10 @@
 #' new scene on the same server, at the same URL: a page open on it reloads
 #' itself with the new scene and keeps its camera, the selection is cleared,
 #' and the view given to `view_add()` is replaced (the selection functions,
-#' [selection()], are errors on it; use the view returned). An embedded view whose
+#' [selection()], are errors on it; use the view returned). `view_add()` on a
+#' view that was already replaced still serves its scene plus `x` on the
+#' same server, as a new scene (a new serial, and the open page reloads),
+#' which replaces the newer one. An embedded view whose
 #' local raster tiles pass the threshold with the new layer becomes served
 #' (its earlier page stays on disk). `view(a) |> view_add(b)` gives the same scene as
 #' `view(list(a = a, b = b))` when the two have the same view CRS, that is
@@ -100,6 +103,7 @@ view.list <- function(x, ..., crs = NULL, name = NULL, file = NULL,
   transport <- check_transport(transport)
   labels <- list_labels(x, substitute(x))
   v <- new_view(crs %||% view_crs_list(x, labels), transport)
+  on.exit(drop_pending(v), add = TRUE)
   v <- add_list(x, v, labels)
   finish_view(v, name %||% paste(labels, collapse = ", "), file, theme)
 }
@@ -116,7 +120,12 @@ view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL,
          "to choose one, use view(list(...), crs = ).", call. = FALSE)
   }
   theme <- match.arg(theme %||% v$theme %||% "auto", c("auto", "light", "dark"))
-  v <- begin_transport(v, check_transport(transport))
+  transport <- check_transport(transport)
+  ## Before anything is written: a stopped server's view cannot be served
+  ## again once a file it registered is gone.
+  check_stopped_files(v$server, attr(v$scene, "files"))
+  v <- begin_transport(v, transport)
+  on.exit(drop_pending(v), add = TRUE)
   if (is_plain_list(x)) {
     check_dots(..., what = "a list")
     labels <- list_labels(x, substitute(x))

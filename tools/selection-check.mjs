@@ -17,7 +17,6 @@ async function step(name) {
   return JSON.parse(readFileSync(f, "utf8"));
 }
 const reply = (name, x) => writeFileSync(`${dir}/${name}-page.json`, JSON.stringify(x));
-const el = (page) => page.evaluateHandle(() => document.querySelector("[data-aob-scene]:not(script)"));
 const ds = (page) => page.evaluate(() => ({ ...document.querySelector("[data-aob-scene]:not(script)").dataset }));
 async function ready(page) {
   await page.waitForFunction(() => {
@@ -34,12 +33,38 @@ async function screen(page, xy) {
     return { x: r.left + r.width / 2 + (x - v.target[0]) * k, y: r.top + r.height / 2 - (y - v.target[1]) * k };
   }, xy);
 }
+const selectionNow = (page) => page.evaluate(
+  () => document.querySelector("[data-aob-scene]:not(script)").dataset.aobSelection ?? "");
+// Wait until the page's selection differs from `before`.
+async function selectionChange(page, before, timeout = 10000) {
+  await page.waitForFunction((b) => {
+    const c = document.querySelector("[data-aob-scene]:not(script)");
+    return (c.dataset.aobSelection ?? "") !== b;
+  }, before, { timeout });
+}
 async function click(page, s) {
   const at = await screen(page, s.click);
+  const before = await selectionNow(page);
   if (s.shift) await page.keyboard.down("Shift");
   await page.mouse.click(at.x, at.y);
   if (s.shift) await page.keyboard.up("Shift");
-  await sleep(400);
+  await selectionChange(page, before);
+}
+// Drag the map by (dx, dy) pixels from the canvas centre, then wait for the
+// view to settle (the page sends `view` 250 ms after the camera stops).
+async function pan(page, dx, dy) {
+  const r = await page.evaluate(() => {
+    const b = document.querySelector("[data-aob-scene]:not(script) .aob-canvas").getBoundingClientRect();
+    return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  });
+  await page.mouse.move(r.x, r.y);
+  await page.mouse.down();
+  // Two quick moves: a drag that pauses longer than the settle time mid-way is two
+  // settled views, by design, and software rendering can pause that long.
+  await page.mouse.move(r.x + dx / 2, r.y + dy / 2);
+  await page.mouse.move(r.x + dx, r.y + dy);
+  await page.mouse.up();
+  await sleep(1500);
 }
 const popupText = (page) => page.evaluate(() => {
   const p = document.querySelector(".aob-popup");
@@ -72,12 +97,28 @@ for (const [tag, scheme] of [["3031", "light"], ["3857", "dark"]]) {
   s = await step(`${tag}-3`);
   await click(page, s);
   console.log(tag, "shift-click again:", (await ds(page)).aobSelection);
+  // A click on empty map clears.
+  s = await step(`${tag}-3e`);
+  await click(page, s);
+  console.log(tag, "click on empty map:", JSON.stringify(await selectionNow(page)));
+  reply(`${tag}-3e`, { selection: await selectionNow(page) });
+  s = await step(`${tag}-3f`);
+  await click(page, s);
   s = await step(`${tag}-4`);
+  const before = await selectionNow(page);
+  // The first Escape may only close the popup; a second clears.
   await page.keyboard.press("Escape");
-  await sleep(300);
-  if ((await ds(page)).aobSelection) { await page.keyboard.press("Escape"); await sleep(300); }
-  console.log(tag, "Escape:", JSON.stringify((await ds(page)).aobSelection));
-  reply(`${tag}-4`, { selection: (await ds(page)).aobSelection ?? "" });
+  if (!(await selectionChange(page, before, 1500).then(() => true, () => false))) {
+    await page.keyboard.press("Escape");
+    await selectionChange(page, before).catch(() => null);
+  }
+  console.log(tag, "Escape:", JSON.stringify(await selectionNow(page)));
+  reply(`${tag}-4`, { selection: await selectionNow(page) });
+  // One settled pan: one `view` message.
+  s = await step(`${tag}-pan`);
+  await pan(page, s.dx, s.dy);
+  console.log(tag, "panned by", s.dx, s.dy);
+  reply(`${tag}-pan`, { panned: true });
   if (tag === "3031") {
     await page.evaluate(() => { window.__before = 1; });
     s = await step("3031-5");
@@ -86,6 +127,15 @@ for (const [tag, scheme] of [["3031", "light"], ["3857", "dark"]]) {
     const d = await ds(page);
     console.log("3031 reloaded; layers", d.aobSelectable, "cameraKept", d.aobCameraKept, "tabs", pages());
     reply("3031-5", { cameraKept: d.aobCameraKept ?? null, tabs: pages() });
+    // print() of the view, with this page connected: R asks to open
+    // nothing. Any URL R asks to open is opened here, as a browser would.
+    s = await step("3031-p");
+    if (existsSync(`${dir}/open.json`)) {
+      const extra = await ctx.newPage();
+      await extra.goto(JSON.parse(readFileSync(`${dir}/open.json`, "utf8")).url);
+    }
+    console.log("3031 after print: tabs", pages());
+    reply("3031-p", { tabs: pages() });
     s = await step("3031-6");
     await click(page, s);
     console.log("3031 after reload click:", (await ds(page)).aobSelection);

@@ -15,7 +15,9 @@
 #' `_2`, `_3`, ...), `layer` (the layer id) and `row` (1-based, into that
 #' object), with one row per selected row of each layer, ordered by source,
 #' layer and row. A feature drawn in pieces (the parts of a geometry
-#' collection) is one row. Attributes `at` (the pressed point, in view CRS
+#' collection) is one row per layer: a collection with polygon and point
+#' parts, both selected, gives a row under each of the two layers, with the
+#' same `source` and `row` (`selected()` returns it once). Attributes `at` (the pressed point, in view CRS
 #' units, or `NULL`), `trigger` (`"click"`, `"toggle"` or `"clear"`),
 #' `connection` (which page), `seq` and `time` say where it came from. It
 #' has zero rows when nothing is selected.
@@ -33,10 +35,12 @@
 #' click, a toggle or a clear), then returns `selected(v)`. It services R's
 #' event loop itself, so call it at the prompt or in a script and click in
 #' the page; an interrupt (Esc, Ctrl-C) ends it. After `timeout` seconds it
-#' returns `NULL` with a message. With no page connected it says it is
-#' waiting for one; in a non-interactive session with no page connected it
-#' is an error unless `timeout` is finite, so a script cannot hang on a page
-#' nobody will open.
+#' returns `NULL` with a message. With no page connected it first takes in
+#' what has arrived: a page that connected while R was busy counts, and a
+#' selection it sent then is returned at once. With still no page connected
+#' it says it is waiting for one; in a non-interactive session it is then an
+#' error unless `timeout` is finite, so a script cannot hang on a page
+#' nobody will open. On a view with no vector layers it is an error at once.
 #'
 #' `view_state(v)` gives the page's last settled view (sent 250 ms after the
 #' camera stops): a list with `extent` (`c(xmin, xmax, ymin, ymax)` in view
@@ -112,8 +116,29 @@ wait_for_selection <- function(v, timeout = Inf, source = NULL) {
          call. = FALSE)
   }
   srv <- selectable_server(v)
+  if (!length(v$sources)) {
+    stop("This view has no vector layers, so nothing in it can be selected.", call. = FALSE)
+  }
   ## Count the pages without running the loop: a selection already queued
   ## (made while R was busy) is then taken in by the wait, as the next one.
+  if (pages_now(srv) == 0L) {
+    ## A page may have connected (and even selected) while R was busy, and
+    ## not been taken in yet: its socket opens over several turns of the
+    ## loop. Run the loop briefly, until a page is connected; a selection
+    ## that arrived meanwhile is the next one.
+    before <- received_selects(srv)
+    t0 <- Sys.time()
+    grace <- min(1, timeout)
+    while (pages_now(srv) == 0L && received_selects(srv) == before &&
+           as.numeric(Sys.time() - t0, units = "secs") < grace) {
+      httpuv::service(20)
+    }
+    if (received_selects(srv) > before) {
+      check_current(v)
+      return(rows_of(v, map_selection(v, srv$selection()), source))
+    }
+    timeout <- max(0, timeout - as.numeric(Sys.time() - t0, units = "secs"))
+  }
   if (pages_now(srv) == 0L) {
     if (!is_interactive() && !is.finite(timeout)) {
       stop("No page is connected to this view's server, and the session is not ",
@@ -180,6 +205,13 @@ page_count <- function(srv) {
 
 pages_now <- function(srv) {
   tryCatch(length(srv$state$conns), error = function(e) 0L)
+}
+
+## How many selections the server has taken in (aobcore's count, which
+## srv$wait() also compares against).
+received_selects <- function(srv) {
+  n <- srv$state$received[["select"]]
+  if (is.null(n)) 0 else n
 }
 
 ## Said once per server: wait_for_selection() is waiting for a page to

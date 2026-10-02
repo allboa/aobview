@@ -67,7 +67,10 @@ new page, or, for a served view (see Transport in \code{\link[=view]{view()}}), 
 new scene on the same server, at the same URL: a page open on it reloads
 itself with the new scene and keeps its camera, the selection is cleared,
 and the view given to \code{view_add()} is replaced (the selection functions,
-\code{\link[=selection]{selection()}}, are errors on it; use the view returned). An embedded view whose
+\code{\link[=selection]{selection()}}, are errors on it; use the view returned). \code{view_add()} on a
+view that was already replaced still serves its scene plus \code{x} on the
+same server, as a new scene (a new serial, and the open page reloads),
+which replaces the newer one. An embedded view whose
 local raster tiles pass the threshold with the new layer becomes served
 (its earlier page stays on disk). \code{view(a) |> view_add(b)} gives the same scene as
 \code{view(list(a = a, b = b))} when the two have the same view CRS, that is
