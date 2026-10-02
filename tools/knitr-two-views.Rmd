@@ -1,0 +1,30 @@
+---
+title: "Two views in one document"
+output: html_document
+---
+
+CCAMLR statistical areas (simplified, illustrative; see aobview's extdata
+README), coloured by area, viewed in EPSG:3031, with the coastline south of
+40 S:
+
+```{r areas, message = FALSE}
+library(aobview)
+areas <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson",
+                                 package = "aobview"), quiet = TRUE)
+areas$area <- paste0("Area ", substr(areas$GAR_Long_Label, 1, 2))
+coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
+                                 package = "aobcore"), quiet = TRUE)
+v <- view(areas, crs = "EPSG:3031", zcol = "area", theme = "light",
+          popup = c("GAR_Name", "GAR_Long_Label"))
+view_add(v, coast, popup = FALSE)
+```
+
+Three Australian Antarctic stations, in the default view CRS that
+`view_crs()` picks for them:
+
+```{r bases, fig.height = 4}
+bases <- data.frame(base = c("Casey", "Davis", "Mawson"))
+bases$geom <- wk::xy(c(110.53, 77.97, 62.87), c(-66.28, -68.58, -67.60),
+                     crs = "OGC:CRS84")
+view(bases, zcol = "base", theme = "light")
+```
