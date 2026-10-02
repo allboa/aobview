@@ -2,6 +2,32 @@
 
 ## aobview 0.0.0.9000
 
+- Views in Shiny apps (allboa/design decision 0009):
+  [`aobviewOutput()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  and
+  [`renderAobview()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  (shiny in Suggests), with aobview’s own output binding. The scene
+  travels as the render value over the Shiny session, and the renderer
+  is loaded once per app. Every vector layer can be selected; the page
+  sends each selection and settled camera as the input values
+  `input$<id>_aob_select` and `input$<id>_aob_view` (protocol 1
+  messages), and
+  [`aobview_selection()`](https://allboa.github.io/aobview/reference/aobview-shiny.md),
+  [`aobview_selected()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  and
+  [`aobview_view_state()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  read them reactively, mapped through the rendered view as
+  [`selection()`](https://allboa.github.io/aobview/reference/selection.md),
+  [`selected()`](https://allboa.github.io/aobview/reference/selection.md)
+  and
+  [`view_state()`](https://allboa.github.io/aobview/reference/selection.md)
+  are for a served view. They work inside modules. A new render (a
+  `NULL` one too) clears the selection and re-runs them. The temporary
+  page [`view()`](https://allboa.github.io/aobview/reference/view.md)
+  writes for a rendered view is deleted on the output’s next render and
+  when the session ends. While Shiny runs, `transport = "auto"` never
+  serves, and a served view cannot be rendered (an error).
+
 - A view printed in a chunk of an R Markdown or Quarto document is drawn
   in the document (allboa/design decision 0009): `knit_print()` is
   registered for views when knitr is loaded (knitr in Suggests) and

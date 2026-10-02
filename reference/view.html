@@ -352,7 +352,8 @@ served layer is kept in <code>file.path(tempdir(), "aobview-cogs")</code> until
 the server stops.</p>
 <p><strong>Documents.</strong> A view printed in a chunk of an R Markdown or Quarto
 document is drawn in the document, always embedded: while knitr runs,
-<code>"auto"</code> never serves (see <a href="knit_print.aob_view.html">knit_print.aob_view</a>).</p>
+<code>"auto"</code> never serves (see <a href="knit_print.aob_view.html">knit_print.aob_view</a>). In a Shiny app, draw
+a view with <code><a href="aobview-shiny.html">renderAobview()</a></code> and <code><a href="aobview-shiny.html">aobviewOutput()</a></code>.</p>
 <p><strong>Selections.</strong> A served view's page sends the features the viewer
 selects (a click, Shift-click to add or remove) back to R: every vector
 layer can be selected. Read them with <code><a href="selection.html">selection()</a></code>, <code><a href="selection.html">selected()</a></code> and

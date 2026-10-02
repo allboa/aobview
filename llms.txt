@@ -87,6 +87,12 @@ explains the pieces.
   [`wait_for_selection()`](https://allboa.github.io/aobview/reference/selection.md)
   [`view_state()`](https://allboa.github.io/aobview/reference/selection.md)
   : Selections from a served view
+- [`aobviewOutput()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  [`renderAobview()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  [`aobview_selection()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  [`aobview_selected()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  [`aobview_view_state()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+  : Views in Shiny apps
 
 ## View CRS and colours
 

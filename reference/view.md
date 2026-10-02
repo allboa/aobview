@@ -324,6 +324,10 @@ until the server stops.
 document is drawn in the document, always embedded: while knitr runs,
 `"auto"` never serves (see
 [knit_print.aob_view](https://allboa.github.io/aobview/reference/knit_print.aob_view.md)).
+In a Shiny app, draw a view with
+[`renderAobview()`](https://allboa.github.io/aobview/reference/aobview-shiny.md)
+and
+[`aobviewOutput()`](https://allboa.github.io/aobview/reference/aobview-shiny.md).
 
 **Selections.** A served view's page sends the features the viewer
 selects (a click, Shift-click to add or remove) back to R: every vector
