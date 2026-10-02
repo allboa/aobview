@@ -21,7 +21,7 @@ Imports:
     utils,
     wk
 Suggests:
-    gdalraster,
+    gdalraster (>= 2.0.0),
     httpuv,
     later,
     sf,

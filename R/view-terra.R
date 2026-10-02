@@ -23,6 +23,25 @@
 #' is deleted once the layer is added; when the view is served, the server
 #' keeps it until it stops.
 #'
+#' **Datasets too large to write whole.** When `x` is read unchanged from
+#' one GDAL dataset that is not such a COG (a tile service such as WMS or
+#' TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would
+#' hold more tiles than the plan's `max_tiles` (1024 by default) can draw,
+#' terra does not write it. GDAL reads the dataset itself
+#' (`gdalraster::translate()`, in the dataset's own grid and CRS) into the
+#' temporary COG, at the finest power-of-two reduction whose COG fits
+#' `max_tiles`; GDAL takes the dataset's overviews or zoom levels for that.
+#' With `extent` (in the view CRS, passed to [aobcore::cog_plan()]) only that
+#' part of the grid is read, so a smaller extent shows more detail, and with
+#' `units_per_pixel` as well, no finer than that view needs. A message says
+#' how much was read. The choice is made from the dataset's size, before any
+#' cell is read, and no cell is scanned: a colour image's transparency is
+#' the dataset's mask (its no-data value, mask band or alpha band), written
+#' as an alpha band. A service whose mask says every cell is valid (as a
+#' WMS or TMS of three bands usually does) draws a missing tile as black
+#' (zero), not transparent. A dataset whose full grid fits is written by
+#' terra as above.
+#'
 #' **Colour or palette.** A raster of 3 or 4 layers with values 0 to 255
 #' (Byte) and colour interpretation red, green, blue (and alpha), set with
 #' `terra::RGB()` (in its order) or else from the file, is drawn as a
@@ -156,23 +175,32 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
   }
 
   src <- raster_cog_source(x)
+  s <- v$scene
+  ## A dataset too large to write whole is read through GDAL (view-gdal.R).
+  gs <- if (is.null(src)) raster_gdal_source(x, s$view$crs, list(...))
   colour <- if (!is.null(rgb)) rgb else {
-    is.null(layer) && is.null(palette) && raster_is_rgb(x, src)
+    is.null(layer) && is.null(palette) && raster_is_rgb(x, src %||% gs)
   }
   temp <- NULL
   if (colour) {
     ## Layers in red, green, blue (alpha) order.
-    ord <- rgb_order(x, src)
+    ord <- rgb_order(x, src %||% gs)
     if (!is.null(src) && identical(src$cog$planar, "interleaved")) {
       cog <- src$cog
       bands <- src$bands[ord]
     } else {
-      cog <- temp <- raster_temp_cog(x[[ord]], rgb = TRUE)
+      cog <- temp <- if (is.null(gs)) {
+        raster_temp_cog(x[[ord]], rgb = TRUE)
+      } else {
+        gdal_temp_cog(gs, gs$bands[ord], rgb = TRUE, name = name)
+      }
       bands <- seq_len(cog$samples_per_pixel)
     }
   } else {
     i <- raster_layer(x, layer)
-    cog <- if (is.null(src)) {
+    cog <- if (!is.null(gs)) {
+      temp <- gdal_temp_cog(gs, gs$bands[i], rgb = FALSE, name = name)
+    } else if (is.null(src)) {
       temp <- raster_temp_cog(x[[i]], rgb = FALSE)
     } else if (src$bands[i] == src$cog$band) {
       src$cog
@@ -186,7 +214,6 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
   ## temporary COG is kept, for the server to own and delete when it stops.
   keep <- FALSE
   if (!is.null(temp)) on.exit(if (!keep) unlink(temp$dsn), add = TRUE)
-  s <- v$scene
   plan <- aobcore::cog_plan(cog, s$view$crs, ...)
   ## Embed or serve, from the plan's tile byte lengths, before any tile
   ## byte is read (decision 0006).
