@@ -978,7 +978,7 @@ crs_text <- function(crs) {
 ## Printing opens a page only in an interactive session, and never while
 ## knitr renders a document (an explicit print(v) in a chunk, from the
 ## console's rmarkdown::render()): the document shows the view itself.
-can_open <- function() is_interactive() && !in_document()
+can_open <- function() interactive() && !in_document()
 
 open_page <- function(file) {
   viewer <- getOption("viewer")
