@@ -212,3 +212,84 @@ test_that("a non-numeric aobview.embed_max is an error", {
   on.exit(options(op), add = TRUE)
   expect_error(view(terra::rast(extdata("polar_3031.tif")), file = html()), "aobview.embed_max")
 })
+
+cogs <- function() list.files(file.path(tempdir(), "aobview-cogs"), full.names = TRUE)
+
+test_that("view_add() on a stopped view whose file is gone writes no temporary COG", {
+  skip_if_no_terra()
+  skip_if_no_httpuv()
+  on.exit(aobcore::stop_scene_servers(), add = TRUE)
+  v <- served(view(in_memory(), transport = "serve"))
+  v$server$stop()
+  before <- cogs()
+  expect_error(view_add(v, in_memory(), name = "m2"),
+               "is gone \\(a temporary COG is deleted when its server stops\\)")
+  expect_identical(cogs(), before)
+})
+
+test_that("a temporary COG is deleted when building a served view fails", {
+  skip_if_no_terra()
+  skip_if_no_httpuv()
+  on.exit(aobcore::stop_scene_servers(), add = TRUE)
+  before <- cogs()
+  ## A later list element fails.
+  expect_error(served(view(list(m = in_memory(), bad = data.frame(a = 1)), crs = "EPSG:3031",
+                           transport = "serve")), "List element 2")
+  expect_identical(cogs(), before)
+  ## The server will not start.
+  local_mocked_bindings(serve_scene = function(...) stop("Could not bind port"),
+                        .package = "aobcore")
+  expect_error(view(in_memory(), transport = "serve"), "Could not bind")
+  expect_identical(cogs(), before)
+  sst <- terra::rast(extdata("polar_3031.tif"))
+  v <- view(sst, file = html())
+  expect_error(view_add(v, in_memory(), name = "m", transport = "serve"), "Could not bind")
+  expect_identical(cogs(), before)
+})
+
+test_that("a stopped view's missing COG of the user's own is not called temporary", {
+  skip_if_no_terra()
+  skip_if_no_httpuv()
+  skip_if_not_installed("sf")
+  on.exit(aobcore::stop_scene_servers(), add = TRUE)
+  f <- tempfile(fileext = ".tif")
+  file.copy(extdata("polar_3031.tif"), f)
+  v <- served(view(terra::rast(f), name = "own", transport = "serve"))
+  expect_named(attr(v$scene, "files"), "own")
+  v$server$stop()
+  unlink(f)
+  p <- sf::st_sfc(sf::st_point(c(0, 0)), crs = "EPSG:3031")
+  err <- tryCatch(view_add(v, p), error = conditionMessage)
+  expect_match(err, "the file of layer `own` is gone", fixed = TRUE)
+  expect_match(err, "no longer exists", fixed = TRUE)
+  expect_no_match(err, "temporary COG", fixed = TRUE)
+})
+
+test_that("a /vsi COG warns over the threshold, and counts only while embedded", {
+  local_mocked_bindings(plan_bytes = function(plan) 1000)
+  cog <- list(local = TRUE, dsn = "/vsimem/a.tif")
+  op <- options(aobview.embed_max = 100)
+  on.exit(options(op), add = TRUE)
+  v <- new_view("EPSG:3031")
+  expect_warning(r <- choose_embed(v, cog, NULL, "a"),
+                 "over getOption\\(\"aobview.embed_max\"\\).*\"a\" is a COG GDAL reads from \"/vsimem/a.tif\"")
+  expect_true(r$embed)
+  expect_identical(r$v$local_bytes, 1000)
+  ## Under the threshold, or with "embed": no warning.
+  options(aobview.embed_max = 2000)
+  expect_no_warning(r <- choose_embed(v, cog, NULL, "a"))
+  expect_identical(r$v$local_bytes, 1000)
+  options(aobview.embed_max = 100)
+  expect_no_warning(r <- choose_embed(new_view("EPSG:3031", "embed"), cog, NULL, "a"))
+  expect_identical(r$v$local_bytes, 1000)
+  ## On a served view: embedded with the warning that a server cannot
+  ## deliver it, and not counted, as for "embed" there.
+  for (tr in c("auto", "serve", "embed")) {
+    vs <- v
+    vs$transport <- tr
+    vs$serve <- list(on = TRUE, reason = "asked")
+    expect_warning(r <- choose_embed(vs, cog, NULL, "a"), "which a server cannot deliver")
+    expect_true(r$embed)
+    expect_identical(r$v$local_bytes, 0)
+  }
+})

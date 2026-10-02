@@ -2,10 +2,11 @@
 # serves views and waits with wait_for_selection() while
 # tools/selection-check.mjs clicks in headless Chromium. Polar first: the
 # CCAMLR fixture in EPSG:3031 (click, Shift-click adds and removes, Escape
-# clears, view_state(), view_add() reloading the open page with no new tab,
-# the old view an error, the page's note after the server stops), then
-# North Carolina in Web Mercator. The two hand steps over by JSON files in
-# <dir>. Needs aobcore with the renderer's socket client (aobcore#41).
+# clears, a click on empty map clears, one view message per settled pan,
+# view_state(), view_add() reloading the open page with no new tab, print()
+# opening none, the old view an error, the page's note after the server
+# stops), then North Carolina in Web Mercator. The two hand steps over by
+# JSON files in <dir>. Needs aobcore with the renderer's socket client (aobcore#41).
 #
 #   Rscript tools/selection-check.R <dir> &
 #   node tools/selection-check.mjs <dir> <screenshot-dir>
@@ -39,8 +40,27 @@ inside <- function(v, x, i) {
   p <- sf::st_point_on_surface(sf::st_transform(sf::st_geometry(x)[i], crs))
   as.numeric(sf::st_coordinates(p))
 }
+## Log wait_for_selection()'s messages once, here, not again by R.
 wait_sel <- function(v) withCallingHandlers(wait_for_selection(v, timeout = 60),
-                                            message = function(m) log("message: ", conditionMessage(m)))
+                                            message = function(m) {
+                                              log("message: ", sub("\n$", "", conditionMessage(m)))
+                                              invokeRestart("muffleMessage")
+                                            })
+# A point of the view's initial extent (near a corner) where no feature of
+# x is, in the view CRS: a click there is a click on empty map.
+empty_at <- function(v, x) {
+  crs <- sf::st_crs(as.character(v$scene$view$crs))
+  g <- sf::st_transform(sf::st_geometry(x), crs)
+  e <- v$scene$view$extent
+  dx <- 0.04 * (e[2] - e[1])
+  dy <- 0.04 * (e[4] - e[3])
+  for (p in list(c(e[1] + dx, e[3] + dy), c(e[2] - dx, e[3] + dy),
+                 c(e[1] + dx, e[4] - dy), c(e[2] - dx, e[4] - dy))) {
+    pt <- sf::st_sfc(sf::st_point(p), crs = crs)
+    if (!length(sf::st_intersects(sf::st_buffer(pt, 2 * max(dx, dy) / 4), g)[[1]])) return(p)
+  }
+  stop("no empty corner")
+}
 
 ccamlr <- sf::st_read(system.file("extdata", "ccamlr_statistical_areas.geojson",
                                   package = "aobview"), quiet = TRUE)
@@ -73,11 +93,37 @@ run <- function(tag, x, crs, label_col, i, j) {
   say(paste0(tag, "-3"), list(click = inside(v, x, j), shift = TRUE))
   rows <- wait_sel(v)
   check(identical(selection(v)$row, as.integer(i)), paste(tag, "shift-click removes"))
+  ## A click on empty map clears.
+  say(paste0(tag, "-3e"), list(click = empty_at(v, x), shift = FALSE))
+  rows <- wait_sel(v)
+  pg <- hear(paste0(tag, "-3e-page"))
+  check(nrow(rows) == 0L && nrow(selection(v)) == 0L && identical(pg$selection, ""),
+        paste(tag, "click on empty map clears, trigger", attr(selection(v), "trigger")))
+  ## Select again, for Escape to clear.
+  say(paste0(tag, "-3f"), list(click = inside(v, x, i), shift = FALSE))
+  rows <- wait_sel(v)
+  check(identical(selection(v)$row, as.integer(i)), paste(tag, "click selects again"))
   ## Escape clears.
   say(paste0(tag, "-4"), list(key = "Escape"))
   rows <- wait_sel(v)
-  check(nrow(rows) == 0L && nrow(selection(v)) == 0L, paste(tag, "Escape clears"))
+  check(nrow(rows) == 0L && nrow(selection(v)) == 0L,
+        paste(tag, "Escape clears, trigger", attr(selection(v), "trigger")))
   hear(paste0(tag, "-4-page"))
+  ## One settled pan sends one view; a drag selects nothing.
+  views <- 0L
+  off <- v$server$on("view", function(m) {
+    views <<- views + 1L
+    log("view message seq ", m$seq, " extent ", paste(signif(unlist(m$extent), 4), collapse = " "))
+  })
+  ext0 <- view_state(v)$extent
+  say(paste0(tag, "-pan"), list(dx = 120, dy = 60))
+  hear(paste0(tag, "-pan-page"))
+  t0 <- Sys.time()
+  while (as.numeric(Sys.time() - t0, units = "secs") < 1) httpuv::service(50)
+  off()
+  check(identical(views, 1L) && !identical(view_state(v)$extent, ext0) &&
+          nrow(selection(v)) == 0L,
+        paste(tag, "one settled pan:", views, "view message(s), extent changed, nothing selected"))
   v
 }
 
@@ -91,6 +137,19 @@ say("3031-5", list(expect = "reload"))
 pg <- hear("3031-5-page")
 check(identical(v2$server$connections(), n_before) && identical(n_before, 1L),
       paste("view_add: still", n_before, "page connected, after reload; camera kept:", pg$cameraKept))
+## print() with a page connected opens nothing (it would open the URL in a
+## session that can open one: stand in for that, and record any URL).
+opened <- character()
+options(viewer = function(url) {
+  opened <<- c(opened, url)
+  say("open", list(url = url))
+})
+assignInNamespace("can_open", function() TRUE, "aobview")
+invisible(capture.output(print(v2)))
+say("3031-p", list(expect = "no new tab"))
+pg <- hear("3031-p-page")
+check(!length(opened) && identical(pg$tabs, 1L),
+      paste("print() with a page connected: opened", length(opened), "URL(s), tabs", pg$tabs))
 check(inherits(try(selection(v), silent = TRUE), "try-error") &&
         grepl("replaced by view_add", attr(try(selection(v), silent = TRUE), "condition")$message),
       "old view is an error after view_add")

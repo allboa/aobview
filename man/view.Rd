@@ -133,8 +133,11 @@ the \code{server} serving it (an \code{"aob_server"} from
 page title), \code{theme}, \code{extents}, each layer's extent in the view
 CRS (from which the initial view is set), \code{sources}, each vector
 object viewed with its name and the map from its layers' rows to its
-own rows, and \code{serial}, the scene serial the server gave the scene
-(\code{NULL} when embedded). Add to it with \code{\link[=view_add]{view_add()}}. Printing it opens
+own rows, \code{serial}, the scene serial the server gave the scene
+(\code{NULL} when embedded), and \code{local_bytes}, the bytes of local raster
+tiles embedded in the page so far, which \code{\link[=view_add]{view_add()}} adds to when it
+chooses between embedding and serving (see Transport). Add to it with
+\code{\link[=view_add]{view_add()}}. Printing it opens
 the page when the session is interactive; a served view's URL is
 opened only when no page is connected to its server, since an open
 page follows the view (see \code{\link[=selection]{selection()}}).

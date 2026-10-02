@@ -23,6 +23,7 @@ Imports:
 Suggests:
     gdalraster,
     httpuv,
+    later,
     sf,
     terra,
     testthat (>= 3.0.0)

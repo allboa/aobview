@@ -268,3 +268,59 @@ test_that("without jsonlite the functions say what is missing", {
   expect_false(isTRUE(v$server$state$socket))
   expect_error(selection(v), "without the 'jsonlite' package")
 })
+
+test_that("wait_for_selection() takes in a page that connected while R was busy", {
+  skip_if_not_installed("sf")
+  skip_if_no_httpuv()
+  skip_if_not_installed("later")
+  on.exit(aobcore::stop_scene_servers(), add = TRUE)
+  x <- sf::st_sf(id = 1:3, geometry = lonlat(list(pt(0, -70), pt(10, -70), pt(20, -70))))
+  v <- serve(x)
+  skip_if_no_socket(v)
+  srv <- v$server
+  ## The page asks to connect, and nothing runs the loop: R has not taken
+  ## the socket in when wait_for_selection() starts.
+  con <- socketConnection("127.0.0.1", srv$port, blocking = FALSE, open = "r+b", timeout = 5)
+  on.exit(try(close(con), silent = TRUE), add = TRUE)
+  writeBin(charToRaw(paste0(
+    "GET /", srv$token, "/ws HTTP/1.1\r\nHost: 127.0.0.1:", srv$port, "\r\n",
+    "Upgrade: websocket\r\nConnection: Upgrade\r\nOrigin: http://127.0.0.1:", srv$port, "\r\n",
+    "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n")), con)
+  expect_identical(length(srv$state$conns), 0L)
+  ## Once the socket is open, the page says hello and selects (scheduled on
+  ## the loop the wait runs).
+  cancel <- later::later(function() {
+    writeBin(ws_frame(sprintf(paste0(
+      '{"type":"hello","protocol":1,"renderer":"0.0.5",',
+      '"specs":["0.1","0.2","0.3","0.4","0.5"],"scene":%d}'), v$serial)), con)
+    writeBin(ws_frame(sprintf(paste0(
+      '{"type":"select","scene":%d,"seq":1,"trigger":"click",',
+      '"items":[{"layer":"x","rows":[1]}],"at":[1,2]}'), v$serial)), con)
+  }, delay = 0.5)
+  on.exit(cancel(), add = TRUE)
+  ## Not interactive, no timeout, and no page counted yet: no error.
+  expect_no_error(rows <- wait_for_selection(v))
+  expect_identical(rows$id, 2L)
+})
+
+test_that("wait_for_selection() on a view with no vector layers is an error at once", {
+  skip_if_no_terra()
+  skip_if_no_httpuv()
+  on.exit(aobcore::stop_scene_servers(), add = TRUE)
+  v <- served(view(terra::rast(extdata("polar_3031.tif")), transport = "serve"))
+  skip_if_no_socket(v)
+  local_mocked_bindings(is_interactive = function() TRUE)
+  t0 <- Sys.time()
+  expect_error(wait_for_selection(v, timeout = 3), "no vector layers")
+  expect_lt(as.numeric(Sys.time() - t0, units = "secs"), 2)
+})
+
+test_that("a nested geometry collection is drawn, every part mapped to its row", {
+  g <- wk::wkt(c(paste0("GEOMETRYCOLLECTION (POINT (0 -70), GEOMETRYCOLLECTION ",
+                        "(POINT (10 -70), LINESTRING (0 -75, 10 -75)))"),
+                 "POINT (20 -70)"), crs = "OGC:CRS84")
+  v <- view(g, file = html())
+  expect_identical(vapply(v$scene$layers, `[[`, "", "id"), c("g_path", "g_point"))
+  expect_identical(v$sources[[1]]$layers$g_path, 1L)
+  expect_identical(v$sources[[1]]$layers$g_point, c(1L, 1L, 2L))
+})

@@ -7,8 +7,10 @@
 ## choose_embed() below. While the layers are added the view carries its
 ## requested `transport`, whether it is to be served (`serve`, with the
 ## reason and the bytes that decided it), the temporary COGs a server is to
-## own (`own`), and the running total of embedded local tile bytes
-## (`local_bytes`). finish_view() starts the server or writes the page.
+## own (`pending$own`, in an environment so that the caller can delete them
+## if anything fails before a server owns them: drop_pending()), and the
+## running total of embedded local tile bytes (`local_bytes`). finish_view()
+## starts the server or writes the page.
 
 transports <- c("auto", "embed", "serve")
 
@@ -51,6 +53,8 @@ is_served <- function(v) !is.null(v$server) || isTRUE(v$serve$on)
 begin_transport <- function(v, transport) {
   v$transport <- transport
   v$local_bytes <- v$local_bytes %||% 0
+  v$pending <- new.env(parent = emptyenv())
+  v$pending$own <- character()
   if (transport == "serve" && !is_served(v)) v$serve <- list(on = TRUE, reason = "asked")
   v
 }
@@ -70,18 +74,30 @@ plan_bytes <- function(plan) {
 ## Embed this local COG layer (TRUE) or register its file for the server
 ## (FALSE)? Returns list(v, embed). A remote COG is never embedded and never
 ## counts; a /vsi COG (in memory, or not a plain file) can only be embedded.
+## `local_bytes` counts the local tiles embedded in a page, so it grows only
+## while the view is not served, as for "embed".
 choose_embed <- function(v, cog, plan, name) {
   if (!isTRUE(cog$local)) return(list(v = v, embed = NULL))
   servable <- !startsWith(cog$dsn, "/vsi")
   transport <- v$transport %||% "auto"
   bytes <- plan_bytes(plan)
   if (!servable) {
-    if (is_served(v) || transport == "serve") {
+    if (is_served(v)) {
       warning("\"", name, "\" is a COG GDAL reads from \"", cog$dsn, "\", which a server ",
               "cannot deliver, so its ", format_bytes(bytes), " of tiles are embedded.",
               call. = FALSE)
+      return(list(v = v, embed = TRUE))
     }
-    v$local_bytes <- v$local_bytes + bytes
+    total <- v$local_bytes + bytes
+    max <- embed_max()
+    if (transport == "auto" && total > max) {
+      warning("The view's local raster tiles come to ", format_bytes(total), ", over ",
+              "getOption(\"aobview.embed_max\") (", format_bytes(max), "), but they are ",
+              "embedded in the page, because \"", name, "\" is a COG GDAL reads from \"",
+              cog$dsn, "\", which a server cannot deliver. The page may be slow to open.",
+              call. = FALSE)
+    }
+    v$local_bytes <- total
     return(list(v = v, embed = TRUE))
   }
   if (transport == "embed") {
@@ -127,23 +143,57 @@ temp_cog_dir <- function() {
   d
 }
 
+## Is `path` one of the temporary COGs aobview writes for a served layer?
+is_temp_cog <- function(path) {
+  dir <- function(p) normalizePath(p, winslash = "/", mustWork = FALSE)
+  identical(dir(dirname(path)), dir(file.path(tempdir(), "aobview-cogs")))
+}
+
+## A view whose server was stopped can be served again on a new one only
+## while its registered files (`files`, as a scene carries them) exist;
+## else an error naming the first that is gone. Called before view_add()
+## writes anything, and again by serve_view().
+check_stopped_files <- function(srv, files) {
+  if (is.null(srv) || isTRUE(srv$state$running)) return(invisible())
+  gone <- Filter(function(f) !file.exists(f$path), files)
+  if (!length(gone)) return(invisible())
+  path <- gone[[1]]$path
+  stop("The view's server at ", srv$url, " was stopped, and the file of layer `",
+       names(gone)[1], "` is gone",
+       if (is_temp_cog(path)) {
+         " (a temporary COG is deleted when its server stops)"
+       } else {
+         paste0(" (\"", path, "\" no longer exists)")
+       },
+       ". Make the view again with view().", call. = FALSE)
+}
+
+## Delete the temporary COGs written for a view being built that no server
+## owns yet: on.exit() in each function that builds one, so a failure
+## anywhere before serve_scene() takes them leaves none behind.
+drop_pending <- function(v) {
+  p <- v$pending
+  if (is.environment(p) && length(p$own)) {
+    unlink(p$own)
+    p$own <- character()
+  }
+  invisible()
+}
+
 ## Serve scene s for view v (finish_view()): on v's running server when it
-## has one, else on a new server. Returns the handle.
+## has one, else on a new server. Returns the handle. The server then owns
+## the view's pending temporary COGs.
 serve_view <- function(v, s, name, theme) {
   srv <- v$server
   if (!is.null(srv) && !isTRUE(srv$state$running)) {
-    gone <- Filter(function(f) !file.exists(f$path), attr(s, "files"))
-    if (length(gone)) {
-      stop("The view's server at ", srv$url, " was stopped, and the file of layer `",
-           names(gone)[1], "` is gone (a temporary COG is deleted when its server stops). ",
-           "Make the view again with view().", call. = FALSE)
-    }
+    check_stopped_files(srv, attr(s, "files"))
     message("The view's server at ", srv$url, " was stopped; serving the view on a new one.")
     srv <- NULL
   }
   new <- is.null(srv)
   srv <- aobcore::serve_scene(s, title = name, theme = theme, server = srv,
-                              own = unlist(v$own), open = FALSE)
+                              own = v$pending$own, open = FALSE)
+  v$pending$own <- character()
   if (new && identical(v$serve$reason, "auto")) {
     message("The view's local raster tiles come to ", format_bytes(v$serve$bytes),
             ", over getOption(\"aobview.embed_max\") (", format_bytes(v$serve$max),
