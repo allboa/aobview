@@ -301,9 +301,12 @@ table_ipc <- function(df) {
   rawConnectionValue(con)
 }
 
-## terra's no-data value for a Float32 band, used for the matrix route's
-## temporary COG so a missing cell is the file's no-data value, not NaN.
-float_nodata <- -3.4028234663852886e+38
+## The no-data value of the matrix route's temporary Float32 COG, so a
+## missing cell is the file's no-data value, not NaN: -2^127, exact in
+## Float32 and well inside its range. terra's -FLT_MAX sits on the edge of
+## that range, and the double-to-float conversion on the way through GDAL
+## 3.8 with gdalraster 2.7 (CRAN's macOS binaries) turns it into -Inf.
+float_nodata <- -(2^127)
 ## The largest magnitude Float32 holds; a double beyond it is no data.
 float_max <- 3.4028234663852886e+38
 
