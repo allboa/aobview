@@ -105,6 +105,16 @@ accepted one has been settled by the maintainer.
   a default view domain from the projection’s centre (accepted).
 - [0006](https://github.com/allboa/design/blob/main/decisions/0006-local-server-transport.md):
   a local server transport for large local data (proposed).
+- [0007](https://github.com/allboa/design/blob/main/decisions/0007-websocket-selections.md):
+  selections and events from the page to R over a websocket (proposed).
+- [0008](https://github.com/allboa/design/blob/main/decisions/0008-wk-first-vector-input.md):
+  wk-first vector input, PROJ as the reprojection engine (accepted).
+- [0009](https://github.com/allboa/design/blob/main/decisions/0009-documents-and-shiny.md):
+  views in knitted documents and in Shiny (proposed).
+- [0010](https://github.com/allboa/design/blob/main/decisions/0010-input-layer-stance.md):
+  where grid input comes from and what to add next: R sends recipes,
+  R-planned where GDAL can, rangefinder’s readers in the browser
+  otherwise (proposed).
 
 The full list is in the [decisions
 folder](https://github.com/allboa/design/tree/main/decisions).
