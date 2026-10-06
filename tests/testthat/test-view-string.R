@@ -8,12 +8,6 @@ ccamlr_path <- function() {
   system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview")
 }
 
-skip_if_no_gdalraster <- function() {
-  skip_if_not_installed("gdalraster")
-  ok <- !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
-  skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
-}
-
 test_that("WKT text stays geometry, never probed, with its SRID as CRS", {
   local_mocked_bindings(probe_source = function(dsn, layer = NULL) stop("probed ", dsn))
   x <- "SRID=4326;LINESTRING (0 -60, 90 -60)"
@@ -158,6 +152,13 @@ test_that("a raster that is not a COG is read through GDAL into a temporary COG"
   expect_equal(seen$dim, c(256, 256))
   expect_equal(range(seen$values), c(1, 250))
   expect_gt(length(tile_blobs(v)), 0L)
+  ## An argument the plan does not take is an error before the temporary
+  ## COG is written.
+  local({
+    local_mocked_bindings(gdal_temp_cog = function(...) stop("a temporary COG was written"))
+    expect_error(view(f, zcol = "a", file = html()), "does not use `zcol`")
+    expect_error(view(f, max_tile = 4, file = html()), "does not use `max_tile`")
+  })
   ## A huge virtual grid (VRT) is reduced to what the plan draws, with a
   ## message, as for a SpatRaster.
   vrt <- huge_vrt(f)

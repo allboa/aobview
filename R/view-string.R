@@ -122,7 +122,7 @@ probe_source <- function(dsn, layer = NULL) {
   if (!is.null(cog) && cog_ready(cog)) return(new_source("cog", dsn, gdal, cog, layer))
   info <- tryCatch(gdal_facts(gdal, 1L), error = function(e) NULL)
   if (!is.null(info)) return(new_source("raster", dsn, gdal, info, layer))
-  if (isTRUE(gdalraster::ogr_ds_exists(dsn))) return(vector_source(dsn, layer))
+  if (isTRUE(gdalraster::ogr_ds_exists(gdal))) return(vector_source(dsn, gdal, layer))
   stop("GDAL cannot open \"", dsn, "\" as a raster or a vector data source",
        if (!looks_like_source(dsn)) ", and wk cannot read it as WKT", ".", call. = FALSE)
 }
@@ -134,8 +134,10 @@ new_source <- function(kind, dsn, gdal, info, layer) {
 
 ## A vector source's layer (by name; `layer` may be its number, the first
 ## by default), with its CRS as GDAL's WKT and, for lon/lat, its bounds.
-vector_source <- function(dsn, layer) {
-  names <- gdalraster::ogr_ds_layer_names(dsn)
+## GDAL opens `gdal` (a URL in its /vsicurl/ form); `dsn` names the source
+## in messages.
+vector_source <- function(dsn, gdal, layer) {
+  names <- gdalraster::ogr_ds_layer_names(gdal)
   if (!length(names)) stop("\"", dsn, "\" has no vector layers.", call. = FALSE)
   n <- length(names)
   if (is.null(layer)) {
@@ -148,7 +150,7 @@ vector_source <- function(dsn, layer) {
          paste0("\"", utils::head(names, 10L), "\"", collapse = ", "),
          if (n > 10L) paste0(" and ", n - 10L, " more"), ".", call. = FALSE)
   }
-  lyr <- gdalraster::GDALVector$new(dsn, layer)
+  lyr <- gdalraster::GDALVector$new(gdal, layer)
   on.exit(lyr$close(), add = TRUE)
   def <- lyr$getSpatialRef()
   if (!nzchar(def)) {
@@ -159,7 +161,7 @@ vector_source <- function(dsn, layer) {
   ## The bounds (xmin, ymin, xmax, ymax) only when the lon/lat rule needs
   ## them: GDAL may scan the layer for them.
   info <- list(wkt = def, lonlat = lonlat, bbox = if (lonlat) lyr$bbox())
-  new_source("vector", dsn, dsn, info, layer)
+  new_source("vector", dsn, gdal, info, layer)
 }
 
 ## crs_facts() of a data source: its CRS (GDAL's WKT, read by PROJ as any
@@ -195,7 +197,7 @@ add_source <- function(src, v, name, ...) {
 add_source_vector <- function(src, v, name, ..., densify = NULL) {
   crs <- v$scene$view$crs
   step <- if (same_crs(src$info$wkt, crs)) 0 else densify_step(densify, src$info$lonlat)
-  stream <- aobcore::gdal_vector_stream(src$dsn, crs, layer = src$layer,
+  stream <- aobcore::gdal_vector_stream(src$gdal, crs, layer = src$layer,
                                         densify = if (step > 0) step)
   df <- as.data.frame(stream)
   df$geometry <- wk::wk_set_crs(wk::as_wkb(df$geometry), crs)
@@ -217,6 +219,7 @@ add_source_raster <- function(src, v, name, ..., rgb = NULL, palette = NULL, ran
   colour <- if (!is.null(rgb)) rgb else {
     is.null(src$layer) && is.null(palette) && source_is_rgb(info)
   }
+  check_plan_args(list(...))
   crs <- v$scene$view$crs
   temp <- NULL
   if (colour) {
@@ -240,6 +243,22 @@ add_source_raster <- function(src, v, name, ..., rgb = NULL, palette = NULL, ran
   }
   add_cog_layer(v, cog, name, ..., palette = palette, range = range,
                 rgb = if (colour) bands else FALSE, legend = legend, temp = temp)
+}
+
+## An argument aobcore::cog_plan() does not take is an error here, before
+## a temporary COG is written for the plan that would refuse it.
+check_plan_args <- function(args) {
+  if (!length(args)) return(invisible())
+  nms <- names(args) %||% rep("", length(args))
+  known <- setdiff(names(formals(aobcore::cog_plan)), c("cog", "crs"))
+  bad <- !nzchar(nms) | !nms %in% known
+  if (any(bad)) {
+    shown <- ifelse(nzchar(nms[bad]), paste0("`", nms[bad], "`"), "an unnamed argument")
+    stop("view() of a raster does not use ", paste(shown, collapse = ", "),
+         ". Is an argument misspelled? aobcore::cog_plan() takes ",
+         paste0("`", known, "`", collapse = ", "), ".", call. = FALSE)
+  }
+  invisible()
 }
 
 ## The dataset's facts in the shape gdal_source() reads (gdal_facts()).

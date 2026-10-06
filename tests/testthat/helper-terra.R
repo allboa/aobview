@@ -3,11 +3,15 @@
 # tiles with it). Some binary builds of gdalraster (CRAN's macOS one, for
 # now) cannot find their PROJ database; skip there, as aobcore's tests do,
 # since that is an installation problem.
-skip_if_no_terra <- function() {
-  skip_if_not_installed("terra")
+skip_if_no_gdalraster <- function() {
   skip_if_not_installed("gdalraster")
   ok <- !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
   skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
+}
+
+skip_if_no_terra <- function() {
+  skip_if_not_installed("terra")
+  skip_if_no_gdalraster()
 }
 
 # Run view() and return the cell values of the temporary COG it wrote (the
