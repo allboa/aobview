@@ -20,7 +20,10 @@
 #'    cannot show the poles, and a tiled Mercator basemap is a non-goal.
 #'
 #' For a raster the bounding box is the grid's extent, so a lon/lat grid
-#' from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.
+#' from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031. A
+#' matrix or array has no CRS of its own: `view_crs(m, extent = , crs = )`
+#' applies the rule to the `crs` and `extent` given for it (see
+#' [view-matrix]).
 #'
 #' For a list of objects (see [view-layers]) the rule is applied once to
 #' the whole list: the CRS of the first object with a projected CRS is kept;
@@ -32,8 +35,9 @@
 #' to [view()]. Whether a CRS is lon/lat is read by 'PROJ'.
 #'
 #' @param x Geometry 'wk' can handle or a data frame with such a column
-#'   (an `sf` object, say), a 'terra' `SpatRaster` or `SpatVector`, or a
-#'   list of them.
+#'   (an `sf` object, say), a 'terra' `SpatRaster` or `SpatVector`, a list
+#'   of them, or a matrix or array with `extent` and `crs`.
+#' @param ... Not used, except by the matrix and array methods.
 #' @return A CRS for [aobcore::scene()]: an `"authority:code"` string such
 #'   as `"EPSG:3031"`, or, when the data's CRS has no code, its WKT.
 #' @export
@@ -43,18 +47,18 @@
 #' view_crs(coast)
 #' nc <- sf::st_read(system.file("shape", "nc.shp", package = "sf"), quiet = TRUE)
 #' view_crs(nc)
-view_crs <- function(x) {
+view_crs <- function(x, ...) {
   UseMethod("view_crs")
 }
 
 #' @export
-view_crs.default <- function(x) combined_view_crs(list(crs_facts(x)))
+view_crs.default <- function(x, ...) combined_view_crs(list(crs_facts(x)))
 
 #' @export
-view_crs.SpatRaster <- function(x) combined_view_crs(list(crs_facts(x)))
+view_crs.SpatRaster <- function(x, ...) combined_view_crs(list(crs_facts(x)))
 
 #' @export
-view_crs.SpatVector <- function(x) combined_view_crs(list(crs_facts(x)))
+view_crs.SpatVector <- function(x, ...) combined_view_crs(list(crs_facts(x)))
 
 ## What the view CRS rule needs to know of one object: its own CRS (as
 ## view_crs() returns it), whether that is lon/lat, and the latitudes it

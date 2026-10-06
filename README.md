@@ -112,6 +112,10 @@ The cap over the pole is a lon/lat ring that runs up the 180 meridian to the pol
 
 A `SpatRaster` reaches the page as a Cloud Optimized GeoTIFF, planned into tiles by aobcore with meshes projected to the view CRS, so the raster is never resampled in R. A raster read unchanged from one COG uses that file: a remote COG is referenced by URL and the browser fetches its tiles by range request (the server must allow CORS), and a local one has its planned tiles embedded. Any other raster (in memory, computed, cropped, not tiled) is written to a temporary COG with `terra::writeRaster(filetype = "COG")` and embedded. Three or four Byte layers with red, green, blue (and alpha) colour interpretation draw as a colour image; otherwise one layer draws through a palette. A `SpatVector` is read from terra's own WKB, with its attributes, and drawn as any vector input is.
 
+### Matrices and arrays
+
+A plain matrix, as tidync, ncdf4 or vaster hold one, is drawn with `view(m, extent = c(xmin, xmax, ymin, ymax), crs = "EPSG:3031")`: row 1 is the top of the grid, as in terra and vaster. A matrix of at most 512 x 512 cells in the view CRS goes into the page as an untiled scene spec 0.1 `raster` layer (the grid descriptor and the values as one Arrow column); a larger one, or one whose CRS differs from the view's, is written to a temporary COG with gdalraster and takes the tiled path above. A 3- or 4-band array draws as a colour image, always tiled. Palette, range and legend are as for a one-layer `SpatRaster`.
+
 Raster views need gdalraster with a working PROJ database, since aobcore plans tiles with it. On macOS, CRAN's gdalraster binary currently cannot find its `proj.db` ("GDAL cannot resolve the CRS EPSG:3031"); gdalraster from conda-forge works.
 
 ![A computed lon/lat SpatRaster in EPSG:3031, light](tools/screenshots/terra-lonlat-field-in-3031-light.png)

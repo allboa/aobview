@@ -100,6 +100,22 @@ view(areas, crs = "EPSG:3031", zcol = "area",
      name = "statistical areas", file = tempfile(fileext = ".html")) |>
   view_add(coast, popup = FALSE, file = file.path(out, "ccamlr-areas-in-3031.html"))
 
+# A matrix with an extent and CRS (#37): a 60 x 90 field in EPSG:3031, row
+# 1 at the top, drawn untiled (an in-page scene spec 0.1 raster layer).
+field_m <- outer(seq(-1, 1, length.out = 60), seq(-1, 1, length.out = 90),
+                 function(y, x) cos(3 * x) * sin(2 * y))
+field_m[1:6, 1:9] <- NA
+view(field_m, extent = c(-3e6, 3e6, -2e6, 2e6), crs = "EPSG:3031", palette = "ocean",
+     name = "field", file = file.path(out, "matrix-untiled-in-3031.html"))
+
+# A 3-band array in EPSG:3031 as a colour image, through a temporary COG.
+img_m <- array(0, c(60, 90, 3))
+img_m[, , 1] <- 255 * (field_m + 1) / 2
+img_m[, , 2] <- 255 * (1 - (field_m + 1) / 2)
+img_m[, , 3] <- 120
+view(img_m, extent = c(-3e6, 3e6, -2e6, 2e6), crs = "EPSG:3031", name = "image",
+     file = file.path(out, "array-rgb-in-3031.html"))
+
 # terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
 # for a raster already in 3031).
 if (requireNamespace("terra", quietly = TRUE)) {

@@ -22,7 +22,10 @@
 #'
 #' Elements may be any vector input [view()] takes (geometry 'wk' can
 #' handle, or a data frame with such a column, `sf` included) and 'terra'
-#' `SpatRaster` or `SpatVector` objects, in any mix of CRSs. Each is drawn
+#' `SpatRaster` or `SpatVector` objects, in any mix of CRSs. A matrix or
+#' array is not one, since it has no extent or CRS of its own: add it with
+#' `view_add(v, m, extent = , crs = )`, where `crs` is the grid's CRS, not
+#' the view's (see [view-matrix]). Each is drawn
 #' as [view()] or [view-terra] draws it on its own, with its default style,
 #' and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
 #' densified first), rasters by [aobcore::cog_plan()]'s meshes.
@@ -52,9 +55,10 @@
 #' @param x For `view()`, a list of spatial objects. For `view_add()`, one
 #'   spatial object (or a list of them) to add.
 #' @param ... For `view()` of a list, nothing (per-layer arguments go to
-#'   `view_add()`). For `view_add()`, the arguments [view()] or
-#'   [view-terra] take for `x`'s class, such as `fill` or `zcol` for `sf`
-#'   data or `palette` for a `SpatRaster`.
+#'   `view_add()`). For `view_add()`, the arguments [view()], [view-terra]
+#'   or [view-matrix] take for `x`'s class, such as `fill` or `zcol` for
+#'   `sf` data, `palette` for a `SpatRaster`, or `extent` and `crs` for a
+#'   matrix.
 #' @param crs The view CRS, as for [view()]. `NULL` uses [view_crs()] of
 #'   the list.
 #' @param name The page title. For a list, defaults to the layer labels
@@ -115,7 +119,9 @@ view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL,
   if (!inherits(v, "aob_view") || is.null(v$scene)) {
     stop("`v` must be a view from view().", call. = FALSE)
   }
-  if ("crs" %in% names(match.call(expand.dots = FALSE)$...)) {
+  ## For a matrix or array `crs` is the grid's CRS, not the view's (see
+  ## view-matrix), so it goes on to add_layers().
+  if ("crs" %in% names(match.call(expand.dots = FALSE)$...) && !is_grid(x)) {
     stop("view_add() keeps the view's CRS, which is fixed once the view is made; ",
          "to choose one, use view(list(...), crs = ).", call. = FALSE)
   }
@@ -139,13 +145,16 @@ view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL,
 }
 
 #' @export
-view_crs.list <- function(x) {
+view_crs.list <- function(x, ...) {
   view_crs_list(x, list_labels(x, substitute(x)))
 }
 
 ## ---- internals -------------------------------------------------------------
 
 is_plain_list <- function(x) is.list(x) && identical(class(x), "list")
+
+## A matrix or array, whose view() method takes `extent` and `crs`.
+is_grid <- function(x) is.array(x) && !is.data.frame(x)
 
 view_crs_list <- function(x, labels) {
   check_list(x, labels)
@@ -170,7 +179,12 @@ check_list <- function(x, labels) {
     i <- which(!ok)[1]
     stop("List element ", i, " (", labels[i], ") is a ", paste(class(x[[i]]), collapse = "/"),
          "; a list for view() holds geometry that wk can read, data frames with such a ",
-         "column (sf included), and terra SpatRaster and SpatVector objects.", call. = FALSE)
+         "column (sf included), and terra SpatRaster and SpatVector objects.",
+         if (is_grid(x[[i]])) {
+           paste0(" A matrix or array has no extent or CRS of its own: add it with ",
+                  "view_add(v, x, extent = , crs = ).")
+         },
+         call. = FALSE)
   }
   invisible(x)
 }

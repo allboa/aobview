@@ -23,8 +23,8 @@
 #' one; for any other data frame the geometry column is the first that 'wk'
 #' can handle, or the one named by `geometry`. The CRS travels with the
 #' geometry ([wk::wk_crs()]). A terra `SpatVector` is read from terra's own
-#' WKB (see [view-terra]). A [wk::grd()] is not drawn yet: a grid belongs on
-#' the raster path.
+#' WKB (see [view-terra]). A matrix or array with an `extent` and `crs` is
+#' drawn as a raster (see [view-matrix]). A [wk::grd()] is not drawn yet.
 #'
 #' 'aobcore' does not reproject, so `x` is transformed to the view CRS here
 #' by 'PROJ' ([wk::wk_transform()] with [PROJ::proj_trans_create()]). When
@@ -117,7 +117,8 @@
 #'
 #' @param x A spatial object: a geometry vector 'wk' can handle, or a data
 #'   frame with such a column (an `sf` data frame, say); a 'terra' object
-#'   ([view-terra]); or a list of them ([view-layers]).
+#'   ([view-terra]); a matrix or array with `extent` and `crs`
+#'   ([view-matrix]); or a list of them ([view-layers]).
 #' @param ... Not used by the vector methods: an argument caught here (a
 #'   misspelled one, say) is an error.
 #' @param geometry For a data frame, the name of its geometry column.
@@ -183,7 +184,8 @@
 #'   opened only when no page is connected to its server, since an open
 #'   page follows the view (see [selection()]).
 #' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
-#'   rasters and vectors; [view-layers] for several layers in one view.
+#'   rasters and vectors; [view-matrix] for a matrix or array with an extent
+#'   and CRS; [view-layers] for several layers in one view.
 #' @export
 #' @examples
 #' # Any geometry 'wk' can read, with its CRS: no 'sf' needed.
@@ -306,8 +308,9 @@ new_view <- function(crs, transport = "auto") {
 }
 
 ## Append x's layers to view v, above those already there. Methods: vector
-## input here (default), SpatRaster and SpatVector in view-terra.R. Each returns v with
-## its scene extended and the layers' extents (view CRS units) recorded.
+## input here (default), SpatRaster and SpatVector in view-terra.R, matrix
+## and array in view-matrix.R. Each returns v with its scene extended and
+## the layers' extents (view CRS units) recorded.
 add_layers <- function(x, v, name, ...) {
   UseMethod("add_layers")
 }
@@ -819,7 +822,7 @@ no_method_message <- function(x) {
   paste0("view() has no method for class ", paste(class(x), collapse = "/"),
          "; it draws geometry that wk can read (sfc, wkb, wkt, xy, rct, geos, ...), ",
          "data frames with such a column (sf included), terra SpatRaster and ",
-         "SpatVector objects, and lists of them.")
+         "SpatVector objects, matrices and arrays with an extent and crs, and lists of them.")
 }
 
 ## Transform wkb g from CRS `src` to the view CRS with PROJ, densifying

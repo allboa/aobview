@@ -56,7 +56,8 @@ view(x, ...)
 \arguments{
 \item{x}{A spatial object: a geometry vector 'wk' can handle, or a data
 frame with such a column (an \code{sf} data frame, say); a 'terra' object
-(\link{view-terra}); or a list of them (\link{view-layers}).}
+(\link{view-terra}); a matrix or array with \code{extent} and \code{crs}
+(\link{view-matrix}); or a list of them (\link{view-layers}).}
 
 \item{...}{Not used by the vector methods: an argument caught here (a
 misspelled one, say) is an error.}
@@ -167,8 +168,8 @@ columns are the attributes (for \code{zcol} and popups). An \code{sf} data frame
 one; for any other data frame the geometry column is the first that 'wk'
 can handle, or the one named by \code{geometry}. The CRS travels with the
 geometry (\code{\link[wk:wk_crs]{wk::wk_crs()}}). A terra \code{SpatVector} is read from terra's own
-WKB (see \link{view-terra}). A \code{\link[wk:grd]{wk::grd()}} is not drawn yet: a grid belongs on
-the raster path.
+WKB (see \link{view-terra}). A matrix or array with an \code{extent} and \code{crs} is
+drawn as a raster (see \link{view-matrix}). A \code{\link[wk:grd]{wk::grd()}} is not drawn yet.
 
 'aobcore' does not reproject, so \code{x} is transformed to the view CRS here
 by 'PROJ' (\code{\link[wk:wk_transform]{wk::wk_transform()}} with \code{\link[PROJ:proj_trans_create]{PROJ::proj_trans_create()}}). When
@@ -303,5 +304,6 @@ v3
 }
 \seealso{
 \code{\link[=view_crs]{view_crs()}} for the default view CRS; \link{view-terra} for 'terra'
-rasters and vectors; \link{view-layers} for several layers in one view.
+rasters and vectors; \link{view-matrix} for a matrix or array with an extent
+and CRS; \link{view-layers} for several layers in one view.
 }

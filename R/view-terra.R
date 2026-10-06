@@ -209,11 +209,27 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
     }
   }
 
-  ## An embedded layer carries its planned tiles' bytes in the scene, so a
-  ## temporary COG is not needed once the layer is added. A served layer's
-  ## temporary COG is kept, for the server to own and delete when it stops.
+  add_tiled_layer(v, cog, name, ..., bands = if (colour) bands, palette = palette,
+                  range = range, legend = legend, temp = !is.null(temp))
+}
+
+## Plan `cog` in the view CRS and add it to v as a tiled raster layer named
+## `name`, drawn as a colour image of `bands` (red, green, blue and
+## optionally alpha), or with `bands = NULL` as one band through `palette`
+## over `range`, keyed by a ramp when `legend`. `...` goes to
+## aobcore::cog_plan(). `temp` says `cog` is a temporary COG of this view's
+## (see raster_temp_cog() and grid_temp_cog()). Shared by the SpatRaster
+## and matrix methods.
+##
+## An embedded layer carries its planned tiles' bytes in the scene, so a
+## temporary COG is not needed once the layer is added. A served layer's
+## temporary COG is kept, for the server to own and delete when it stops.
+add_tiled_layer <- function(v, cog, name, ..., bands = NULL, palette = NULL, range = NULL,
+                            legend = TRUE, temp = FALSE) {
   keep <- FALSE
-  if (!is.null(temp)) on.exit(if (!keep) unlink(temp$dsn), add = TRUE)
+  if (temp) on.exit(if (!keep) unlink(cog$dsn), add = TRUE)
+  s <- v$scene
+  colour <- !is.null(bands)
   plan <- aobcore::cog_plan(cog, s$view$crs, ...)
   ## Embed or serve, from the plan's tile byte lengths, before any tile
   ## byte is read (decision 0006).
@@ -224,9 +240,9 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
                                        palette = palette %||% "viridis", range = range,
                                        rgb = if (colour) bands else FALSE,
                                        embed = chosen$embed, label = name)
-  if (!is.null(temp) && isFALSE(chosen$embed)) {
+  if (temp && isFALSE(chosen$embed)) {
     keep <- TRUE
-    v$pending$own <- c(v$pending$own, temp$dsn)
+    v$pending$own <- c(v$pending$own, cog$dsn)
   }
   v$scene <- s
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)
