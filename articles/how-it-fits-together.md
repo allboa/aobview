@@ -114,7 +114,12 @@ accepted one has been settled by the maintainer.
 - [0010](https://github.com/allboa/design/blob/main/decisions/0010-input-layer-stance.md):
   where grid input comes from and what to add next: R sends recipes,
   R-planned where GDAL can, rangefinder’s readers in the browser
-  otherwise (proposed).
+  otherwise (accepted).
+- [0011](https://github.com/allboa/design/blob/main/decisions/0011-input-surface-and-currencies.md):
+  what [`view()`](https://allboa.github.io/aobview/reference/view.md)
+  takes next (strings, Arrow streams, matrices, stars) and the two
+  contracts scenespec writes down, a GeoArrow stream and a
+  chunk-reference table (accepted).
 
 The full list is in the [decisions
 folder](https://github.com/allboa/design/tree/main/decisions).
