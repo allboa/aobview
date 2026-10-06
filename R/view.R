@@ -710,9 +710,9 @@ finish_view <- function(v, name, file, theme) {
 ## view_add() can change what the scene needs.
 ##
 ## A key is list(layer, args) for a layer coloured by column, or
-## list(layer, palette = TRUE, legend = TRUE/FALSE, only = TRUE/FALSE) for
-## a palette raster (`only` when the key stands for several layers, a
-## mosaic's members).
+## list(layer, palette = TRUE, legend = TRUE/FALSE, only = TRUE/FALSE,
+## args) for a palette raster (`only` when the key stands for several
+## layers, a mosaic's members, and `args` then its legend's title).
 ## Before scene spec 0.5 the renderer draws a ramp for each palette raster
 ## itself and the spec has no legends, so a scene that needs nothing from
 ## 0.5 is left as it is: the lowest version that expresses it. A 0.5 scene

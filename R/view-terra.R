@@ -244,12 +244,13 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
 ## for one band through the palette, or the bands of a colour image.
 ## `temp` is the COG when it is a temporary one this view wrote, or NULL.
 ## `id` and `label` are the layer's (by default from `name`); `key` says
-## whether a palette layer keys a legend, and `only` that its legend is one
-## of several layers' (a mosaic's), so it is written as the scene's own
-## rather than drawn per layer. `...` goes to aobcore::cog_plan().
+## whether a palette layer keys a legend, `only` that its legend is one of
+## several layers' (a mosaic's), so it is written as the scene's own rather
+## than drawn per layer, and `title` the legend's title then. `...` goes to
+## aobcore::cog_plan().
 add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb = FALSE,
                           legend = TRUE, temp = NULL, id = layer_id(name), label = name,
-                          key = TRUE, only = FALSE) {
+                          key = TRUE, only = FALSE, title = NULL) {
   ## An embedded layer carries its planned tiles' bytes in the scene, so a
   ## temporary COG is not needed once the layer is added. A served layer's
   ## temporary COG is kept, for the server to own and delete when it stops.
@@ -275,7 +276,8 @@ add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb =
   ## A palette raster's ramp: written as a legend only when the scene is
   ## 0.5 (see add_legends()).
   if (isFALSE(rgb) && key) {
-    v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend, only = only)))
+    v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend, only = only,
+                                  args = if (!is.null(title)) list(title = title))))
   }
   v
 }

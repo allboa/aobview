@@ -125,6 +125,9 @@ gdal_temp_seen <- function(expr) {
 cog_halves <- function() {
   dir <- tempfile("mosaic-")
   dir.create(dir)
+  ## Members come back as normalizePath() gives them (on Windows, the long
+  ## name with forward slashes), so the files are named that way too.
+  dir <- normalizePath(dir, winslash = "/")
   f <- extdata("polar_3031.tif")
   a <- file.path(dir, "west.tif")
   b <- file.path(dir, "east.tif")

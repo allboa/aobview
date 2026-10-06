@@ -37,7 +37,8 @@ source_mosaic <- function(dsn) {
 
 ## Plan mosaic `mosaic` across its members for view v and add one tiled
 ## raster layer per member, named `name` for one member and `<name>_<i>`
-## for several (labelled with the member's base name). `bands` is FALSE
+## for several (labelled with the member's base name, with one legend
+## titled `name`). `bands` is FALSE
 ## for one band (`band`) through the palette, or the mosaic's bands of a
 ## colour image in red, green, blue (alpha) order. Returns NULL, after a
 ## message naming the member, when a member the view touches cannot be
@@ -54,6 +55,10 @@ add_mosaic_layers <- function(v, mosaic, name, ..., band = 1L, bands = FALSE, pa
   }
   crs <- v$scene$view$crs
   colour <- !isFALSE(bands)
+  if (colour) {
+    why <- mosaic_rgb_bands(mosaic, bands)
+    if (!is.null(why)) return(fallback(why))
+  }
   mp <- aobcore::mosaic_plan(mosaic, crs, band = if (colour) bands[1] else band, ...)
   bad <- mp$members[mp$members$status == "unplanned", , drop = FALSE]
   if (nrow(bad)) {
@@ -62,9 +67,11 @@ add_mosaic_layers <- function(v, mosaic, name, ..., band = 1L, bands = FALSE, pa
   }
   if (!length(mp$plans)) return(fallback("none of whose members meets `extent`"))
   if (colour) {
-    for (dsn in names(mp$plans)) {
-      why <- mosaic_rgb_ok(mp$plans[[dsn]]$cog, bands, mosaic, dsn)
-      if (!is.null(why)) return(fallback("whose member \"", member_label(dsn), "\" ", why))
+    for (i in seq_along(mp$plans)) {
+      why <- member_rgb_ok(mp$plans[[i]]$cog, bands)
+      if (!is.null(why)) {
+        return(fallback("whose member \"", member_label(names(mp$plans)[i]), "\" ", why))
+      }
     }
   }
   n <- length(mp$plans)
@@ -75,7 +82,7 @@ add_mosaic_layers <- function(v, mosaic, name, ..., band = 1L, bands = FALSE, pa
                        rgb = if (colour) bands else FALSE, legend = legend,
                        id = if (n == 1L) base else paste0(base, "_", i),
                        label = if (n == 1L) name else paste0(name, ": ", member_label(dsn)),
-                       key = i == 1L, only = n > 1L)
+                       key = i == 1L, only = n > 1L, title = if (n > 1L) name)
     ## One range across the members, so their colours agree: the first
     ## member's (its coarsest level's values, as for one COG) when none
     ## was given.
@@ -87,24 +94,47 @@ add_mosaic_layers <- function(v, mosaic, name, ..., band = 1L, bands = FALSE, pa
   v
 }
 
-## Why member COG `cog` cannot draw a colour image of the mosaic's `bands`
-## (red, green, blue, alpha), or NULL: it needs those bands, pixel
-## interleaved, and (for a VRT) its band b must feed mosaic band b.
-mosaic_rgb_ok <- function(cog, bands, mosaic, dsn) {
+## Why a VRT cannot be drawn as a colour image of its `bands` (red, green,
+## blue, alpha) one layer per member, or NULL. Each member layer draws all
+## of `bands` from one file, so every band must take its cells from the
+## same members, each member's band b feeding the mosaic's band b. GTI rows
+## (band NA) feed every band from the member's own bands and pass.
+mosaic_rgb_bands <- function(mosaic, bands) {
+  m <- mosaic$members
+  m <- m[!is.na(m$band), , drop = FALSE]
+  if (!nrow(m)) return(NULL)
+  first <- unique(m$dsn[m$band == bands[1]])
+  for (b in bands[-1]) {
+    here <- unique(m$dsn[m$band == b])
+    if (!setequal(here, first)) {
+      odd <- c(setdiff(here, first), setdiff(first, here))[1]
+      return(paste0("whose bands are not drawn from the same members (\"", member_label(odd),
+                    "\" feeds band ", if (odd %in% here) b else bands[1], " but not band ",
+                    if (odd %in% here) bands[1] else b, "); a colour image is drawn one ",
+                    "member at a time"))
+    }
+  }
+  for (b in bands) {
+    rows <- m[m$band == b, , drop = FALSE]
+    moved <- !is.na(rows$source_band) & rows$source_band != b
+    if (any(moved)) {
+      return(paste0("whose member \"", member_label(rows$dsn[moved][1]), "\" feeds band ", b,
+                    " from its band ", rows$source_band[moved][1], "; a colour image needs ",
+                    "each band from the member's band of the same number"))
+    }
+  }
+  NULL
+}
+
+## Why member COG `cog` cannot draw a colour image of `bands`, or NULL: it
+## needs those bands, pixel interleaved.
+member_rgb_ok <- function(cog, bands) {
   if (cog$samples_per_pixel < max(bands)) {
     return(paste0("has ", cog$samples_per_pixel, " band", if (cog$samples_per_pixel != 1L) "s",
                   ", fewer than a colour image of bands ", paste(bands, collapse = ", "), " needs"))
   }
   if (!identical(cog$planar, "interleaved")) {
     return("stores its bands separately (INTERLEAVE=BAND); a colour image needs pixel interleaved bands")
-  }
-  m <- mosaic$members[mosaic$members$dsn == dsn & !is.na(mosaic$members$band), , drop = FALSE]
-  for (b in bands) {
-    sb <- m$source_band[m$band == b]
-    if (length(sb) && !all(sb == b)) {
-      return(paste0("feeds band ", b, " from its band ", sb[1], "; a colour image needs each ",
-                    "band from the member's band of the same number"))
-    }
   }
   NULL
 }

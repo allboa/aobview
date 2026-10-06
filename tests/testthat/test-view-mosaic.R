@@ -36,6 +36,8 @@ test_that("a VRT over two local COGs gives one layer per member, referenced by t
   expect_identical(v$scene$version, "0.5")
   expect_length(v$scene$legends, 1L)
   expect_identical(v$scene$legends[[1]]$layer, "r_1")
+  ## Titled with the mosaic's name, not headed by the first member's label.
+  expect_identical(v$scene$legends[[1]]$title, "r")
   expect_equal(v$scene$view$extent, c(-6400000, 6400000, -6400000, 6400000))
   expect_valid_scene(v)
   ## A range given applies to every member; legend = FALSE leaves the legend out.
@@ -67,6 +69,9 @@ test_that("only the members a view touches are planned; one member keeps the lay
   expect_identical(view_labels(v), "r")
   expect_identical(v$scene$data$r$url, "east.tif")
   expect_identical(v$scene$layers[[1]]$plan$coverage, "view")
+  ## The member paths are those cog_info() is given (cog_halves() names
+  ## them as normalizePath() does), so this is not vacuous on Windows.
+  expect_true(h$b %in% probed)
   expect_false(h$a %in% probed)
   ## The same by name.
   vs <- no_temp_cog(view(h$vrt, extent = c(1e6, 5e6, -3e6, 3e6), units_per_pixel = 70000,
@@ -137,6 +142,64 @@ test_that("a VRT of a colour COG draws a colour image from the member", {
   seen <- gdal_temp_seen(expect_message(view(swapped, rgb = TRUE, name = "bgr", file = html()),
                                         "feeds band 1 from its band 3"))
   expect_equal(seen$cog$samples_per_pixel, 3L)
+})
+
+test_that("a colour VRT whose bands come from different files is not drawn from one of them", {
+  skip_if_no_terra()
+  dir <- normalizePath(tempfile("rgb-"), winslash = "/", mustWork = FALSE)
+  dir.create(dir)
+  f <- extdata("polar_rgba.tif")
+  files <- file.path(dir, c("r.tif", "g.tif", "b.tif"))
+  file.copy(f, files)
+  ds <- gdalraster::GDALRaster$new(f)
+  gt <- ds$getGeoTransform()
+  nx <- ds$getRasterXSize()
+  ny <- ds$getRasterYSize()
+  ds$close()
+  ## Band b of the mosaic from band `src[b]` of file `file[b]`.
+  rgb_vrt <- function(out, file, src = c(1, 1, 1)) {
+    band <- function(b) {
+      paste0('<VRTRasterBand dataType="Byte" band="', b, '"><ColorInterp>',
+             c("Red", "Green", "Blue")[b], "</ColorInterp>",
+             '<SimpleSource><SourceFilename relativeToVRT="0">', file[b], "</SourceFilename>",
+             "<SourceBand>", src[b], "</SourceBand>",
+             sprintf('<SrcRect xOff="0" yOff="0" xSize="%d" ySize="%d"/>', nx, ny),
+             sprintf('<DstRect xOff="0" yOff="0" xSize="%d" ySize="%d"/>', nx, ny),
+             "</SimpleSource></VRTRasterBand>")
+    }
+    writeLines(c(sprintf('<VRTDataset rasterXSize="%d" rasterYSize="%d">', nx, ny),
+                 "<SRS>EPSG:3031</SRS>",
+                 paste0("<GeoTransform>", paste(format(gt, digits = 17), collapse = ", "),
+                        "</GeoTransform>"),
+                 vapply(1:3, band, ""), "</VRTDataset>"), out)
+    out
+  }
+  ## Red, green and blue from band 1 of three files: read through GDAL,
+  ## never drawn as bands 1 to 3 of the first file.
+  sep <- rgb_vrt(file.path(dir, "sep.vrt"), files)
+  seen <- gdal_temp_seen(expect_message(
+    v <- view(sep, name = "img", file = html()),
+    "\"img\" is a VRT whose bands are not drawn from the same members \\(\"g.tif\" feeds band 2"
+  ))
+  expect_identical(v$scene$layers[[1]]$rgb, list(bands = 1:3))
+  expect_match(v$scene$data$img$url, "^view-.*[.]tif$")
+  expect_false(any(vapply(v$scene$data, function(d) identical(d$url, "r.tif"), TRUE)))
+  ## The same file for every band, each from its own band: drawn in place.
+  same <- rgb_vrt(file.path(dir, "same.vrt"), rep(files[1], 3), src = 1:3)
+  vs <- no_temp_cog(view(same, name = "img", file = html()))
+  expect_identical(vs$scene$data$img$url, "r.tif")
+  expect_identical(vs$scene$layers[[1]]$rgb, list(bands = 1:3))
+  ## The checks alone, on member tables.
+  mos <- function(dsn, band, source_band) {
+    list(members = data.frame(dsn = dsn, band = band, source_band = source_band,
+                              stringsAsFactors = FALSE))
+  }
+  expect_null(mosaic_rgb_bands(mos(rep(c("a", "b"), 3), rep(1:3, each = 2), rep(1:3, each = 2)),
+                               1:3))
+  expect_match(mosaic_rgb_bands(mos(c("a", "b", "a", "a"), c(1, 1, 2, 3), c(1, 1, 2, 3)), 1:3),
+               "\"b\" feeds band 1 but not band 2")
+  ## A GTI's members (no band) feed every band from their own.
+  expect_null(mosaic_rgb_bands(mos(c("a", "b"), NA_integer_, NA_integer_), 1:3))
 })
 
 test_that("a GTI over the halves is planned like the VRT", {
