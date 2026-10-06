@@ -247,8 +247,9 @@ add_grid <- function(g, v, name, ..., palette = NULL, range = NULL, legend = TRU
   if (!g$colour || cog$levels[[1]]$encoding$dtype != "uint8") {
     range <- range %||% value_range(if (g$colour) g$x[, , 1:3] else g$x)
   }
-  add_tiled_layer(v, cog, name, ..., bands = if (g$colour) seq_len(cog$samples_per_pixel),
-                  palette = palette, range = range, legend = legend, temp = TRUE)
+  add_cog_layer(v, cog, name, ..., palette = palette, range = range,
+                rgb = if (g$colour) seq_len(cog$samples_per_pixel) else FALSE,
+                legend = legend, temp = cog)
 }
 
 ## Add one-band grid g to v as an untiled scene spec 0.1 raster layer: the

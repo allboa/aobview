@@ -14,8 +14,11 @@ view_crs(x, ...)
 }
 \arguments{
 \item{x}{Geometry 'wk' can handle or a data frame with such a column
-(an \code{sf} object, say), a 'terra' \code{SpatRaster} or \code{SpatVector}, a list
-of them, or a matrix or array with \code{extent} and \code{crs}.}
+(an \code{sf} object, say), an Arrow stream or table (read once, here: see
+Arrow streams in \code{\link[=view]{view()}}), an \code{OGRFeatureSet}, a 'terra' \code{SpatRaster}
+or \code{SpatVector}, a string (WKT text, or the path, URL or data source
+name of a raster or vector source: see Strings in \code{\link[=view]{view()}}), a list of
+them, or a matrix or array with \code{extent} and \code{crs}.}
 
 \item{...}{Not used, except by the matrix and array methods.}
 

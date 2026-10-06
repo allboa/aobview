@@ -8,7 +8,7 @@ Read the org agent brief first: [allboa/design AGENTS.md](https://github.com/all
 
 ## Status
 
-Early (phase 3). `view()` draws points, lines and polygons from any geometry wk can read (sfc, wkb, wkt, xy, rct, geos, ...) or a data frame with such a column (sf included), and terra rasters and vectors, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, vector features can be coloured by an attribute, with a legend, and selecting a feature shows its attributes in a popup.
+Early (phase 3). `view()` draws points, lines and polygons from any geometry wk can read (sfc, wkb, wkt, xy, rct, geos, ...) or a data frame with such a column (sf included), terra rasters and vectors, and any raster or vector source GDAL opens, by its path, URL or data source name, in their own CRS, or in a polar view chosen for them, in a self-contained HTML page written by [aobcore](https://github.com/allboa/aobcore). Several objects draw in one view, as a list or by adding to a view, vector features can be coloured by an attribute, with a legend, and selecting a feature shows its attributes in a popup.
 
 ```r
 library(aobview)
@@ -29,6 +29,14 @@ view(r, palette = "ocean")        # lon/lat raster over the pole: drawn in EPSG:
 u <- terra::rast("/vsicurl/https://example.org/some.tif")
 view(u)                           # a remote COG: the page references it by URL
 ```
+
+```r
+view("https://example.org/some.tif")       # the same, by URL: probed with gdalraster
+view("/vsis3/bucket/areas.parquet", zcol = "name")   # a vector source, read through GDAL
+view("SRID=4326;LINESTRING (0 -60, 90 -60)")         # WKT text stays geometry
+```
+
+A string that names a file, or starts with a URL scheme or `/vsi`, is a data source, read with gdalraster (suggested): a COG, local or remote, is planned into tiles as a `SpatRaster` read from one is; another raster is read through GDAL into a temporary COG; a vector source is read with `aobcore::gdal_vector_stream()`, which reprojects in GDAL. Any other string that wk parses as WKT is geometry.
 
 `view()` returns a view with the `scene` and the `file` it wrote. Printing it in an interactive session opens the page in the IDE's viewer or the browser. In an R Markdown or Quarto document, a view printed in a chunk is drawn in the document itself, its data embedded and the renderer carried once for every view. In a Shiny app, `aobviewOutput()` and `renderAobview()` draw a view, and `aobview_selected()` gives the rows the viewer selected. The page needs no server, and no network unless it references a remote COG.
 
@@ -102,7 +110,7 @@ CCAMLR statistical areas: Commission for the Conservation of Antarctic Marine Li
 - Lon/lat data entirely south of 40S is drawn in EPSG:3031 (Antarctic Polar Stereographic), and entirely north of 60N in EPSG:3413 (NSIDC Polar Stereographic North). The northern threshold is stricter because much mid-latitude land lies between 40N and 60N.
 - Other lon/lat data is drawn flat in its own CRS. Web Mercator is not used: it cannot show the poles.
 
-Vector input is read through wk (allboa/design decision 0008): a bare geometry vector, or a data frame whose geometry column is the sf one or the first column wk can read (`geometry =` names another), with the CRS travelling on the geometry. aobcore does not reproject, so aobview transforms with PROJ (`wk::wk_transform()` with `PROJ::proj_trans_create()`), point by point: any CRS works, but nothing is cut at the antimeridian or the poles. Lon/lat lines and polygon edges are densified every 0.25 degrees first (`densify =`, with `aobcore::vector_densify()`), so parallels curve in a polar view.
+Vector input is read through wk (allboa/design decision 0008): a bare geometry vector, or a data frame whose geometry column is the sf one or the first column wk can read (`geometry =` names another), with the CRS travelling on the geometry. An Arrow stream, or anything with an `as_nanoarrow_array_stream()` method (an arrow Table, a DuckDB result fetched as Arrow, a GDAL layer's `getArrowStream()`), is read once into such a data frame, its geometry column found by GeoArrow extension type or named by `geometry =` and its CRS read from the GeoArrow metadata or given by `crs =`; an `OGRFeatureSet` from gdalraster's `GDALVector$fetch()` is one too, its WKB wrapped with the layer's SRS (decision 0011). aobcore does not reproject, so aobview transforms with PROJ (`wk::wk_transform()` with `PROJ::proj_trans_create()`), point by point: any CRS works, but nothing is cut at the antimeridian or the poles. Lon/lat lines and polygon edges are densified every 0.25 degrees first (`densify =`, with `aobcore::vector_densify()`), so parallels curve in a polar view.
 
 ![Lon/lat polygons, lines and points in EPSG:3031, light](tools/screenshots/mixed-lonlat-in-3031-light.png)
 

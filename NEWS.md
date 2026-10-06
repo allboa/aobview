@@ -1,5 +1,38 @@
 # aobview 0.0.0.9000
 
+* `view()` takes Arrow streams and tables, DuckDB results and
+  `GDALVector$fetch()` output (#40, allboa/design decision 0011). A
+  `nanoarrow_array_stream`, or anything with an
+  `as_nanoarrow_array_stream()` method (an arrow `Table`,
+  `RecordBatchReader` or `Dataset`, a duckdb result fetched as Arrow, a
+  gdalraster layer's `getArrowStream()`), is read once, batch by batch,
+  into a data frame of its rows and viewed as one: the geometry column is
+  the first with a GeoArrow extension type, else GDAL's `ogc.wkb` column,
+  else the WKB or WKT column `geometry` names, and its CRS comes from the
+  GeoArrow metadata, or `crs` when it has none. `selected()` on a stream
+  gives rows of the data frame it was read into, their stream row indices
+  as row names. An `OGRFeatureSet` from gdalraster's `GDALVector$fetch()`
+  is viewed as a data frame, its WKB (or WKT) column wrapped as `wk::wkb()`
+  with the layer's SRS. `view_add()` and lists take the same inputs. No
+  new Imports: arrow, DBI, duckdb and geoarrow join Suggests for the tests.
+
+* `view()` takes a string (#39, allboa/design decision 0011): WKT text, or
+  the path, URL or GDAL data source name of a raster or vector source. A
+  string that names a file that exists, or starts with a URL scheme or
+  `/vsi`, is a data source; any other string wk parses as WKT is geometry
+  (an `SRID=code;` prefix gives it that CRS); a string that is neither is
+  probed as a data source. A data source is read with gdalraster (still in
+  Suggests; a clear error names it when it is missing): a COG, local or
+  remote, is planned as a `SpatRaster` read from one is, a remote one
+  referenced by URL and never copied; another raster is read through GDAL
+  into a temporary COG by the `view-gdal.R` route, whatever its size; a
+  vector source is read with `aobcore::gdal_vector_stream()`, which
+  densifies and reprojects in GDAL, and drawn with its attributes as any
+  data frame is. `layer` picks the band or the vector layer; the other
+  arguments are those of the route taken. Strings also go in a list for
+  `view()` and to `view_add()`, and `view_crs()` reads them. A string
+  literal is named by its base name (or the WKT text).
+
 * `view()` of a matrix or array with an `extent` and `crs` (#37, allboa/design
   decision 0011): `view(m, extent = c(xmin, xmax, ymin, ymax), crs =
   "EPSG:3031")` draws a numeric or logical matrix as a raster, row 1 at the

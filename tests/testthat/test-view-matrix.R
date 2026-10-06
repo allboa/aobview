@@ -12,13 +12,8 @@ raster_values <- function(v, i = 1L) {
 # Run view() and return what grid_temp_cog() wrote: the COG's structure and
 # its cell values by band (the file itself is deleted once the page is
 # written).
-# The matrix COG route needs gdalraster and a PROJ database, not terra.
-skip_if_no_gdalraster <- function() {
-  skip_if_not_installed("gdalraster")
-  ok <- !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
-  skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
-}
-
+# The matrix COG route needs gdalraster and a PROJ database, not terra
+# (skip_if_no_gdalraster() in helper-terra.R).
 grid_temp_seen <- function(expr) {
   seen <- new.env()
   real <- grid_temp_cog

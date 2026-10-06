@@ -26,6 +26,58 @@
 #' WKB (see [view-terra]). A matrix or array with an `extent` and `crs` is
 #' drawn as a raster (see [view-matrix]). A [wk::grd()] is not drawn yet.
 #'
+#' **Strings.** A single string is WKT text or the name of a data source,
+#' by this rule: a string that names a file that exists, or starts with a
+#' URL scheme (`https://`, `s3://`, ...) or `/vsi`, is a data source; any
+#' other string that 'wk' parses as WKT is geometry, as [wk::wkt()] reads
+#' it (an `SRID=code;` prefix gives it that EPSG CRS; plain WKT has none,
+#' which is an error: give it one as `wk::wkt(x, crs = )`); and a string
+#' that is neither is probed as a data source, an error when GDAL cannot
+#' open it. A data source is read with 'gdalraster' (in Suggests; an error
+#' says so when it is not installed; WKT text needs no package). A Cloud
+#' Optimized GeoTIFF,
+#' local or remote, is drawn as a tiled raster exactly as a `SpatRaster`
+#' read from one is (see [view-terra]): a remote COG is referenced by its
+#' URL, never copied. Another raster GDAL opens (not tiled, no overviews, a
+#' VRT, a tile service) is read through GDAL into a temporary COG, as a
+#' `SpatRaster` too large for 'terra' to write is (see Datasets too large to
+#' write whole in [view-terra]), whatever its size: that read copies the
+#' data into R, so a remote raster that is not a COG is not yet drawn in
+#' place (planning a VRT or GTI mosaic across its COG members is
+#' allboa/aobview#41). A vector source
+#' (GeoJSON, GeoPackage, GeoParquet, FlatGeobuf, a shapefile, ...) is read
+#' with [aobcore::gdal_vector_stream()], which densifies and reprojects in
+#' GDAL, and drawn as any data frame is, with its attributes. `layer`
+#' picks the raster band or the vector layer. The other arguments are
+#' those of the route taken: for WKT text and a vector source the vector
+#' arguments here, and for a raster [view-terra]'s `palette`, `range`,
+#' `rgb` and `legend` and [aobcore::cog_plan()]'s, all through `...`.
+#'
+#' **Arrow streams** (allboa/design decision 0011). `x` can be a 'nanoarrow'
+#' array stream, or anything with an [nanoarrow::as_nanoarrow_array_stream()]
+#' method: an 'arrow' `Table`, `RecordBatchReader` or `Dataset`, a 'duckdb'
+#' result fetched as Arrow (`duckdb::duckdb_fetch_arrow()` or
+#' `duckdb_fetch_record_batch()` on a query sent with `arrow = TRUE`), a
+#' layer's `GDALVector$getArrowStream()` from 'gdalraster', an ADBC result.
+#' The stream is read once, batch by batch, into a data frame of its rows,
+#' which is then viewed as a data frame: its other columns are the
+#' attributes. The geometry column is the first with a GeoArrow extension
+#' type (`geoarrow.point`, `geoarrow.wkb`, ...), else GDAL's `ogc.wkb`
+#' column, else the one `geometry` names, which holds WKB bytes (a binary
+#' column) or WKT text. Its CRS comes from the GeoArrow extension metadata;
+#' a column with none (a DuckDB blob, GDAL's WKB) is taken to be in `crs`,
+#' which must then be given (in [view_add()], or in a list given `crs`, it
+#' is the view's CRS). A stream read before has no rows left and is an
+#' error. [selected()] on a stream gives rows of the data frame it was read
+#' into, since the stream itself cannot be read again.
+#'
+#' **GDALVector$fetch().** An `OGRFeatureSet` from 'gdalraster' (a data frame
+#' whose geometry column holds WKB bytes, or WKT text, with the layer's SRS
+#' and the column's name in its `gis` attribute) is viewed as a data frame:
+#' the geometry column is wrapped as [wk::wkb()] with the layer's SRS, and
+#' [selected()] gives its rows as fetched. A set fetched without geometry
+#' (`returnGeomAs = "NONE"`) or as bounding boxes is an error.
+#'
 #' 'aobcore' does not reproject, so `x` is transformed to the view CRS here
 #' by 'PROJ' ([wk::wk_transform()] with [PROJ::proj_trans_create()]). When
 #' `x` is in lon/lat and the view CRS differs, lines and polygon edges are
@@ -116,17 +168,29 @@
 #' legend and no popup is unchanged by these features.
 #'
 #' @param x A spatial object: a geometry vector 'wk' can handle, or a data
-#'   frame with such a column (an `sf` data frame, say); a 'terra' object
-#'   ([view-terra]); a matrix or array with `extent` and `crs`
-#'   ([view-matrix]); or a list of them ([view-layers]).
+#'   frame with such a column (an `sf` data frame, say); an Arrow stream, or
+#'   an object with an [nanoarrow::as_nanoarrow_array_stream()] method (an
+#'   'arrow' `Table`, a 'duckdb' result fetched as Arrow, ...); an
+#'   `OGRFeatureSet` from 'gdalraster'; a 'terra' object ([view-terra]); a
+#'   string, WKT text or the path, URL or GDAL data source name of a raster
+#'   or vector source (see Strings); a matrix or array with `extent` and
+#'   `crs` ([view-matrix]); or a list of them ([view-layers]).
 #' @param ... Not used by the vector methods: an argument caught here (a
-#'   misspelled one, say) is an error.
+#'   misspelled one, say) is an error. For a string, the arguments of the
+#'   route taken (see Strings).
+#' @param layer For a string naming a data source: the band of a raster to
+#'   draw through the palette (a number, 1 by default), or the layer of a
+#'   vector source to read (its name or number, the first by default).
 #' @param geometry For a data frame, the name of its geometry column.
 #'   `NULL` (the default) takes the `sf` geometry column, else the first
-#'   column 'wk' can handle.
+#'   column 'wk' can handle. For a stream, the column to draw (GeoArrow,
+#'   WKB bytes or WKT text); `NULL` takes the first column with a GeoArrow
+#'   extension type, else GDAL's `ogc.wkb` column. For an `OGRFeatureSet`
+#'   with several geometry columns, the one to draw.
 #' @param crs The view CRS: anything [aobcore::scene_crs()] and 'PROJ'
 #'   read, such as `"EPSG:3031"`, `3031` or a PROJ string. `NULL` (the
-#'   default) uses [view_crs()].
+#'   default) uses [view_crs()]. A stream whose geometry has no CRS in its
+#'   GeoArrow metadata is taken to be in `crs` (see Arrow streams).
 #' @param densify Maximum edge length, in the units of `x`'s CRS, for lines
 #'   and polygon edges before they are transformed. `NULL` (the default)
 #'   densifies lon/lat data every 0.25 degrees when the view CRS differs,
@@ -193,10 +257,20 @@
 #' v0 <- view(line)
 #' v0$scene$view$crs
 #'
+#' # WKT text, with its CRS as an SRID prefix.
+#' view("SRID=4326;LINESTRING (0 -60, 90 -60)")$scene$view$crs
+#'
 #' # A data frame with a geometry column.
 #' bases <- data.frame(base = c("Casey", "Davis"))
 #' bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
 #' v1 <- view(bases, zcol = "base")
+#'
+#' # An Arrow stream with a GeoArrow geometry column (the CRS travels in its
+#' # metadata); an arrow Table or a DuckDB result fetched as Arrow go the
+#' # same way.
+#' stream <- nanoarrow::as_nanoarrow_array_stream(bases)
+#' v2 <- view(stream, popup = "base")
+#' v2$scene$view$crs
 #' @examplesIf requireNamespace("sf", quietly = TRUE)
 #' coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
 #'                                  package = "aobcore"), quiet = TRUE)
@@ -223,6 +297,14 @@
 #'            popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
 #' v7 <- view_add(v7, coast, popup = FALSE)
 #' vapply(v7$scene$legends[[1]]$classes, function(cl) cl$label, "")
+#' @examplesIf requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
+#' # The same areas by their path: read through GDAL, no 'sf' needed.
+#' areas <- system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview")
+#' v8 <- view(areas, crs = "EPSG:3031", zcol = "GAR_Name", legend = FALSE)
+#' v8$scene$layers[[1]]$kind
+#' # A COG by its path (or URL): a tiled raster, as for a SpatRaster.
+#' v9 <- view(system.file("extdata", "polar_3031.tif", package = "aobcore"))
+#' v9$scene$layers[[1]]$kind
 #' \dontrun{
 #' v2
 #' v3
@@ -239,13 +321,48 @@ view.default <- function(x, ..., crs = NULL, densify = NULL, style = "default", 
                          legend = TRUE, popup = NULL, name = NULL, file = NULL,
                          theme = c("auto", "light", "dark"),
                          transport = getOption("aobview.transport", "auto")) {
-  if (!wk::is_handleable(x)) stop(no_method_message(x), call. = FALSE)
+  name <- name %||% deparse_name(substitute(x))
+  if (!wk::is_handleable(x)) {
+    if (!is_stream_input(x)) stop(no_method_message(x), call. = FALSE)
+    ## An object with an as_nanoarrow_array_stream() method (an arrow
+    ## Table, a duckdb result, ...): its stream, with `geometry` in `...`.
+    return(view(nanoarrow::as_nanoarrow_array_stream(x), ..., crs = crs, densify = densify,
+                style = style, fill = fill, stroke = stroke,
+                stroke_width_px = stroke_width_px, radius_px = radius_px, zcol = zcol,
+                palette = palette, breaks = breaks, na_colour = na_colour, legend = legend,
+                popup = popup, name = name, file = file, theme = theme,
+                transport = transport))
+  }
   check_dots(..., what = "geometry")
-  view_vector(x, NULL, name %||% deparse_name(substitute(x)), crs = crs, densify = densify,
+  view_vector(x, NULL, name, crs = crs, densify = densify,
               style = style, fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
               radius_px = radius_px, zcol = zcol, palette = palette, breaks = breaks,
               na_colour = na_colour, legend = legend, popup = popup, file = file,
               theme = match.arg(theme), transport = transport)
+}
+
+#' @rdname view
+#' @export
+view.nanoarrow_array_stream <- function(x, ..., geometry = NULL, crs = NULL, densify = NULL,
+                                        style = "default", fill = NULL, stroke = NULL,
+                                        stroke_width_px = NULL, radius_px = NULL,
+                                        zcol = NULL, palette = NULL, breaks = NULL,
+                                        na_colour = "#999999", legend = TRUE, popup = NULL,
+                                        name = NULL, file = NULL,
+                                        theme = c("auto", "light", "dark"),
+                                        transport = getOption("aobview.transport", "auto")) {
+  check_dots(..., what = "a stream")
+  name <- name %||% deparse_name(substitute(x))
+  theme <- match.arg(theme)
+  transport <- check_transport(transport)
+  ## Read once, before anything else can fail: the rows are the view's
+  ## source (see selected()).
+  rows <- stream_frame(x, geometry, crs)
+  view_vector(rows$x, rows$geometry, name, crs = crs, densify = densify, style = style,
+              fill = fill, stroke = stroke, stroke_width_px = stroke_width_px,
+              radius_px = radius_px, zcol = zcol, palette = palette, breaks = breaks,
+              na_colour = na_colour, legend = legend, popup = popup, file = file,
+              theme = theme, transport = transport)
 }
 
 #' @rdname view
@@ -308,17 +425,30 @@ new_view <- function(crs, transport = "auto") {
 }
 
 ## Append x's layers to view v, above those already there. Methods: vector
-## input here (default), SpatRaster and SpatVector in view-terra.R, matrix
-## and array in view-matrix.R. Each returns v with its scene extended and
-## the layers' extents (view CRS units) recorded.
+## input here (default), SpatRaster and SpatVector in view-terra.R, a
+## string in view-string.R, matrix and array in view-matrix.R. Each returns
+## v with its scene extended and the layers' extents (view CRS units)
+## recorded.
 add_layers <- function(x, v, name, ...) {
   UseMethod("add_layers")
 }
 
 #' @export
 add_layers.default <- function(x, v, name, ..., geometry = NULL) {
-  if (!wk::is_handleable(x) && !is.data.frame(x)) stop(no_method_message(x), call. = FALSE)
+  if (!wk::is_handleable(x) && !is.data.frame(x)) {
+    if (!is_stream_input(x)) stop(no_method_message(x), call. = FALSE)
+    return(add_layers(nanoarrow::as_nanoarrow_array_stream(x), v, name, ...,
+                      geometry = geometry))
+  }
   add_record(vector_record(x, geometry), v, name, ..., source = x)
+}
+
+## A stream's rows, read once (see stream_frame()), as a data frame layer;
+## geometry with no CRS is taken to be in the view's.
+#' @export
+add_layers.nanoarrow_array_stream <- function(x, v, name, ..., geometry = NULL) {
+  rows <- stream_frame(x, geometry, v$scene$view$crs)
+  add_layers(rows$x, v, name, ..., geometry = rows$geometry)
 }
 
 ## A vector record's layers (see vector_record()): its geometry, coloured
@@ -821,8 +951,10 @@ check_dots <- function(..., what) {
 no_method_message <- function(x) {
   paste0("view() has no method for class ", paste(class(x), collapse = "/"),
          "; it draws geometry that wk can read (sfc, wkb, wkt, xy, rct, geos, ...), ",
-         "data frames with such a column (sf included), terra SpatRaster and ",
-         "SpatVector objects, matrices and arrays with an extent and crs, and lists of them.")
+         "data frames with such a column (sf included), Arrow streams and tables, ",
+         "gdalraster OGRFeatureSets, terra SpatRaster and SpatVector objects, a string ",
+         "(WKT text, or the path, URL or GDAL data source name of a raster or vector ",
+         "source), matrices and arrays with an extent and crs, and lists of them.")
 }
 
 ## Transform wkb g from CRS `src` to the view CRS with PROJ, densifying

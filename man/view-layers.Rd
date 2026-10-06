@@ -33,8 +33,8 @@ spatial object (or a list of them) to add.}
 \item{...}{For \code{view()} of a list, nothing (per-layer arguments go to
 \code{view_add()}). For \code{view_add()}, the arguments \code{\link[=view]{view()}}, \link{view-terra}
 or \link{view-matrix} take for \code{x}'s class, such as \code{fill} or \code{zcol} for
-\code{sf} data, \code{palette} for a \code{SpatRaster}, or \code{extent} and \code{crs} for a
-matrix.}
+\code{sf} data, \code{geometry} for a stream, \code{palette} for a \code{SpatRaster}, or
+\code{extent} and \code{crs} for a matrix.}
 
 \item{crs}{The view CRS, as for \code{\link[=view]{view()}}. \code{NULL} uses \code{\link[=view_crs]{view_crs()}} of
 the list.}
@@ -83,14 +83,20 @@ either form to fix it.
 }
 \details{
 Elements may be any vector input \code{\link[=view]{view()}} takes (geometry 'wk' can
-handle, or a data frame with such a column, \code{sf} included) and 'terra'
-\code{SpatRaster} or \code{SpatVector} objects, in any mix of CRSs. A matrix or
-array is not one, since it has no extent or CRS of its own: add it with
-\code{view_add(v, m, extent = , crs = )}, where \code{crs} is the grid's CRS, not
-the view's (see \link{view-matrix}). Each is drawn
-as \code{\link[=view]{view()}} or \link{view-terra} draws it on its own, with its default style,
-and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
-densified first), rasters by \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}'s meshes.
+handle, a data frame with such a column, \code{sf} included, an Arrow stream
+or table, an \code{OGRFeatureSet}), 'terra' \code{SpatRaster} or \code{SpatVector}
+objects, and strings (WKT text, or the path, URL or data source name of
+a raster or vector source: see Strings in \code{\link[=view]{view()}}), in any mix of CRSs.
+A matrix or array is not one, since it has no extent or CRS of its own:
+add it with \code{view_add(v, m, extent = , crs = )}, where \code{crs} is the
+grid's CRS, not the view's (see \link{view-matrix}).
+Each is drawn as \code{\link[=view]{view()}} or \link{view-terra} draws it on its own, with its
+default style, and reprojected to the view CRS: vectors by 'PROJ'
+(lon/lat edges densified first), rasters by \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}'s
+meshes. A stream is read once, before the view CRS is chosen; one whose
+geometry has no CRS is taken to be in \code{crs}, which \code{view()} of the list
+must then be given, or in the view's CRS for \code{view_add()} (see Arrow
+streams in \code{\link[=view]{view()}}).
 
 \strong{View CRS.} \code{crs} when given; otherwise \code{\link[=view_crs]{view_crs()}} of the whole list:
 the CRS of the first element with a projected CRS, or, when every element
@@ -102,8 +108,9 @@ argument to it is an error.
 
 \strong{Names.} List names become layer labels and, made valid and unique,
 layer ids. An unnamed element takes the expression that gave it in a
-call such as \code{view(list(coast, r))}, else \code{x[[i]]}. When an id is taken,
-\verb{_2}, \verb{_3}, ... is appended.
+call such as \code{view(list(coast, r))} (a string literal is named as
+\code{\link[=view]{view()}} names it: its base name, or the WKT text), else \code{x[[i]]}. When
+an id is taken, \verb{_2}, \verb{_3}, ... is appended.
 
 \strong{Initial view.} The union of the layers' extents in the view CRS,
 clipped to the view's domain (\code{\link[aobcore:crs_domain]{aobcore::crs_domain()}}, carried as the
