@@ -75,6 +75,15 @@ test_that("a stars_proxy over a COG gives the SpatRaster's layer, from that file
   expect_warning(v2 <- view(p, name = "r", max_tiles = 2, file = html()), "max_tiles")
   expect_lt(length(tile_blobs(v2)), length(tile_blobs(v)))
   expect_error(view(p, max_tile = 4, file = html()), "does not use `max_tile`")
+  ## A COG whose CRS has no EPSG code is still referenced, not read.
+  g <- tempfile(fileext = ".tif")
+  on.exit(unlink(g), add = TRUE)
+  gdalraster::translate(f, g, c("-of", "COG", "-a_srs",
+                                "+proj=stere +lat_0=-90 +lat_ts=-70 +lon_0=10 +datum=WGS84 +units=m"),
+                        quiet = TRUE)
+  vg <- view(stars::read_stars(g, proxy = TRUE), name = "g", file = html())
+  expect_identical(layer_kinds(vg), "tiled_raster")
+  expect_identical(vg$scene$data$g$url, basename(g))
   ## The same scene as the SpatRaster read from the file.
   skip_if_no_terra()
   b <- view(terra::rast(f), name = "r", file = html())
@@ -123,6 +132,12 @@ test_that("a cropped or computed proxy is read into memory and drawn from there"
   expect_null(proxy_source(p * 2, NULL))
   expect_null(proxy_source(p[, 1:100, 1:100], NULL))
   expect_false(is.null(proxy_source(p, NULL)))
+  ## Georeferencing changed on the proxy: not the file's, so read.
+  d <- stars::st_dimensions(p)
+  d$x$offset <- 0
+  moved <- p
+  attr(moved, "dimensions") <- d
+  expect_null(proxy_source(moved, NULL))
   ## A crop in the view CRS, 100 x 100: untiled from memory, its extent the
   ## crop's.
   v <- view(p[, 1:100, 1:100], name = "crop", file = html())
@@ -193,6 +208,7 @@ test_that("layer picks an attribute, or a slice of the dimension beyond x and y"
 
 test_that("curvilinear and rectilinear grids and vector cubes are out of scope, with a message", {
   skip_if_not_installed("stars")
+  skip_if_no_gdalraster()
   a <- array(seq_len(12), c(4, 3))
   lon <- matrix(rep(seq(-180, 180, length.out = 4), 3), 4, 3)
   lat <- matrix(rep(seq(-90, -60, length.out = 3), each = 4), 4, 3)
@@ -213,6 +229,9 @@ test_that("curvilinear and rectilinear grids and vector cubes are out of scope, 
 
 test_that("stars arguments are checked, and a misspelled one is an error", {
   skip_if_not_installed("stars")
+  chr <- stars::st_as_stars(matrix(letters[1:12], 4, 3))
+  sf::st_crs(chr) <- 3031
+  expect_error(view(chr, file = html()), "draws numbers, logicals and factors")
   s <- stars_3031(4, 3, seq_len(12))
   expect_error(view(s, legend = "yes", file = html()), "TRUE or FALSE")
   expect_error(view(s, range = c(1, 1), file = html()), "`range`")
@@ -255,6 +274,7 @@ test_that("a stars object goes in a list and is added to a view, like a SpatRast
 
 test_that("view() of stars data says when stars or gdalraster is missing", {
   skip_if_not_installed("stars")
+  skip_if_no_gdalraster()
   s <- stars_3031(4, 3, seq_len(12))
   p <- stars::read_stars(extdata("polar_3031.tif"), proxy = TRUE)
   local({

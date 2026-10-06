@@ -289,6 +289,10 @@ stars_grid <- function(x, layer) {
   f <- stars_facts(x)
   p <- stars_pick(x, layer, f)
   a <- x[[p$attr]]
+  if (!is.numeric(unclass(a)) && !is.logical(a) && !is.factor(a)) {
+    stop("Attribute \"", names(x)[p$attr], "\" of `x` is ", class(a)[1],
+         "; view() draws numbers, logicals and factors (by their codes).", call. = FALSE)
+  }
   ## Factor codes and units as plain numbers.
   a <- array(as.numeric(unclass(a)), dim(a))
   other <- setdiff(seq_along(dim(a)), f$at)
@@ -342,7 +346,14 @@ proxy_source <- function(x, layer) {
          call. = FALSE)
   }
   src <- probe_source(files, band)
-  if (src$kind == "vector" || !same_crs(src$info$wkt, f$wkt)) return(NULL)
+  if (src$kind == "vector" || !isTRUE(gdalraster::srs_is_same(src$info$wkt, f$wkt))) {
+    return(NULL)
+  }
+  ## The proxy's georeferencing must be the file's: an offset or delta
+  ## changed on the proxy draws elsewhere than the file, so it is read.
+  ext <- src$info$levels[[1]]$extent
+  cell <- min(abs(diff(ext[1:2])) / fd[i, f$xy[1]], abs(diff(ext[3:4])) / fd[i, f$xy[2]])
+  if (length(ext) != 4L || any(abs(f$extent - ext) > 1e-6 * cell)) return(NULL)
   src
 }
 
