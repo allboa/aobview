@@ -24,7 +24,9 @@
 #' can handle, or the one named by `geometry`. The CRS travels with the
 #' geometry ([wk::wk_crs()]). A terra `SpatVector` is read from terra's own
 #' WKB (see [view-terra]). A matrix or array with an `extent` and `crs` is
-#' drawn as a raster (see [view-matrix]). A [wk::grd()] is not drawn yet.
+#' drawn as a raster (see [view-matrix]), and so is a 'stars' object or
+#' `stars_proxy` on a regular grid (see [view-stars]). A [wk::grd()] is not
+#' drawn yet.
 #'
 #' **Strings.** A single string is WKT text or the name of a data source,
 #' by this rule: a string that names a file that exists, or starts with a
@@ -176,7 +178,8 @@
 #'   `OGRFeatureSet` from 'gdalraster'; a 'terra' object ([view-terra]); a
 #'   string, WKT text or the path, URL or GDAL data source name of a raster
 #'   or vector source (see Strings); a matrix or array with `extent` and
-#'   `crs` ([view-matrix]); or a list of them ([view-layers]).
+#'   `crs` ([view-matrix]); a 'stars' object or `stars_proxy`
+#'   ([view-stars]); or a list of them ([view-layers]).
 #' @param ... Not used by the vector methods: an argument caught here (a
 #'   misspelled one, say) is an error. For a string, the arguments of the
 #'   route taken (see Strings).
@@ -251,7 +254,8 @@
 #'   page follows the view (see [selection()]).
 #' @seealso [view_crs()] for the default view CRS; [view-terra] for 'terra'
 #'   rasters and vectors; [view-matrix] for a matrix or array with an extent
-#'   and CRS; [view-layers] for several layers in one view.
+#'   and CRS; [view-stars] for 'stars' rasters; [view-layers] for several
+#'   layers in one view.
 #' @export
 #' @examples
 #' # Any geometry 'wk' can read, with its CRS: no 'sf' needed.
@@ -428,7 +432,8 @@ new_view <- function(crs, transport = "auto") {
 
 ## Append x's layers to view v, above those already there. Methods: vector
 ## input here (default), SpatRaster and SpatVector in view-terra.R, a
-## string in view-string.R, matrix and array in view-matrix.R. Each returns
+## string in view-string.R, matrix and array in view-matrix.R, stars and
+## stars_proxy in view-stars.R. Each returns
 ## v with its scene extended and the layers' extents (view CRS units)
 ## recorded.
 add_layers <- function(x, v, name, ...) {
@@ -961,7 +966,8 @@ no_method_message <- function(x) {
          "data frames with such a column (sf included), Arrow streams and tables, ",
          "gdalraster OGRFeatureSets, terra SpatRaster and SpatVector objects, a string ",
          "(WKT text, or the path, URL or GDAL data source name of a raster or vector ",
-         "source), matrices and arrays with an extent and crs, and lists of them.")
+         "source), matrices and arrays with an extent and crs, stars objects and proxies, ",
+         "and lists of them.")
 }
 
 ## Transform wkb g from CRS `src` to the view CRS with PROJ, densifying

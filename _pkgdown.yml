@@ -61,6 +61,7 @@ reference:
   - view
   - view-terra
   - view-matrix
+  - view-stars
   - view-layers
   - selection
   - aobview-shiny

@@ -97,7 +97,8 @@ an object with an \code{\link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow::as
 \code{OGRFeatureSet} from 'gdalraster'; a 'terra' object (\link{view-terra}); a
 string, WKT text or the path, URL or GDAL data source name of a raster
 or vector source (see Strings); a matrix or array with \code{extent} and
-\code{crs} (\link{view-matrix}); or a list of them (\link{view-layers}).}
+\code{crs} (\link{view-matrix}); a 'stars' object or \code{stars_proxy}
+(\link{view-stars}); or a list of them (\link{view-layers}).}
 
 \item{...}{Not used by the vector methods: an argument caught here (a
 misspelled one, say) is an error. For a string, the arguments of the
@@ -218,7 +219,9 @@ one; for any other data frame the geometry column is the first that 'wk'
 can handle, or the one named by \code{geometry}. The CRS travels with the
 geometry (\code{\link[wk:wk_crs]{wk::wk_crs()}}). A terra \code{SpatVector} is read from terra's own
 WKB (see \link{view-terra}). A matrix or array with an \code{extent} and \code{crs} is
-drawn as a raster (see \link{view-matrix}). A \code{\link[wk:grd]{wk::grd()}} is not drawn yet.
+drawn as a raster (see \link{view-matrix}), and so is a 'stars' object or
+\code{stars_proxy} on a regular grid (see \link{view-stars}). A \code{\link[wk:grd]{wk::grd()}} is not
+drawn yet.
 
 \strong{Strings.} A single string is WKT text or the name of a data source,
 by this rule: a string that names a file that exists, or starts with a
@@ -427,5 +430,6 @@ v3
 \seealso{
 \code{\link[=view_crs]{view_crs()}} for the default view CRS; \link{view-terra} for 'terra'
 rasters and vectors; \link{view-matrix} for a matrix or array with an extent
-and CRS; \link{view-layers} for several layers in one view.
+and CRS; \link{view-stars} for 'stars' rasters; \link{view-layers} for several
+layers in one view.
 }

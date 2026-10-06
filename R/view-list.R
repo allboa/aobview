@@ -23,13 +23,14 @@
 #' Elements may be any vector input [view()] takes (geometry 'wk' can
 #' handle, a data frame with such a column, `sf` included, an Arrow stream
 #' or table, an `OGRFeatureSet`), 'terra' `SpatRaster` or `SpatVector`
-#' objects, and strings (WKT text, or the path, URL or data source name of
-#' a raster or vector source: see Strings in [view()]), in any mix of CRSs.
+#' objects, 'stars' objects and proxies (see [view-stars]), and strings
+#' (WKT text, or the path, URL or data source name of a raster or vector
+#' source: see Strings in [view()]), in any mix of CRSs.
 #' A matrix or array is not one, since it has no extent or CRS of its own:
 #' add it with `view_add(v, m, extent = , crs = )`, where `crs` is the
 #' grid's CRS, not the view's (see [view-matrix]).
-#' Each is drawn as [view()] or [view-terra] draws it on its own, with its
-#' default style, and reprojected to the view CRS: vectors by 'PROJ'
+#' Each is drawn as [view()], [view-terra] or [view-stars] draws it on its
+#' own, with its default style, and reprojected to the view CRS: vectors by 'PROJ'
 #' (lon/lat edges densified first), rasters by [aobcore::cog_plan()]'s
 #' meshes. A stream is read once, before the view CRS is chosen; one whose
 #' geometry has no CRS is taken to be in `crs`, which `view()` of the list
@@ -62,10 +63,10 @@
 #' @param x For `view()`, a list of spatial objects. For `view_add()`, one
 #'   spatial object (or a list of them) to add.
 #' @param ... For `view()` of a list, nothing (per-layer arguments go to
-#'   `view_add()`). For `view_add()`, the arguments [view()], [view-terra]
-#'   or [view-matrix] take for `x`'s class, such as `fill` or `zcol` for
-#'   `sf` data, `geometry` for a stream, `palette` for a `SpatRaster`, or
-#'   `extent` and `crs` for a matrix.
+#'   `view_add()`). For `view_add()`, the arguments [view()], [view-terra],
+#'   [view-matrix] or [view-stars] take for `x`'s class, such as `fill` or
+#'   `zcol` for `sf` data, `geometry` for a stream, `palette` for a
+#'   `SpatRaster` or a 'stars' object, or `extent` and `crs` for a matrix.
 #' @param crs The view CRS, as for [view()]. `NULL` uses [view_crs()] of
 #'   the list.
 #' @param name The page title. For a list, defaults to the layer labels
@@ -182,7 +183,7 @@ add_list <- function(x, v, labels) {
 check_list <- function(x, labels) {
   if (!length(x)) stop("The list has nothing to view.", call. = FALSE)
   ok <- vapply(x, function(el) {
-    inherits(el, c("SpatRaster", "SpatVector")) || is.data.frame(el) ||
+    inherits(el, c("SpatRaster", "SpatVector", "stars")) || is.data.frame(el) ||
       wk::is_handleable(el) || is_stream_input(el) || is_string(el)
   }, TRUE)
   if (!all(ok)) {
@@ -190,8 +191,8 @@ check_list <- function(x, labels) {
     stop("List element ", i, " (", labels[i], ") is a ", paste(class(x[[i]]), collapse = "/"),
          "; a list for view() holds geometry that wk can read, data frames with such a ",
          "column (sf included), Arrow streams and tables, terra SpatRaster and ",
-         "SpatVector objects, and strings (WKT text, or a path, URL or data source ",
-         "name).",
+         "SpatVector objects, stars objects and proxies, and strings (WKT text, or a ",
+         "path, URL or data source name).",
          if (is_grid(x[[i]])) {
            paste0(" A matrix or array has no extent or CRS of its own: add it with ",
                   "view_add(v, x, extent = , crs = ).")
