@@ -38,13 +38,15 @@
 #' Optimized GeoTIFF,
 #' local or remote, is drawn as a tiled raster exactly as a `SpatRaster`
 #' read from one is (see [view-terra]): a remote COG is referenced by its
-#' URL, never copied. Another raster GDAL opens (not tiled, no overviews, a
-#' VRT, a tile service) is read through GDAL into a temporary COG, as a
-#' `SpatRaster` too large for 'terra' to write is (see Datasets too large to
-#' write whole in [view-terra]), whatever its size: that read copies the
-#' data into R, so a remote raster that is not a COG is not yet drawn in
-#' place (planning a VRT or GTI mosaic across its COG members is
-#' allboa/aobview#41). A vector source
+#' URL, never copied. A VRT or GDAL Tile Index (GTI) whose members are
+#' COGs is planned across its members, one layer per member referenced by
+#' the member's own file or URL (see Mosaics in [view-terra]). Another
+#' raster GDAL opens (not tiled, no overviews, a VRT of other files, a tile
+#' service) is read through GDAL into a temporary COG, as a `SpatRaster`
+#' too large for 'terra' to write is (see Datasets too large to write whole
+#' in [view-terra]), whatever its size: that read copies the data into R
+#' (a remote tile service is not yet drawn in place: allboa/aobview#31). A
+#' vector source
 #' (GeoJSON, GeoPackage, GeoParquet, FlatGeobuf, a shapefile, ...) is read
 #' with [aobcore::gdal_vector_stream()], which densifies and reprojects in
 #' GDAL, and drawn as any data frame is, with its attributes. `layer`
@@ -703,7 +705,9 @@ finish_view <- function(v, name, file, theme) {
 ## view_add() can change what the scene needs.
 ##
 ## A key is list(layer, args) for a layer coloured by column, or
-## list(layer, palette = TRUE, legend = TRUE/FALSE) for a palette raster.
+## list(layer, palette = TRUE, legend = TRUE/FALSE, only = TRUE/FALSE) for
+## a palette raster (`only` when the key stands for several layers, a
+## mosaic's members).
 ## Before scene spec 0.5 the renderer draws a ramp for each palette raster
 ## itself and the spec has no legends, so a scene that needs nothing from
 ## 0.5 is left as it is: the lowest version that expresses it. A 0.5 scene
@@ -716,7 +720,10 @@ add_legends <- function(s, keys) {
   wanted <- vapply(keys, function(k) !isTRUE(k$palette) || isTRUE(k$legend), TRUE)
   popups <- any(vapply(s$layers, function(l) !is.null(l$popup), TRUE))
   hide_ramp <- any(palette & !wanted)
-  if (!any(!palette) && !popups && !hide_ramp) return(s)
+  ## One legend for several layers (a mosaic's members) must be the
+  ## scene's own: before 0.5 the renderer draws a ramp per palette layer.
+  only <- any(vapply(keys, function(k) isTRUE(k$only), TRUE))
+  if (!any(!palette) && !popups && !hide_ramp && !only) return(s)
   for (k in keys[wanted]) {
     s <- do.call(aobcore::scene_add_legend, c(list(s, k$layer), k$args))
   }

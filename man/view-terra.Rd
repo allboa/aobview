@@ -153,6 +153,24 @@ embedded, so the page opens from disk with no server, the temporary COG
 is deleted once the layer is added; when the view is served, the server
 keeps it until it stops.
 
+\strong{Mosaics.} When \code{x} is read unchanged from a VRT or a GDAL Tile Index
+(GTI) whose members are COGs, the mosaic is planned across its members
+(\code{\link[aobcore:mosaic_members]{aobcore::mosaic_members()}}, \code{\link[aobcore:mosaic_plan]{aobcore::mosaic_plan()}}; allboa/design
+decisions 0010 and 0011): the view gets one \code{tiled_raster} layer per
+member (\verb{<name>} for one member, else \verb{<name>_<i>} in the mosaic's
+order, labelled with the member's base name), each referenced by the
+member's own file or URL exactly as a COG is above, and nothing is
+copied. Only the members whose placement meets \code{extent} are opened, so
+a remote member costs one request for its header. The members share
+one \code{palette}, one \code{range} and one legend: when \code{range} is not given it
+is the first member's (the range of its coarsest level), applied to
+every member so their colours agree. A member that cannot be drawn in
+place (one that is not a tiled GeoTIFF with overviews, is in another
+CRS, or that the VRT stretches, windows or rescales) sends the whole
+mosaic to the routes below, with a message naming the member. A local
+VRT over local COGs is planned the same way, its members embedded or
+served as local COGs are.
+
 \strong{Datasets too large to write whole.} When \code{x} is read unchanged from
 one GDAL dataset that is not such a COG (a tile service such as WMS or
 TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would

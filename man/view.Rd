@@ -232,13 +232,15 @@ says so when it is not installed; WKT text needs no package). A Cloud
 Optimized GeoTIFF,
 local or remote, is drawn as a tiled raster exactly as a \code{SpatRaster}
 read from one is (see \link{view-terra}): a remote COG is referenced by its
-URL, never copied. Another raster GDAL opens (not tiled, no overviews, a
-VRT, a tile service) is read through GDAL into a temporary COG, as a
-\code{SpatRaster} too large for 'terra' to write is (see Datasets too large to
-write whole in \link{view-terra}), whatever its size: that read copies the
-data into R, so a remote raster that is not a COG is not yet drawn in
-place (planning a VRT or GTI mosaic across its COG members is
-allboa/aobview#41). A vector source
+URL, never copied. A VRT or GDAL Tile Index (GTI) whose members are
+COGs is planned across its members, one layer per member referenced by
+the member's own file or URL (see Mosaics in \link{view-terra}). Another
+raster GDAL opens (not tiled, no overviews, a VRT of other files, a tile
+service) is read through GDAL into a temporary COG, as a \code{SpatRaster}
+too large for 'terra' to write is (see Datasets too large to write whole
+in \link{view-terra}), whatever its size: that read copies the data into R
+(a remote tile service is not yet drawn in place: allboa/aobview#31). A
+vector source
 (GeoJSON, GeoPackage, GeoParquet, FlatGeobuf, a shapefile, ...) is read
 with \code{\link[aobcore:gdal_vector_stream]{aobcore::gdal_vector_stream()}}, which densifies and reprojects in
 GDAL, and drawn as any data frame is, with its attributes. \code{layer}

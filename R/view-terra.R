@@ -23,6 +23,24 @@
 #' is deleted once the layer is added; when the view is served, the server
 #' keeps it until it stops.
 #'
+#' **Mosaics.** When `x` is read unchanged from a VRT or a GDAL Tile Index
+#' (GTI) whose members are COGs, the mosaic is planned across its members
+#' ([aobcore::mosaic_members()], [aobcore::mosaic_plan()]; allboa/design
+#' decisions 0010 and 0011): the view gets one `tiled_raster` layer per
+#' member (`<name>` for one member, else `<name>_<i>` in the mosaic's
+#' order, labelled with the member's base name), each referenced by the
+#' member's own file or URL exactly as a COG is above, and nothing is
+#' copied. Only the members whose placement meets `extent` are opened, so
+#' a remote member costs one request for its header. The members share
+#' one `palette`, one `range` and one legend: when `range` is not given it
+#' is the first member's (the range of its coarsest level), applied to
+#' every member so their colours agree. A member that cannot be drawn in
+#' place (one that is not a tiled GeoTIFF with overviews, is in another
+#' CRS, or that the VRT stretches, windows or rescales) sends the whole
+#' mosaic to the routes below, with a message naming the member. A local
+#' VRT over local COGs is planned the same way, its members embedded or
+#' served as local COGs are.
+#'
 #' **Datasets too large to write whole.** When `x` is read unchanged from
 #' one GDAL dataset that is not such a COG (a tile service such as WMS or
 #' TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would
@@ -170,6 +188,19 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
 
   src <- raster_cog_source(x)
   s <- v$scene
+  ## A VRT or GTI of COGs is planned across its members (view-mosaic.R);
+  ## when a member cannot be drawn in place, the routes below take over.
+  ms <- if (is.null(src)) raster_mosaic_source(x)
+  if (!is.null(ms)) {
+    colour <- if (!is.null(rgb)) rgb else {
+      is.null(layer) && is.null(palette) && raster_is_rgb(x, ms)
+    }
+    out <- add_mosaic_layers(v, ms$mosaic, name, ...,
+                             band = ms$bands[raster_layer(x, layer)],
+                             bands = if (colour) ms$bands[rgb_order(x, ms)] else FALSE,
+                             palette = palette, range = range, legend = legend)
+    if (!is.null(out)) return(out)
+  }
   ## A dataset too large to write whole is read through GDAL (view-gdal.R).
   gs <- if (is.null(src)) raster_gdal_source(x, s$view$crs, list(...))
   colour <- if (!is.null(rgb)) rgb else {
@@ -208,26 +239,33 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
 
 ## Plan COG `cog` for view v and add it as a tiled raster layer `name`:
 ## the tail of every raster route (a SpatRaster above, a string in
-## view-string.R, a matrix in view-matrix.R). `rgb` is FALSE for one band through the palette, or the
-## bands of a colour image. `temp` is the COG when it is a temporary one
-## this view wrote, or NULL. `...` goes to aobcore::cog_plan().
+## view-string.R, a matrix in view-matrix.R, each member of a mosaic in
+## view-mosaic.R, which passes the member's plan as `cog`). `rgb` is FALSE
+## for one band through the palette, or the bands of a colour image.
+## `temp` is the COG when it is a temporary one this view wrote, or NULL.
+## `id` and `label` are the layer's (by default from `name`); `key` says
+## whether a palette layer keys a legend, and `only` that its legend is one
+## of several layers' (a mosaic's), so it is written as the scene's own
+## rather than drawn per layer. `...` goes to aobcore::cog_plan().
 add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb = FALSE,
-                          legend = TRUE, temp = NULL) {
+                          legend = TRUE, temp = NULL, id = layer_id(name), label = name,
+                          key = TRUE, only = FALSE) {
   ## An embedded layer carries its planned tiles' bytes in the scene, so a
   ## temporary COG is not needed once the layer is added. A served layer's
   ## temporary COG is kept, for the server to own and delete when it stops.
   keep <- FALSE
   if (!is.null(temp)) on.exit(if (!keep) unlink(temp$dsn), add = TRUE)
   s <- v$scene
-  plan <- aobcore::cog_plan(cog, s$view$crs, ...)
+  plan <- if (inherits(cog, "aob_tile_plan")) cog else aobcore::cog_plan(cog, s$view$crs, ...)
+  cog <- plan$cog
   ## Embed or serve, from the plan's tile byte lengths, before any tile
   ## byte is read (decision 0006).
   chosen <- choose_embed(v, cog, plan, name)
   v <- chosen$v
-  id <- unique_id(layer_id(name), s, c("", "_vertices", "_indices"))
+  id <- unique_id(id, s, c("", "_vertices", "_indices"))
   s <- aobcore::scene_add_tiled_raster(s, id, plan,
                                        palette = palette %||% "viridis", range = range,
-                                       rgb = rgb, embed = chosen$embed, label = name)
+                                       rgb = rgb, embed = chosen$embed, label = label)
   if (!is.null(temp) && isFALSE(chosen$embed)) {
     keep <- TRUE
     v$pending$own <- c(v$pending$own, cog$dsn)
@@ -236,7 +274,9 @@ add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb =
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)
   ## A palette raster's ramp: written as a legend only when the scene is
   ## 0.5 (see add_legends()).
-  if (isFALSE(rgb)) v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend)))
+  if (isFALSE(rgb) && key) {
+    v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend, only = only)))
+  }
   v
 }
 

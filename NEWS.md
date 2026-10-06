@@ -1,5 +1,21 @@
 # aobview 0.0.0.9000
 
+* `view()` plans a VRT or GDAL Tile Index (GTI) whose members are COGs
+  across its members instead of reading it into a temporary COG (#41,
+  allboa/design decisions 0010 and 0011): a `SpatRaster` read from such a
+  mosaic, or its path or URL as a string, gets one `tiled_raster` layer per
+  member (`<name>` for one, else `<name>_<i>`, labelled with the member's
+  base name), each referenced by the member's own file or URL, with one
+  palette, range and legend across them (the first member's range when
+  none is given), through `aobcore::mosaic_members()` and
+  `aobcore::mosaic_plan()`; only the members the view touches are opened,
+  and nothing is copied. A member that cannot be drawn in place (not a
+  tiled GeoTIFF with overviews, in another CRS, or stretched, windowed or
+  rescaled by the VRT) sends the mosaic to the temporary-COG routes as
+  before, with a message naming the member, so a VRT that stretches a small
+  file over a planetary grid now says so before it is read. Needs aobcore
+  with `mosaic_plan()`.
+
 * `view()` takes Arrow streams and tables, DuckDB results and
   `GDALVector$fetch()` output (#40, allboa/design decision 0011). A
   `nanoarrow_array_stream`, or anything with an
