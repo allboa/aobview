@@ -267,6 +267,23 @@ with <code>terra::writeRaster(filetype = "COG")</code>. When its planned tiles a
 embedded, so the page opens from disk with no server, the temporary COG
 is deleted once the layer is added; when the view is served, the server
 keeps it until it stops.</p>
+<p><strong>Mosaics.</strong> When <code>x</code> is read unchanged from a VRT or a GDAL Tile Index
+(GTI) whose members are COGs, the mosaic is planned across its members
+(<code><a href="https://rdrr.io/pkg/aobcore/man/mosaic_members.html" class="external-link">aobcore::mosaic_members()</a></code>, <code><a href="https://rdrr.io/pkg/aobcore/man/mosaic_plan.html" class="external-link">aobcore::mosaic_plan()</a></code>; allboa/design
+decisions 0010 and 0011): the view gets one <code>tiled_raster</code> layer per
+member (<code>&lt;name&gt;</code> for one member, else <code>&lt;name&gt;_&lt;i&gt;</code> in the mosaic's
+order, labelled with the member's base name), each referenced by the
+member's own file or URL exactly as a COG is above, and nothing is
+copied. Only the members whose placement meets <code>extent</code> are opened, so
+a remote member costs one request for its header. The members share
+one <code>palette</code>, one <code>range</code> and one legend: when <code>range</code> is not given it
+is the first member's (the range of its coarsest level), applied to
+every member so their colours agree. A member that cannot be drawn in
+place (one that is not a tiled GeoTIFF with overviews, is in another
+CRS, or that the VRT stretches, windows or rescales) sends the whole
+mosaic to the routes below, with a message naming the member. A local
+VRT over local COGs is planned the same way, its members embedded or
+served as local COGs are.</p>
 <p><strong>Datasets too large to write whole.</strong> When <code>x</code> is read unchanged from
 one GDAL dataset that is not such a COG (a tile service such as WMS or
 TMS, a VRT, any huge virtual grid) and its full grid, as a COG, would
@@ -318,7 +335,7 @@ its attributes as popups. It does not need 'sf'.</p>
 <span class="r-in"><span>                 vals <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">1440</span>, crs <span class="op">=</span> <span class="st">"OGC:CRS84"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="view.html">view</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;view&gt; m: 1 layer in EPSG:3031</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   /tmp/RtmpygAM95/view-1ce15d96cb13.html</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   /tmp/RtmpALFqEC/view-1d3b4e54ebd2.html</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

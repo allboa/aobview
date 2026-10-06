@@ -2,6 +2,28 @@
 
 ## aobview 0.0.0.9000
 
+- [`view()`](https://allboa.github.io/aobview/reference/view.md) plans a
+  VRT or GDAL Tile Index (GTI) whose members are COGs across its members
+  instead of reading it into a temporary COG
+  ([\#41](https://github.com/allboa/aobview/issues/41), allboa/design
+  decisions 0010 and 0011): a `SpatRaster` read from such a mosaic, or
+  its path or URL as a string, gets one `tiled_raster` layer per member
+  (`<name>` for one, else `<name>_<i>`, labelled with the member’s base
+  name), each referenced by the member’s own file or URL, with one
+  palette, range and legend across them (the first member’s range when
+  none is given), through
+  [`aobcore::mosaic_members()`](https://rdrr.io/pkg/aobcore/man/mosaic_members.html)
+  and
+  [`aobcore::mosaic_plan()`](https://rdrr.io/pkg/aobcore/man/mosaic_plan.html);
+  only the members the view touches are opened, and nothing is copied. A
+  member that cannot be drawn in place (not a tiled GeoTIFF with
+  overviews, in another CRS, or stretched, windowed or rescaled by the
+  VRT, given a VRT no-data value it lacks, or one of several colour
+  bands drawn from different members) sends the mosaic to the
+  temporary-COG routes as before, with a message naming the member, so a
+  VRT that stretches a small file over a planetary grid now says so
+  before it is read. Needs aobcore with `mosaic_plan()`.
+
 - [`view()`](https://allboa.github.io/aobview/reference/view.md) takes
   stars objects and proxies
   ([\#38](https://github.com/allboa/aobview/issues/38), allboa/design
