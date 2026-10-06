@@ -53,7 +53,8 @@ error.}
 
 \item{crs}{The view CRS: anything \code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} and 'PROJ'
 read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ string. \code{NULL} (the
-default) uses \code{\link[=view_crs]{view_crs()}}.}
+default) uses \code{\link[=view_crs]{view_crs()}}. A stream whose geometry has no CRS in its
+GeoArrow metadata is taken to be in \code{crs} (see Arrow streams).}
 
 \item{layer}{The layer to draw through the palette (a number or name).
 Giving it draws that layer even when \code{x} is a colour image.}
