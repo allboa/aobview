@@ -67,6 +67,24 @@ renderer work needed for polar and other projected views, such as
 non-Mercator tile loading in deck.gl-raster, is meant to go upstream
 where Python users benefit too. A Python front end is not a goal of v1.
 
+## Where the raster approach comes from
+
+Texture mapping has a long history, and so does using textures to carry
+an image through different coordinate systems: world, index, the surface
+of a solid, a new CRS. None of that is new; it just was not available in
+R as a thing. After working with texture mapping in commercial software
+in the late 2000s, Michael Sumner carried the idea into R through the
+packages gris, then [silicate](https://github.com/hypertidy/silicate),
+then [anglr](https://github.com/hypertidy/anglr), which builds meshes
+from spatial data and draws them with rgl, textured images included. rgl
+already did the texture mapping; it needed only light helpers, such as
+mapping values to colours, to make it geospatial. anglr was partly an
+effort to show what this could do.
+
+deck.gl-raster draws reprojected tiles the same way, as a projected mesh
+with uv coordinates and the tile as its texture, and aobcore uses that
+approach for rasters in polar and other projected views (decision 0003).
+
 ## Decisions so far
 
 The design repository records each decision. Most are still proposed; an

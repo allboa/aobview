@@ -196,6 +196,24 @@ where Python users benefit too. A Python front end is not a goal of
 v1.</p>
 </div>
 <div class="section level2">
+<h2 id="where-the-raster-approach-comes-from">Where the raster approach comes from<a class="anchor" aria-label="anchor" href="#where-the-raster-approach-comes-from"></a>
+</h2>
+<p>Texture mapping has a long history, and so does using textures to
+carry an image through different coordinate systems: world, index, the
+surface of a solid, a new CRS. None of that is new; it just was not
+available in R as a thing. After working with texture mapping in
+commercial software in the late 2000s, Michael Sumner carried the idea
+into R through the packages gris, then <a href="https://github.com/hypertidy/silicate" class="external-link">silicate</a>, then <a href="https://github.com/hypertidy/anglr" class="external-link">anglr</a>, which builds meshes
+from spatial data and draws them with rgl, textured images included. rgl
+already did the texture mapping; it needed only light helpers, such as
+mapping values to colours, to make it geospatial. anglr was partly an
+effort to show what this could do.</p>
+<p>deck.gl-raster draws reprojected tiles the same way, as a projected
+mesh with uv coordinates and the tile as its texture, and aobcore uses
+that approach for rasters in polar and other projected views (decision
+0003).</p>
+</div>
+<div class="section level2">
 <h2 id="decisions-so-far">Decisions so far<a class="anchor" aria-label="anchor" href="#decisions-so-far"></a>
 </h2>
 <p>The design repository records each decision. Most are still proposed;
