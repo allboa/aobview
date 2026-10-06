@@ -208,7 +208,7 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
 
 ## Plan COG `cog` for view v and add it as a tiled raster layer `name`:
 ## the tail of every raster route (a SpatRaster above, a string in
-## view-string.R). `rgb` is FALSE for one band through the palette, or the
+## view-string.R, a matrix in view-matrix.R). `rgb` is FALSE for one band through the palette, or the
 ## bands of a colour image. `temp` is the COG when it is a temporary one
 ## this view wrote, or NULL. `...` goes to aobcore::cog_plan().
 add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb = FALSE,
@@ -230,7 +230,7 @@ add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb =
                                        rgb = rgb, embed = chosen$embed, label = name)
   if (!is.null(temp) && isFALSE(chosen$embed)) {
     keep <- TRUE
-    v$pending$own <- c(v$pending$own, temp$dsn)
+    v$pending$own <- c(v$pending$own, cog$dsn)
   }
   v$scene <- s
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)

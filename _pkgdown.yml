@@ -60,6 +60,7 @@ reference:
   contents:
   - view
   - view-terra
+  - view-matrix
   - view-layers
   - selection
   - aobview-shiny

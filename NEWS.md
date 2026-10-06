@@ -33,6 +33,20 @@
   `view()` and to `view_add()`, and `view_crs()` reads them. A string
   literal is named by its base name (or the WKT text).
 
+* `view()` of a matrix or array with an `extent` and `crs` (#37, allboa/design
+  decision 0011): `view(m, extent = c(xmin, xmax, ymin, ymax), crs =
+  "EPSG:3031")` draws a numeric or logical matrix as a raster, row 1 at the
+  top as in terra and vaster, and a 3- or 4-band array as a colour image.
+  A matrix of at most 512 x 512 cells (one tile of a temporary COG) in the
+  view CRS goes into the page as an untiled scene spec 0.1 `raster` layer,
+  its values as one Arrow column; a larger one, or one whose CRS is not the
+  view's, is written to a temporary COG with gdalraster and takes the
+  tiled path a `SpatRaster` does, with `...` to `aobcore::cog_plan()`.
+  `palette`, `range` and `legend` are as for a one-layer `SpatRaster`.
+  `view_add(v, m, extent = , crs = )` adds one to a view (`crs` is the
+  grid's), and `view_crs(m, extent = , crs = )` gives the view CRS the
+  lon/lat rule chooses for it. No terra needed.
+
 * Views in Shiny apps (allboa/design decision 0009): `aobviewOutput()` and
   `renderAobview()` (shiny in Suggests), with aobview's own output binding.
   The scene travels as the render value over the Shiny session, and the
