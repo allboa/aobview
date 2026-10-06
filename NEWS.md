@@ -11,7 +11,8 @@
   `aobcore::mosaic_plan()`; only the members the view touches are opened,
   and nothing is copied. A member that cannot be drawn in place (not a
   tiled GeoTIFF with overviews, in another CRS, or stretched, windowed or
-  rescaled by the VRT) sends the mosaic to the temporary-COG routes as
+  rescaled by the VRT, given a VRT no-data value it lacks, or one of
+  several colour bands drawn from different members) sends the mosaic to the temporary-COG routes as
   before, with a message naming the member, so a VRT that stretches a small
   file over a planetary grid now says so before it is read. Needs aobcore
   with `mosaic_plan()`.
