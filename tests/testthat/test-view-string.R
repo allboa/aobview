@@ -179,7 +179,10 @@ test_that("a colour image by name draws its bands red, green, blue, with the mas
   skip_if_no_terra()
   src <- small_merc_tif(3L, nodata = 0)
   r <- huge_vrt(src, 3L, n = 1024, interp = c("Red", "Green", "Blue"), nodata = 0)
-  seen <- gdal_temp_seen(expect_silent(v <- view(r, name = "img", file = html())))
+  ## The VRT's member is a striped GeoTIFF, so it is not a mosaic of COGs
+  ## drawn in place (#41): a message says so, then GDAL reads it.
+  seen <- gdal_temp_seen(expect_message(v <- view(r, name = "img", file = html()),
+                                        "not a tiled GeoTIFF with overviews"))
   expect_identical(v$scene$layers[[1]]$rgb, list(bands = 1:3, alpha = 4L))
   expect_equal(seen$cog$samples_per_pixel, 4L)
   expect_equal(mean(seen$values[, 4] == 0), 1 / 16, tolerance = 0.01)

@@ -7,7 +7,8 @@
 ## is geometry; a string that is neither is probed as a data source. A data
 ## source is probed with gdalraster, in this order: a COG (tiled, with
 ## overviews: aobcore::cog_info()) is planned as a SpatRaster read from one
-## is (view-terra.R), a remote one by URL; another raster is read through
+## is (view-terra.R), a remote one by URL; a VRT or GTI of COGs is planned
+## across its members (view-mosaic.R); another raster is read through
 ## GDAL into a temporary COG (view-gdal.R); a vector source is read with
 ## aobcore::gdal_vector_stream(), which reprojects and densifies in GDAL,
 ## and drawn as any vector input is (view.R). The probe gives an
@@ -204,9 +205,10 @@ add_source_vector <- function(src, v, name, ..., densify = NULL) {
   add_record(vector_record(df, "geometry"), v, name, ..., densify = FALSE, source = df)
 }
 
-## A raster source as a tiled COG layer: the COG itself, or a temporary COG
-## GDAL reads the dataset into (gdal_temp_cog(), whatever its size). `...`
-## goes to aobcore::cog_plan(), as for a SpatRaster.
+## A raster source as a tiled COG layer: the COG itself, a VRT or GTI of
+## COGs as one layer per member, or a temporary COG GDAL reads the dataset
+## into (gdal_temp_cog(), whatever its size). `...` goes to
+## aobcore::cog_plan(), as for a SpatRaster.
 add_source_raster <- function(src, v, name, ..., rgb = NULL, palette = NULL, range = NULL,
                               legend = TRUE) {
   check_flag(legend, "legend")
@@ -221,6 +223,17 @@ add_source_raster <- function(src, v, name, ..., rgb = NULL, palette = NULL, ran
   }
   check_plan_args(list(...))
   crs <- v$scene$view$crs
+  ## A VRT or GTI of COGs is planned across its members (view-mosaic.R);
+  ## when a member cannot be drawn in place, the temporary COG below.
+  if (src$kind == "raster") {
+    mosaic <- source_mosaic(src$dsn)
+    if (!is.null(mosaic)) {
+      out <- add_mosaic_layers(v, mosaic, name, ..., band = source_band(src$layer, nb),
+                               bands = if (colour) seq_len(nb) else FALSE,
+                               palette = palette, range = range, legend = legend)
+      if (!is.null(out)) return(out)
+    }
+  }
   temp <- NULL
   if (colour) {
     ## Bands red, green, blue (alpha), as the file orders them.

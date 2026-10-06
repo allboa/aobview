@@ -118,3 +118,38 @@ gdal_temp_seen <- function(expr) {
   expect_false(file.exists(seen$cog$dsn))
   seen
 }
+
+# polar_3031.tif as two COG halves (west and east, 200 x 400 cells each,
+# 128 x 128 tiles) in a new directory, with a VRT gdalraster builds over
+# them (view-mosaic.R): list(dir, a, b, vrt).
+cog_halves <- function() {
+  dir <- tempfile("mosaic-")
+  dir.create(dir)
+  ## Members come back as normalizePath() gives them (on Windows, the long
+  ## name with forward slashes), so the files are named that way too.
+  dir <- normalizePath(dir, winslash = "/")
+  f <- extdata("polar_3031.tif")
+  a <- file.path(dir, "west.tif")
+  b <- file.path(dir, "east.tif")
+  opts <- c("-of", "COG", "-co", "BLOCKSIZE=128")
+  gdalraster::translate(f, a, c(opts, "-srcwin", "0", "0", "200", "400"), quiet = TRUE)
+  gdalraster::translate(f, b, c(opts, "-srcwin", "200", "0", "200", "400"), quiet = TRUE)
+  vrt <- file.path(dir, "halves.vrt")
+  gdalraster::buildVRT(vrt, c(a, b), quiet = TRUE)
+  list(dir = dir, a = a, b = b, vrt = vrt)
+}
+
+# A GTI index of the two halves, written with GDAL's `raster index`
+# (gdalraster::gdal_run(), GDAL >= 3.11), or NULL when that is not here.
+gti_index <- function(h) {
+  if (!"gdal_run" %in% getNamespaceExports("gdalraster")) return(NULL)
+  if (!nrow(gdalraster::gdal_formats("GTI"))) return(NULL)
+  idx <- file.path(h$dir, "halves.gti.gpkg")
+  ok <- tryCatch({
+    gdalraster::gdal_run("raster index", c("--input", h$a, "--input", h$b, "--output", idx),
+                         close = TRUE, quiet = TRUE)
+    file.exists(idx)
+  }, error = function(e) FALSE)
+  if (!isTRUE(ok)) return(NULL)
+  idx
+}
