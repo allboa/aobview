@@ -10,7 +10,9 @@ view_crs(x)
 \item{x}{Geometry 'wk' can handle or a data frame with such a column
 (an \code{sf} object, say), an Arrow stream or table (read once, here: see
 Arrow streams in \code{\link[=view]{view()}}), an \code{OGRFeatureSet}, a 'terra' \code{SpatRaster}
-or \code{SpatVector}, or a list of them.}
+or \code{SpatVector}, a string (WKT text, or the path, URL or data source
+name of a raster or vector source: see Strings in \code{\link[=view]{view()}}), or a list
+of them.}
 }
 \value{
 A CRS for \code{\link[aobcore:scene]{aobcore::scene()}}: an \code{"authority:code"} string such
