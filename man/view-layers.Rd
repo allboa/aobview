@@ -33,7 +33,7 @@ spatial object (or a list of them) to add.}
 \item{...}{For \code{view()} of a list, nothing (per-layer arguments go to
 \code{view_add()}). For \code{view_add()}, the arguments \code{\link[=view]{view()}} or
 \link{view-terra} take for \code{x}'s class, such as \code{fill} or \code{zcol} for \code{sf}
-data or \code{palette} for a \code{SpatRaster}.}
+data, \code{geometry} for a stream, or \code{palette} for a \code{SpatRaster}.}
 
 \item{crs}{The view CRS, as for \code{\link[=view]{view()}}. \code{NULL} uses \code{\link[=view_crs]{view_crs()}} of
 the list.}
@@ -82,11 +82,15 @@ either form to fix it.
 }
 \details{
 Elements may be any vector input \code{\link[=view]{view()}} takes (geometry 'wk' can
-handle, or a data frame with such a column, \code{sf} included) and 'terra'
-\code{SpatRaster} or \code{SpatVector} objects, in any mix of CRSs. Each is drawn
-as \code{\link[=view]{view()}} or \link{view-terra} draws it on its own, with its default style,
-and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
-densified first), rasters by \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}'s meshes.
+handle, a data frame with such a column, \code{sf} included, an Arrow stream
+or table, an \code{OGRFeatureSet}) and 'terra' \code{SpatRaster} or \code{SpatVector}
+objects, in any mix of CRSs. Each is drawn as \code{\link[=view]{view()}} or \link{view-terra}
+draws it on its own, with its default style, and reprojected to the view
+CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
+\code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}'s meshes. A stream is read once, before the view
+CRS is chosen; one whose geometry has no CRS is taken to be in \code{crs},
+which \code{view()} of the list must then be given, or in the view's CRS for
+\code{view_add()} (see Arrow streams in \code{\link[=view]{view()}}).
 
 \strong{View CRS.} \code{crs} when given; otherwise \code{\link[=view_crs]{view_crs()}} of the whole list:
 the CRS of the first element with a projected CRS, or, when every element

@@ -3,6 +3,7 @@
 \name{view}
 \alias{view}
 \alias{view.default}
+\alias{view.nanoarrow_array_stream}
 \alias{view.data.frame}
 \title{View spatial data in its own CRS}
 \usage{
@@ -11,6 +12,29 @@ view(x, ...)
 \method{view}{default}(
   x,
   ...,
+  crs = NULL,
+  densify = NULL,
+  style = "default",
+  fill = NULL,
+  stroke = NULL,
+  stroke_width_px = NULL,
+  radius_px = NULL,
+  zcol = NULL,
+  palette = NULL,
+  breaks = NULL,
+  na_colour = "#999999",
+  legend = TRUE,
+  popup = NULL,
+  name = NULL,
+  file = NULL,
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
+)
+
+\method{view}{nanoarrow_array_stream}(
+  x,
+  ...,
+  geometry = NULL,
   crs = NULL,
   densify = NULL,
   style = "default",
@@ -55,15 +79,19 @@ view(x, ...)
 }
 \arguments{
 \item{x}{A spatial object: a geometry vector 'wk' can handle, or a data
-frame with such a column (an \code{sf} data frame, say); a 'terra' object
-(\link{view-terra}); or a list of them (\link{view-layers}).}
+frame with such a column (an \code{sf} data frame, say); an Arrow stream, or
+an object with an \code{\link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow::as_nanoarrow_array_stream()}} method (an
+'arrow' \code{Table}, a 'duckdb' result fetched as Arrow, ...); an
+\code{OGRFeatureSet} from 'gdalraster'; a 'terra' object (\link{view-terra}); or
+a list of them (\link{view-layers}).}
 
 \item{...}{Not used by the vector methods: an argument caught here (a
 misspelled one, say) is an error.}
 
 \item{crs}{The view CRS: anything \code{\link[aobcore:scene_crs]{aobcore::scene_crs()}} and 'PROJ'
 read, such as \code{"EPSG:3031"}, \code{3031} or a PROJ string. \code{NULL} (the
-default) uses \code{\link[=view_crs]{view_crs()}}.}
+default) uses \code{\link[=view_crs]{view_crs()}}. A stream whose geometry has no CRS in its
+GeoArrow metadata is taken to be in \code{crs} (see Arrow streams).}
 
 \item{densify}{Maximum edge length, in the units of \code{x}'s CRS, for lines
 and polygon edges before they are transformed. \code{NULL} (the default)
@@ -123,7 +151,9 @@ Defaults to \code{getOption("aobview.transport", "auto")}.}
 
 \item{geometry}{For a data frame, the name of its geometry column.
 \code{NULL} (the default) takes the \code{sf} geometry column, else the first
-column 'wk' can handle.}
+column 'wk' can handle. For a stream, the column holding WKB bytes or
+WKT text when no column has a GeoArrow extension type; for an
+\code{OGRFeatureSet} with several geometry columns, the one to draw.}
 }
 \value{
 A view: a list of class \code{"aob_view"} with the \code{scene} (an
@@ -169,6 +199,31 @@ can handle, or the one named by \code{geometry}. The CRS travels with the
 geometry (\code{\link[wk:wk_crs]{wk::wk_crs()}}). A terra \code{SpatVector} is read from terra's own
 WKB (see \link{view-terra}). A \code{\link[wk:grd]{wk::grd()}} is not drawn yet: a grid belongs on
 the raster path.
+
+\strong{Arrow streams} (allboa/design decision 0011). \code{x} can be a 'nanoarrow'
+array stream, or anything with an \code{\link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow::as_nanoarrow_array_stream()}}
+method: an 'arrow' \code{Table}, \code{RecordBatchReader} or \code{Dataset}, a 'duckdb'
+result fetched as Arrow (\code{duckdb::duckdb_fetch_arrow()} or
+\code{duckdb_fetch_record_batch()} on a query sent with \code{arrow = TRUE}), a
+layer's \code{GDALVector$getArrowStream()} from 'gdalraster', an ADBC result.
+The stream is read once, batch by batch, into a data frame of its rows,
+which is then viewed as a data frame: its other columns are the
+attributes. The geometry column is the first with a GeoArrow extension
+type (\code{geoarrow.point}, \code{geoarrow.wkb}, ...), else GDAL's \code{ogc.wkb}
+column, else the one \code{geometry} names, which holds WKB bytes (a binary
+column) or WKT text. Its CRS comes from the GeoArrow extension metadata;
+a column with none (a DuckDB blob, GDAL's WKB) is taken to be in \code{crs},
+which must then be given (in \code{\link[=view_add]{view_add()}}, or in a list given \code{crs}, it
+is the view's CRS). A stream read before has no rows left and is an
+error. \code{\link[=selected]{selected()}} on a stream gives rows of the data frame it was read
+into, since the stream itself cannot be read again.
+
+\strong{GDALVector$fetch().} An \code{OGRFeatureSet} from 'gdalraster' (a data frame
+whose geometry column holds WKB bytes, or WKT text, with the layer's SRS
+and the column's name in its \code{gis} attribute) is viewed as a data frame:
+the geometry column is wrapped as \code{\link[wk:wkb]{wk::wkb()}} with the layer's SRS, and
+\code{\link[=selected]{selected()}} gives its rows as fetched. A set fetched without geometry
+(\code{returnGeomAs = "NONE"}) or as bounding boxes is an error.
 
 'aobcore' does not reproject, so \code{x} is transformed to the view CRS here
 by 'PROJ' (\code{\link[wk:wk_transform]{wk::wk_transform()}} with \code{\link[PROJ:proj_trans_create]{PROJ::proj_trans_create()}}). When
@@ -269,6 +324,13 @@ v0$scene$view$crs
 bases <- data.frame(base = c("Casey", "Davis"))
 bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
 v1 <- view(bases, zcol = "base")
+
+# An Arrow stream with a GeoArrow geometry column (the CRS travels in its
+# metadata); an arrow Table or a DuckDB result fetched as Arrow go the
+# same way.
+stream <- nanoarrow::as_nanoarrow_array_stream(bases)
+v2 <- view(stream, popup = "base")
+v2$scene$view$crs
 \dontshow{if (requireNamespace("sf", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
                                  package = "aobcore"), quiet = TRUE)
