@@ -170,7 +170,10 @@ test_that("a large matrix takes the COG route", {
   ## The missing cell holds the no-data value. gdalraster returns it as NA
   ## in current releases; older ones (CRAN macOS) return the value itself.
   missing <- seen$values[[1]][(5 - 1) * n + 5]
-  expect_true(is.na(missing) || isTRUE(all.equal(missing, float_nodata)))
+  expect(is.na(missing) || isTRUE(all.equal(missing, float_nodata)),
+         sprintf("the missing cell read back as %s (no-data value %s, gdalraster %s, GDAL %s)",
+                 format(missing, digits = 17), format(seen$nodata, digits = 17),
+                 as.character(utils::packageVersion("gdalraster")), gdalraster::gdal_version()[1]))
   expect_equal(seen$nodata, float_nodata)
   expect_equal(v$scene$view$extent, ext31)
   expect_valid_scene(v)
