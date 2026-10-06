@@ -136,7 +136,11 @@ has zero rows when nothing is selected.</p>
 <p><code>selected(v)</code> gives the selected rows themselves: <code>x[rows, ]</code> of the
 data frame (<code>sf</code> included) or <code>SpatVector</code> that was viewed, or <code>x[rows]</code>
 of a bare geometry vector, with every column of <code>x</code>, not only those of
-the popup. <code>source</code>
+the popup. A stream (an Arrow stream or table, a DuckDB result; see Arrow
+streams in <code><a href="view.html">view()</a></code>) cannot be read again, so the view keeps the data
+frame it was read into, every column with the geometry as <code><a href="https://paleolimbot.github.io/wk/reference/wkb.html" class="external-link">wk::wkb()</a></code> in
+its CRS, and <code>selected()</code> gives rows of that: the selected rows' indices
+into the stream are their row names, and <code>selection(v)$row</code>. <code>source</code>
 names the object when the view has several: it defaults to the only one
 with selected rows, and is an error naming them when several have
 selected rows. With nothing selected it gives zero rows of the view's

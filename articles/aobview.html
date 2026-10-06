@@ -101,7 +101,9 @@ worked out.</p>
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"allboa/aobview"</span><span class="op">)</span></span></code></pre></div>
 <p>Vector data can be any geometry wk can read (sf, wkb, wkt, xy, geos,
-…) or a data frame with such a column; PROJ reprojects it. terra and
+…) or a data frame with such a column, an Arrow stream or table (a
+DuckDB result fetched as Arrow, say) or a gdalraster
+<code>GDALVector$fetch()</code> result; PROJ reprojects it. terra and
 gdalraster are needed for rasters.</p>
 </div>
 <div class="section level2">

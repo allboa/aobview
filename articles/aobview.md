@@ -15,8 +15,9 @@ remotes::install_github("allboa/aobview")
 ```
 
 Vector data can be any geometry wk can read (sf, wkb, wkt, xy, geos, …)
-or a data frame with such a column; PROJ reprojects it. terra and
-gdalraster are needed for rasters.
+or a data frame with such a column, an Arrow stream or table (a DuckDB
+result fetched as Arrow, say) or a gdalraster `GDALVector$fetch()`
+result; PROJ reprojects it. terra and gdalraster are needed for rasters.
 
 ## A first view
 

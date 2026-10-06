@@ -38,6 +38,30 @@ view(
   transport = getOption("aobview.transport", "auto")
 )
 
+# S3 method for class 'nanoarrow_array_stream'
+view(
+  x,
+  ...,
+  geometry = NULL,
+  crs = NULL,
+  densify = NULL,
+  style = "default",
+  fill = NULL,
+  stroke = NULL,
+  stroke_width_px = NULL,
+  radius_px = NULL,
+  zcol = NULL,
+  palette = NULL,
+  breaks = NULL,
+  na_colour = "#999999",
+  legend = TRUE,
+  popup = NULL,
+  name = NULL,
+  file = NULL,
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
+)
+
 # S3 method for class 'data.frame'
 view(
   x,
@@ -68,7 +92,11 @@ view(
 - x:
 
   A spatial object: a geometry vector 'wk' can handle, or a data frame
-  with such a column (an `sf` data frame, say); a 'terra' object
+  with such a column (an `sf` data frame, say); an Arrow stream, or an
+  object with an
+  [`nanoarrow::as_nanoarrow_array_stream()`](https://arrow.apache.org/nanoarrow/latest/r/reference/as_nanoarrow_array_stream.html)
+  method (an 'arrow' `Table`, a 'duckdb' result fetched as Arrow, ...);
+  an `OGRFeatureSet` from 'gdalraster'; a 'terra' object
   ([view-terra](https://allboa.github.io/aobview/reference/view-terra.md));
   or a list of them
   ([view-layers](https://allboa.github.io/aobview/reference/view-layers.md)).
@@ -85,6 +113,8 @@ view(
   and 'PROJ' read, such as `"EPSG:3031"`, `3031` or a PROJ string.
   `NULL` (the default) uses
   [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md).
+  A stream whose geometry has no CRS in its GeoArrow metadata is taken
+  to be in `crs` (see Arrow streams).
 
 - densify:
 
@@ -181,7 +211,10 @@ view(
 
   For a data frame, the name of its geometry column. `NULL` (the
   default) takes the `sf` geometry column, else the first column 'wk'
-  can handle.
+  can handle. For a stream, the column to draw (GeoArrow, WKB bytes or
+  WKT text); `NULL` takes the first column with a GeoArrow extension
+  type, else GDAL's `ogc.wkb` column. For an `OGRFeatureSet` with
+  several geometry columns, the one to draw.
 
 ## Value
 
@@ -230,6 +263,39 @@ A terra `SpatVector` is read from terra's own WKB (see
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)).
 A [`wk::grd()`](https://paleolimbot.github.io/wk/reference/grd.html) is
 not drawn yet: a grid belongs on the raster path.
+
+**Arrow streams** (allboa/design decision 0011). `x` can be a
+'nanoarrow' array stream, or anything with an
+[`nanoarrow::as_nanoarrow_array_stream()`](https://arrow.apache.org/nanoarrow/latest/r/reference/as_nanoarrow_array_stream.html)
+method: an 'arrow' `Table`, `RecordBatchReader` or `Dataset`, a 'duckdb'
+result fetched as Arrow
+([`duckdb::duckdb_fetch_arrow()`](https://r.duckdb.org/reference/duckdb_result-class.html)
+or `duckdb_fetch_record_batch()` on a query sent with `arrow = TRUE`), a
+layer's `GDALVector$getArrowStream()` from 'gdalraster', an ADBC result.
+The stream is read once, batch by batch, into a data frame of its rows,
+which is then viewed as a data frame: its other columns are the
+attributes. The geometry column is the first with a GeoArrow extension
+type (`geoarrow.point`, `geoarrow.wkb`, ...), else GDAL's `ogc.wkb`
+column, else the one `geometry` names, which holds WKB bytes (a binary
+column) or WKT text. Its CRS comes from the GeoArrow extension metadata;
+a column with none (a DuckDB blob, GDAL's WKB) is taken to be in `crs`,
+which must then be given (in
+[`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md),
+or in a list given `crs`, it is the view's CRS). A stream read before
+has no rows left and is an error.
+[`selected()`](https://allboa.github.io/aobview/reference/selection.md)
+on a stream gives rows of the data frame it was read into, since the
+stream itself cannot be read again.
+
+**GDALVector\$fetch().** An `OGRFeatureSet` from 'gdalraster' (a data
+frame whose geometry column holds WKB bytes, or WKT text, with the
+layer's SRS and the column's name in its `gis` attribute) is viewed as a
+data frame: the geometry column is wrapped as
+[`wk::wkb()`](https://paleolimbot.github.io/wk/reference/wkb.html) with
+the layer's SRS, and
+[`selected()`](https://allboa.github.io/aobview/reference/selection.md)
+gives its rows as fetched. A set fetched without geometry
+(`returnGeomAs = "NONE"`) or as bounding boxes is an error.
 
 'aobcore' does not reproject, so `x` is transformed to the view CRS here
 by 'PROJ'
@@ -365,6 +431,14 @@ v0$scene$view$crs
 bases <- data.frame(base = c("Casey", "Davis"))
 bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
 v1 <- view(bases, zcol = "base")
+
+# An Arrow stream with a GeoArrow geometry column (the CRS travels in its
+# metadata); an arrow Table or a DuckDB result fetched as Arrow go the
+# same way.
+stream <- nanoarrow::as_nanoarrow_array_stream(bases)
+v2 <- view(stream, popup = "base")
+v2$scene$view$crs
+#> [1] "EPSG:3031"
 coast <- sf::st_read(system.file("extdata", "coastline_south_40s.geojson",
                                  package = "aobcore"), quiet = TRUE)
 v <- view(coast)

@@ -64,8 +64,8 @@ view_add(
   `view_add()`, the arguments
   [`view()`](https://allboa.github.io/aobview/reference/view.md) or
   [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
-  take for `x`'s class, such as `fill` or `zcol` for `sf` data or
-  `palette` for a `SpatRaster`.
+  take for `x`'s class, such as `fill` or `zcol` for `sf` data,
+  `geometry` for a stream, or `palette` for a `SpatRaster`.
 
 - crs:
 
@@ -116,15 +116,20 @@ A view, as for
 
 Elements may be any vector input
 [`view()`](https://allboa.github.io/aobview/reference/view.md) takes
-(geometry 'wk' can handle, or a data frame with such a column, `sf`
-included) and 'terra' `SpatRaster` or `SpatVector` objects, in any mix
-of CRSs. Each is drawn as
-[`view()`](https://allboa.github.io/aobview/reference/view.md) or
+(geometry 'wk' can handle, a data frame with such a column, `sf`
+included, an Arrow stream or table, an `OGRFeatureSet`) and 'terra'
+`SpatRaster` or `SpatVector` objects, in any mix of CRSs. Each is drawn
+as [`view()`](https://allboa.github.io/aobview/reference/view.md) or
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
 draws it on its own, with its default style, and reprojected to the view
 CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
 [`aobcore::cog_plan()`](https://rdrr.io/pkg/aobcore/man/cog_plan.html)'s
-meshes.
+meshes. A stream is read once, before the view CRS is chosen; one whose
+geometry has no CRS is taken to be in `crs`, which
+[`view()`](https://allboa.github.io/aobview/reference/view.md) of the
+list must then be given, or in the view's CRS for `view_add()` (see
+Arrow streams in
+[`view()`](https://allboa.github.io/aobview/reference/view.md)).
 
 **View CRS.** `crs` when given; otherwise
 [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md)

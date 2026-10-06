@@ -15,7 +15,10 @@ view_crs(x)
 - x:
 
   Geometry 'wk' can handle or a data frame with such a column (an `sf`
-  object, say), a 'terra' `SpatRaster` or `SpatVector`, or a list of
+  object, say), an Arrow stream or table (read once, here: see Arrow
+  streams in
+  [`view()`](https://allboa.github.io/aobview/reference/view.md)), an
+  `OGRFeatureSet`, a 'terra' `SpatRaster` or `SpatVector`, or a list of
   them.
 
 ## Value

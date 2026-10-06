@@ -63,10 +63,18 @@ say where it came from. It has zero rows when nothing is selected.
 `selected(v)` gives the selected rows themselves: `x[rows, ]` of the
 data frame (`sf` included) or `SpatVector` that was viewed, or `x[rows]`
 of a bare geometry vector, with every column of `x`, not only those of
-the popup. `source` names the object when the view has several: it
-defaults to the only one with selected rows, and is an error naming them
-when several have selected rows. With nothing selected it gives zero
-rows of the view's only object, or `NULL` when the view has several.
+the popup. A stream (an Arrow stream or table, a DuckDB result; see
+Arrow streams in
+[`view()`](https://allboa.github.io/aobview/reference/view.md)) cannot
+be read again, so the view keeps the data frame it was read into, every
+column with the geometry as
+[`wk::wkb()`](https://paleolimbot.github.io/wk/reference/wkb.html) in
+its CRS, and `selected()` gives rows of that: the selected rows' indices
+into the stream are their row names, and `selection(v)$row`. `source`
+names the object when the view has several: it defaults to the only one
+with selected rows, and is an error naming them when several have
+selected rows. With nothing selected it gives zero rows of the view's
+only object, or `NULL` when the view has several.
 
 `wait_for_selection(v)` waits until the page sends its next selection (a
 click, a toggle or a clear), then returns `selected(v)`. It services R's

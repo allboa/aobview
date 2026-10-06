@@ -75,6 +75,8 @@ view(
   and 'PROJ' read, such as `"EPSG:3031"`, `3031` or a PROJ string.
   `NULL` (the default) uses
   [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md).
+  A stream whose geometry has no CRS in its GeoArrow metadata is taken
+  to be in `crs` (see Arrow streams).
 
 - layer:
 
@@ -274,5 +276,5 @@ m <- terra::rast(ncols = 72, nrows = 20, xmin = -180, xmax = 180, ymin = -90, ym
                  vals = 1:1440, crs = "OGC:CRS84")
 view(m)
 #> <view> m: 1 layer in EPSG:3031
-#>   /tmp/RtmpzVoGyO/view-1dc265c5e346.html
+#>   /tmp/RtmpsZkkVc/view-1d075418d99b.html
 ```
