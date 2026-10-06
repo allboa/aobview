@@ -12,6 +12,13 @@ raster_values <- function(v, i = 1L) {
 # Run view() and return what grid_temp_cog() wrote: the COG's structure and
 # its cell values by band (the file itself is deleted once the page is
 # written).
+# The matrix COG route needs gdalraster and a PROJ database, not terra.
+skip_if_no_gdalraster <- function() {
+  skip_if_not_installed("gdalraster")
+  ok <- !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
+  skip_if_not(ok, "gdalraster cannot resolve EPSG:3031 (PROJ database not found)")
+}
+
 grid_temp_seen <- function(expr) {
   seen <- new.env()
   real <- grid_temp_cog
@@ -72,7 +79,7 @@ test_that("row 1 of the matrix is the top of the grid", {
   expect_identical(vals[12], 9)
   expect_identical(matrix(vals, nrow = 3, byrow = TRUE), m)
   ## The same through a temporary COG: the file's first row is the top.
-  skip_if_no_terra()
+  skip_if_no_gdalraster()
   big <- matrix(0, nrow = 3, ncol = 600)
   big[1, 1] <- 7
   big[3, 600] <- 9
@@ -97,7 +104,7 @@ test_that("a logical matrix draws as 0 and 1, with NA as no data", {
 })
 
 test_that("a 3-band array draws as a colour image through a temporary COG", {
-  skip_if_no_terra()
+  skip_if_no_gdalraster()
   img <- array(0, c(10, 20, 3))
   img[, , 1] <- 255
   img[, , 2] <- 100
@@ -145,7 +152,7 @@ test_that("a 3-band array draws as a colour image through a temporary COG", {
 })
 
 test_that("a large matrix takes the COG route", {
-  skip_if_no_terra()
+  skip_if_no_gdalraster()
   skip_on_cran()
   n <- untiled_max() + 1L
   m <- matrix(seq_len(n * 40) %% 97, nrow = 40, ncol = n)
@@ -180,7 +187,7 @@ test_that("a large matrix takes the COG route", {
 })
 
 test_that("a lon/lat matrix south of 40S is drawn in EPSG:3031, tiled", {
-  skip_if_no_terra()
+  skip_if_no_gdalraster()
   m <- matrix(seq_len(72 * 20), nrow = 20, ncol = 72)
   e <- c(-180, 180, -90, -40)
   expect_identical(view_crs(m, extent = e, crs = "OGC:CRS84"), "EPSG:3031")
@@ -250,7 +257,7 @@ test_that("a matrix is added to a view with its own crs, and keyed by a ramp in 
   expect_null(v3$scene$legends)
   expect_valid_scene(v3)
   ## Added to a view in another CRS, the matrix is tiled and reprojected.
-  skip_if_no_terra()
+  skip_if_no_gdalraster()
   v4 <- view_add(view(pols, crs = "EPSG:3976", file = html()), m, extent = ext31,
                  crs = "EPSG:3031", file = html())
   expect_identical(layer_kinds(v4), c("polygon", "tiled_raster"))

@@ -108,13 +108,16 @@ field_m[1:6, 1:9] <- NA
 view(field_m, extent = c(-3e6, 3e6, -2e6, 2e6), crs = "EPSG:3031", palette = "ocean",
      name = "field", file = file.path(out, "matrix-untiled-in-3031.html"))
 
-# A 3-band array in EPSG:3031 as a colour image, through a temporary COG.
-img_m <- array(0, c(60, 90, 3))
-img_m[, , 1] <- 255 * (field_m + 1) / 2
-img_m[, , 2] <- 255 * (1 - (field_m + 1) / 2)
-img_m[, , 3] <- 120
-view(img_m, extent = c(-3e6, 3e6, -2e6, 2e6), crs = "EPSG:3031", name = "image",
-     file = file.path(out, "array-rgb-in-3031.html"))
+# A 3-band array in EPSG:3031 as a colour image, through a temporary COG
+# (gdalraster writes it).
+if (requireNamespace("gdalraster", quietly = TRUE)) {
+  img_m <- array(0, c(60, 90, 3))
+  img_m[, , 1] <- 255 * (field_m + 1) / 2
+  img_m[, , 2] <- 255 * (1 - (field_m + 1) / 2)
+  img_m[, , 3] <- 120
+  view(img_m, extent = c(-3e6, 3e6, -2e6, 2e6), crs = "EPSG:3031", name = "image",
+       file = file.path(out, "array-rgb-in-3031.html"))
+}
 
 # terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
 # for a raster already in 3031).

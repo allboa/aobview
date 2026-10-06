@@ -243,8 +243,10 @@ add_grid <- function(g, v, name, ..., palette = NULL, range = NULL, legend = TRU
   need_gdalraster()
   ## The palette range from the values held here, not from the COG's
   ## coarsest overview as a file's is.
-  if (!g$colour) range <- range %||% value_range(g$x)
   cog <- grid_temp_cog(g, rgb = g$colour)
+  if (!g$colour || cog$levels[[1]]$encoding$dtype != "uint8") {
+    range <- range %||% value_range(if (g$colour) g$x[, , 1:3] else g$x)
+  }
   add_tiled_layer(v, cog, name, ..., bands = if (g$colour) seq_len(cog$samples_per_pixel),
                   palette = palette, range = range, legend = legend, temp = TRUE)
 }
@@ -302,6 +304,8 @@ table_ipc <- function(df) {
 ## terra's no-data value for a Float32 band, used for the matrix route's
 ## temporary COG so a missing cell is the file's no-data value, not NaN.
 float_nodata <- -3.4028234663852886e+38
+## The largest magnitude Float32 holds; a double beyond it is no data.
+float_max <- 3.4028234663852886e+38
 
 ## Write grid g (from grid_input()) to a temporary COG with GDAL and read
 ## its structure. One band is written as Float32 with missing cells as
@@ -338,7 +342,7 @@ grid_temp_cog <- function(g, rgb) {
     v <- as.numeric(t(x[, , b]))
     if (!byte) {
       ds$setNoDataValue(b, float_nodata)
-      v[!is.finite(v)] <- float_nodata
+      v[!is.finite(v) | abs(v) > float_max] <- float_nodata
     }
     ds$write(b, 0L, 0L, d[2], d[1], v)
   }
