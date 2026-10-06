@@ -118,8 +118,9 @@ stream_frame <- function(x, geometry = NULL, crs = NULL) {
   on.exit(options(old), add = TRUE)
   df <- nanoarrow::convert_array_stream(stream)
   if (!nrow(df)) {
-    stop("`x` has no rows. A stream is read once: one already read (by view(), ",
-         "as.data.frame() or a collect, say) has nothing left.", call. = FALSE)
+    stop("`x` has no rows: the query gave none, or the stream was already read. ",
+         "A stream is read once, so one already read (by view(), as.data.frame() ",
+         "or a collect, say) has nothing left.", call. = FALSE)
   }
   class(df) <- "data.frame"
   rownames(df) <- NULL

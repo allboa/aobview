@@ -150,9 +150,10 @@
 #'   misspelled one, say) is an error.
 #' @param geometry For a data frame, the name of its geometry column.
 #'   `NULL` (the default) takes the `sf` geometry column, else the first
-#'   column 'wk' can handle. For a stream, the column holding WKB bytes or
-#'   WKT text when no column has a GeoArrow extension type; for an
-#'   `OGRFeatureSet` with several geometry columns, the one to draw.
+#'   column 'wk' can handle. For a stream, the column to draw (GeoArrow,
+#'   WKB bytes or WKT text); `NULL` takes the first column with a GeoArrow
+#'   extension type, else GDAL's `ogc.wkb` column. For an `OGRFeatureSet`
+#'   with several geometry columns, the one to draw.
 #' @param crs The view CRS: anything [aobcore::scene_crs()] and 'PROJ'
 #'   read, such as `"EPSG:3031"`, `3031` or a PROJ string. `NULL` (the
 #'   default) uses [view_crs()]. A stream whose geometry has no CRS in its

@@ -32,6 +32,7 @@ ccamlr_layer <- function() {
 }
 
 test_that("a nanoarrow stream of several batches is read once, CRS from its metadata", {
+  skip_if_not_installed("geoarrow")
   df <- stations()
   s <- batched_stream(df)
   expect_true(is_stream_input(s))
@@ -86,6 +87,7 @@ test_that("the geometry column is named with `geometry`, and no CRS needs `crs`"
 })
 
 test_that("a stream joins a list and a view, taking the view's CRS when it has none", {
+  skip_if_not_installed("geoarrow")
   df <- stations()
   coast <- wk::wkt("LINESTRING (0 -60, 90 -60)", crs = "OGC:CRS84")
   v <- view(list(coast = coast, bases = batched_stream(df)), file = html())
@@ -221,6 +223,7 @@ test_that("GDALVector$fetch() output is viewed with the layer's SRS", {
 })
 
 test_that("selected() on a stream gives the rows it was read into", {
+  skip_if_not_installed("geoarrow")
   skip_if_no_httpuv()
   on.exit(aobcore::stop_scene_servers(), add = TRUE)
   df <- data.frame(id = 11:14, name = letters[1:4])

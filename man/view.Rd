@@ -151,9 +151,10 @@ Defaults to \code{getOption("aobview.transport", "auto")}.}
 
 \item{geometry}{For a data frame, the name of its geometry column.
 \code{NULL} (the default) takes the \code{sf} geometry column, else the first
-column 'wk' can handle. For a stream, the column holding WKB bytes or
-WKT text when no column has a GeoArrow extension type; for an
-\code{OGRFeatureSet} with several geometry columns, the one to draw.}
+column 'wk' can handle. For a stream, the column to draw (GeoArrow,
+WKB bytes or WKT text); \code{NULL} takes the first column with a GeoArrow
+extension type, else GDAL's \code{ogc.wkb} column. For an \code{OGRFeatureSet}
+with several geometry columns, the one to draw.}
 }
 \value{
 A view: a list of class \code{"aob_view"} with the \code{scene} (an
