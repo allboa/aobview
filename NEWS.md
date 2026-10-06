@@ -1,5 +1,27 @@
 # aobview 0.0.0.9000
 
+* `view()` takes stars objects and proxies (#38, allboa/design decision
+  0011). A `stars_proxy` whose attribute is one file read whole, in the
+  file's CRS, is drawn from that file exactly as the file's path is: a COG,
+  local or remote, is planned with `aobcore::cog_plan()` and never copied
+  (a remote one referenced by URL), and another raster is read through
+  GDAL into a temporary COG; a proxy sliced to one band draws that band,
+  and any other proxy (a crop, a computation, several files, a changed
+  CRS) is read into memory with `stars::st_as_stars()`. An in-memory
+  `stars` object takes the matrix route: one attribute, one band, with
+  rows from the top whichever way its offsets run, untiled in the page at
+  up to 512 x 512 cells in the view CRS, else through a temporary COG
+  written with gdalraster and tiled. `layer` picks the attribute when
+  there are several, else the slice along the dimension beyond x and y
+  (band, time), by name or number; `palette`, `range` and `legend` are as
+  for a one-layer `SpatRaster`, and `...` goes to `aobcore::cog_plan()` on
+  the tiled routes. The view CRS follows `view_crs()` from the object's
+  own CRS, read from its dimensions, so a stars object goes in a list for
+  `view()` and to `view_add()` as a `SpatRaster` does. Curvilinear,
+  rectilinear and sheared grids and vector data cubes are errors that say
+  they are out of scope for now (allboa/design decision 0010, item 5).
+  stars joins Suggests; no terra is needed.
+
 * `view()` takes Arrow streams and tables, DuckDB results and
   `GDALVector$fetch()` output (#40, allboa/design decision 0011). A
   `nanoarrow_array_stream`, or anything with an
