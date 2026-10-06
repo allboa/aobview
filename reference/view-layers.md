@@ -117,9 +117,12 @@ A view, as for
 Elements may be any vector input
 [`view()`](https://allboa.github.io/aobview/reference/view.md) takes
 (geometry 'wk' can handle, a data frame with such a column, `sf`
-included, an Arrow stream or table, an `OGRFeatureSet`) and 'terra'
-`SpatRaster` or `SpatVector` objects, in any mix of CRSs. Each is drawn
-as [`view()`](https://allboa.github.io/aobview/reference/view.md) or
+included, an Arrow stream or table, an `OGRFeatureSet`), 'terra'
+`SpatRaster` or `SpatVector` objects, and strings (WKT text, or the
+path, URL or data source name of a raster or vector source: see Strings
+in [`view()`](https://allboa.github.io/aobview/reference/view.md)), in
+any mix of CRSs. Each is drawn as
+[`view()`](https://allboa.github.io/aobview/reference/view.md) or
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
 draws it on its own, with its default style, and reprojected to the view
 CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
@@ -142,7 +145,9 @@ transform), and a `crs` argument to it is an error.
 
 **Names.** List names become layer labels and, made valid and unique,
 layer ids. An unnamed element takes the expression that gave it in a
-call such as `view(list(coast, r))`, else `x[[i]]`. When an id is taken,
+call such as `view(list(coast, r))` (a string literal is named as
+[`view()`](https://allboa.github.io/aobview/reference/view.md) names it:
+its base name, or the WKT text), else `x[[i]]`. When an id is taken,
 `_2`, `_3`, ... is appended.
 
 **Initial view.** The union of the layers' extents in the view CRS,

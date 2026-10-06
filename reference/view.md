@@ -13,6 +13,18 @@ local server instead (see Transport).
 ## Usage
 
 ``` r
+# S3 method for class 'character'
+view(
+  x,
+  ...,
+  layer = NULL,
+  crs = NULL,
+  name = NULL,
+  file = NULL,
+  theme = c("auto", "light", "dark"),
+  transport = getOption("aobview.transport", "auto")
+)
+
 view(x, ...)
 
 # Default S3 method
@@ -98,13 +110,21 @@ view(
   method (an 'arrow' `Table`, a 'duckdb' result fetched as Arrow, ...);
   an `OGRFeatureSet` from 'gdalraster'; a 'terra' object
   ([view-terra](https://allboa.github.io/aobview/reference/view-terra.md));
-  or a list of them
+  a string, WKT text or the path, URL or GDAL data source name of a
+  raster or vector source (see Strings); or a list of them
   ([view-layers](https://allboa.github.io/aobview/reference/view-layers.md)).
 
 - ...:
 
   Not used by the vector methods: an argument caught here (a misspelled
-  one, say) is an error.
+  one, say) is an error. For a string, the arguments of the route taken
+  (see Strings).
+
+- layer:
+
+  For a string naming a data source: the band of a raster to draw
+  through the palette (a number, 1 by default), or the layer of a vector
+  source to read (its name or number, the first by default).
 
 - crs:
 
@@ -115,6 +135,28 @@ view(
   [`view_crs()`](https://allboa.github.io/aobview/reference/view_crs.md).
   A stream whose geometry has no CRS in its GeoArrow metadata is taken
   to be in `crs` (see Arrow streams).
+
+- name:
+
+  The layer name, shown as the page title. Defaults to the expression
+  passed as `x`.
+
+- file:
+
+  Path of the HTML file to write. Defaults to a new file in the
+  session's temporary directory. Not used by a served view (with a
+  warning).
+
+- theme:
+
+  `"auto"` follows the browser's light or dark preference; `"light"` or
+  `"dark"` fixes it.
+
+- transport:
+
+  `"auto"`, `"embed"` or `"serve"`: whether the view is written to a
+  page or served from a local server (see Transport). Defaults to
+  `getOption("aobview.transport", "auto")`.
 
 - densify:
 
@@ -185,28 +227,6 @@ view(
   shows none. See Popups. `NULL` (the default) is `TRUE`, or `FALSE`
   with `style = "minimal"`.
 
-- name:
-
-  The layer name, shown as the page title. Defaults to the expression
-  passed as `x`.
-
-- file:
-
-  Path of the HTML file to write. Defaults to a new file in the
-  session's temporary directory. Not used by a served view (with a
-  warning).
-
-- theme:
-
-  `"auto"` follows the browser's light or dark preference; `"light"` or
-  `"dark"` fixes it.
-
-- transport:
-
-  `"auto"`, `"embed"` or `"serve"`: whether the view is written to a
-  page or served from a local server (see Transport). Defaults to
-  `getOption("aobview.transport", "auto")`.
-
 - geometry:
 
   For a data frame, the name of its geometry column. `NULL` (the
@@ -263,6 +283,39 @@ A terra `SpatVector` is read from terra's own WKB (see
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)).
 A [`wk::grd()`](https://paleolimbot.github.io/wk/reference/grd.html) is
 not drawn yet: a grid belongs on the raster path.
+
+**Strings.** A single string is WKT text or the name of a data source,
+by this rule: a string that names a file that exists, or starts with a
+URL scheme (`https://`, `s3://`, ...) or `/vsi`, is a data source; any
+other string that 'wk' parses as WKT is geometry, as
+[`wk::wkt()`](https://paleolimbot.github.io/wk/reference/wkt.html) reads
+it (an `SRID=code;` prefix gives it that EPSG CRS; plain WKT has none,
+which is an error: give it one as `wk::wkt(x, crs = )`); and a string
+that is neither is probed as a data source, an error when GDAL cannot
+open it. A data source is read with 'gdalraster' (in Suggests; an error
+says so when it is not installed; WKT text needs no package). A Cloud
+Optimized GeoTIFF, local or remote, is drawn as a tiled raster exactly
+as a `SpatRaster` read from one is (see
+[view-terra](https://allboa.github.io/aobview/reference/view-terra.md)):
+a remote COG is referenced by its URL, never copied. Another raster GDAL
+opens (not tiled, no overviews, a VRT, a tile service) is read through
+GDAL into a temporary COG, as a `SpatRaster` too large for 'terra' to
+write is (see Datasets too large to write whole in
+[view-terra](https://allboa.github.io/aobview/reference/view-terra.md)),
+whatever its size: that read copies the data into R, so a remote raster
+that is not a COG is not yet drawn in place (planning a VRT or GTI
+mosaic across its COG members is allboa/aobview#41). A vector source
+(GeoJSON, GeoPackage, GeoParquet, FlatGeobuf, a shapefile, ...) is read
+with
+[`aobcore::gdal_vector_stream()`](https://rdrr.io/pkg/aobcore/man/gdal_vector_stream.html),
+which densifies and reprojects in GDAL, and drawn as any data frame is,
+with its attributes. `layer` picks the raster band or the vector layer.
+The other arguments are those of the route taken: for WKT text and a
+vector source the vector arguments here, and for a raster
+[view-terra](https://allboa.github.io/aobview/reference/view-terra.md)'s
+`palette`, `range`, `rgb` and `legend` and
+[`aobcore::cog_plan()`](https://rdrr.io/pkg/aobcore/man/cog_plan.html)'s,
+all through `...`.
 
 **Arrow streams** (allboa/design decision 0011). `x` can be a
 'nanoarrow' array stream, or anything with an
@@ -427,6 +480,10 @@ v0 <- view(line)
 v0$scene$view$crs
 #> [1] "EPSG:3031"
 
+# WKT text, with its CRS as an SRID prefix.
+view("SRID=4326;LINESTRING (0 -60, 90 -60)")$scene$view$crs
+#> [1] "EPSG:3031"
+
 # A data frame with a geometry column.
 bases <- data.frame(base = c("Casey", "Davis"))
 bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
@@ -485,6 +542,16 @@ v7 <- view(areas, crs = "EPSG:3031", zcol = "area",
 v7 <- view_add(v7, coast, popup = FALSE)
 vapply(v7$scene$legends[[1]]$classes, function(cl) cl$label, "")
 #> [1] "Area 48" "Area 58" "Area 88"
+# The same areas by their path: read through GDAL, no 'sf' needed.
+areas <- system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview")
+v8 <- view(areas, crs = "EPSG:3031", zcol = "GAR_Name", legend = FALSE)
+#> Palette "Tableau 10" has 10 colours for 19 levels; its colours are recycled.
+v8$scene$layers[[1]]$kind
+#> [1] "polygon"
+# A COG by its path (or URL): a tiled raster, as for a SpatRaster.
+v9 <- view(system.file("extdata", "polar_3031.tif", package = "aobcore"))
+v9$scene$layers[[1]]$kind
+#> [1] "tiled_raster"
 if (FALSE) { # \dontrun{
 v2
 v3

@@ -18,8 +18,11 @@ view_crs(x)
   object, say), an Arrow stream or table (read once, here: see Arrow
   streams in
   [`view()`](https://allboa.github.io/aobview/reference/view.md)), an
-  `OGRFeatureSet`, a 'terra' `SpatRaster` or `SpatVector`, or a list of
-  them.
+  `OGRFeatureSet`, a 'terra' `SpatRaster` or `SpatVector`, a string (WKT
+  text, or the path, URL or data source name of a raster or vector
+  source: see Strings in
+  [`view()`](https://allboa.github.io/aobview/reference/view.md)), or a
+  list of them.
 
 ## Value
 

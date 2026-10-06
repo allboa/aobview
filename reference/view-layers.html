@@ -197,14 +197,16 @@ file; the view stays served either way.</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Elements may be any vector input <code><a href="view.html">view()</a></code> takes (geometry 'wk' can
 handle, a data frame with such a column, <code>sf</code> included, an Arrow stream
-or table, an <code>OGRFeatureSet</code>) and 'terra' <code>SpatRaster</code> or <code>SpatVector</code>
-objects, in any mix of CRSs. Each is drawn as <code><a href="view.html">view()</a></code> or <a href="view-terra.html">view-terra</a>
-draws it on its own, with its default style, and reprojected to the view
-CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
-<code><a href="https://rdrr.io/pkg/aobcore/man/cog_plan.html" class="external-link">aobcore::cog_plan()</a></code>'s meshes. A stream is read once, before the view
-CRS is chosen; one whose geometry has no CRS is taken to be in <code>crs</code>,
-which <code><a href="view.html">view()</a></code> of the list must then be given, or in the view's CRS for
-<code>view_add()</code> (see Arrow streams in <code><a href="view.html">view()</a></code>).</p>
+or table, an <code>OGRFeatureSet</code>), 'terra' <code>SpatRaster</code> or <code>SpatVector</code>
+objects, and strings (WKT text, or the path, URL or data source name of
+a raster or vector source: see Strings in <code><a href="view.html">view()</a></code>), in any mix of CRSs.
+Each is drawn as <code><a href="view.html">view()</a></code> or <a href="view-terra.html">view-terra</a> draws it on its own, with its
+default style, and reprojected to the view CRS: vectors by 'PROJ'
+(lon/lat edges densified first), rasters by <code><a href="https://rdrr.io/pkg/aobcore/man/cog_plan.html" class="external-link">aobcore::cog_plan()</a></code>'s
+meshes. A stream is read once, before the view CRS is chosen; one whose
+geometry has no CRS is taken to be in <code>crs</code>, which <code><a href="view.html">view()</a></code> of the list
+must then be given, or in the view's CRS for <code>view_add()</code> (see Arrow
+streams in <code><a href="view.html">view()</a></code>).</p>
 <p><strong>View CRS.</strong> <code>crs</code> when given; otherwise <code><a href="view_crs.html">view_crs()</a></code> of the whole list:
 the CRS of the first element with a projected CRS, or, when every element
 is in lon/lat, the lon/lat rule applied once to their combined latitude
@@ -214,8 +216,9 @@ warns when that puts projected vector data into a geographic view
 argument to it is an error.</p>
 <p><strong>Names.</strong> List names become layer labels and, made valid and unique,
 layer ids. An unnamed element takes the expression that gave it in a
-call such as <code>view(list(coast, r))</code>, else <code>x[[i]]</code>. When an id is taken,
-<code>_2</code>, <code>_3</code>, ... is appended.</p>
+call such as <code>view(list(coast, r))</code> (a string literal is named as
+<code><a href="view.html">view()</a></code> names it: its base name, or the WKT text), else <code>x[[i]]</code>. When
+an id is taken, <code>_2</code>, <code>_3</code>, ... is appended.</p>
 <p><strong>Initial view.</strong> The union of the layers' extents in the view CRS,
 clipped to the view's domain (<code><a href="https://rdrr.io/pkg/aobcore/man/crs_domain.html" class="external-link">aobcore::crs_domain()</a></code>, carried as the
 scene's <code>view.bounds</code>, allboa/design decision 0005). The scene's spec
