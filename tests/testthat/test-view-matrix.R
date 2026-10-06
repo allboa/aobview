@@ -160,7 +160,10 @@ test_that("a large matrix takes the COG route", {
   expect_gt(length(tile_blobs(v)), 0L)
   expect_identical(seen$cog$levels[[1]]$dim, c(n, 40L))
   expect_identical(seen$cog$levels[[1]]$encoding$dtype, "float32")
-  expect_true(is.na(seen$values[[1]][(5 - 1) * n + 5]))
+  ## The missing cell holds the no-data value. gdalraster returns it as NA
+  ## in current releases; older ones (CRAN macOS) return the value itself.
+  missing <- seen$values[[1]][(5 - 1) * n + 5]
+  expect_true(is.na(missing) || isTRUE(all.equal(missing, float_nodata)))
   expect_equal(seen$nodata, float_nodata)
   expect_equal(v$scene$view$extent, ext31)
   expect_valid_scene(v)
