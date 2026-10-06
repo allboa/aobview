@@ -82,6 +82,9 @@ explains the pieces.
 - [`view(`*`<matrix>`*`)`](https://allboa.github.io/aobview/reference/view-matrix.md)
   [`view(`*`<array>`*`)`](https://allboa.github.io/aobview/reference/view-matrix.md)
   : View a matrix or array as a raster
+- [`view(`*`<stars>`*`)`](https://allboa.github.io/aobview/reference/view-stars.md)
+  [`view(`*`<stars_proxy>`*`)`](https://allboa.github.io/aobview/reference/view-stars.md)
+  : View a stars raster
 - [`view(`*`<list>`*`)`](https://allboa.github.io/aobview/reference/view-layers.md)
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
   : View several layers in one page

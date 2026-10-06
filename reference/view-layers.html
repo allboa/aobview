@@ -151,10 +151,10 @@ spatial object (or a list of them) to add.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>For <code><a href="view.html">view()</a></code> of a list, nothing (per-layer arguments go to
-<code>view_add()</code>). For <code>view_add()</code>, the arguments <code><a href="view.html">view()</a></code>, <a href="view-terra.html">view-terra</a>
-or <a href="view-matrix.html">view-matrix</a> take for <code>x</code>'s class, such as <code>fill</code> or <code>zcol</code> for
-<code>sf</code> data, <code>geometry</code> for a stream, <code>palette</code> for a <code>SpatRaster</code>, or
-<code>extent</code> and <code>crs</code> for a matrix.</p></dd>
+<code>view_add()</code>). For <code>view_add()</code>, the arguments <code><a href="view.html">view()</a></code>, <a href="view-terra.html">view-terra</a>,
+<a href="view-matrix.html">view-matrix</a> or <a href="view-stars.html">view-stars</a> take for <code>x</code>'s class, such as <code>fill</code> or
+<code>zcol</code> for <code>sf</code> data, <code>geometry</code> for a stream, <code>palette</code> for a
+<code>SpatRaster</code> or a 'stars' object, or <code>extent</code> and <code>crs</code> for a matrix.</p></dd>
 
 
 <dt id="arg-crs">crs<a class="anchor" aria-label="anchor" href="#arg-crs"></a></dt>
@@ -199,13 +199,14 @@ file; the view stays served either way.</p></dd>
     <p>Elements may be any vector input <code><a href="view.html">view()</a></code> takes (geometry 'wk' can
 handle, a data frame with such a column, <code>sf</code> included, an Arrow stream
 or table, an <code>OGRFeatureSet</code>), 'terra' <code>SpatRaster</code> or <code>SpatVector</code>
-objects, and strings (WKT text, or the path, URL or data source name of
-a raster or vector source: see Strings in <code><a href="view.html">view()</a></code>), in any mix of CRSs.
+objects, 'stars' objects and proxies (see <a href="view-stars.html">view-stars</a>), and strings
+(WKT text, or the path, URL or data source name of a raster or vector
+source: see Strings in <code><a href="view.html">view()</a></code>), in any mix of CRSs.
 A matrix or array is not one, since it has no extent or CRS of its own:
 add it with <code>view_add(v, m, extent = , crs = )</code>, where <code>crs</code> is the
 grid's CRS, not the view's (see <a href="view-matrix.html">view-matrix</a>).
-Each is drawn as <code><a href="view.html">view()</a></code> or <a href="view-terra.html">view-terra</a> draws it on its own, with its
-default style, and reprojected to the view CRS: vectors by 'PROJ'
+Each is drawn as <code><a href="view.html">view()</a></code>, <a href="view-terra.html">view-terra</a> or <a href="view-stars.html">view-stars</a> draws it on its
+own, with its default style, and reprojected to the view CRS: vectors by 'PROJ'
 (lon/lat edges densified first), rasters by <code><a href="https://rdrr.io/pkg/aobcore/man/cog_plan.html" class="external-link">aobcore::cog_plan()</a></code>'s
 meshes. A stream is read once, before the view CRS is chosen; one whose
 geometry has no CRS is taken to be in <code>crs</code>, which <code><a href="view.html">view()</a></code> of the list

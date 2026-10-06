@@ -276,5 +276,5 @@ m <- terra::rast(ncols = 72, nrows = 20, xmin = -180, xmax = 180, ymin = -90, ym
                  vals = 1:1440, crs = "OGC:CRS84")
 view(m)
 #> <view> m: 1 layer in EPSG:3031
-#>   /tmp/RtmpYmWH4M/view-1dbd79fa8fa8.html
+#>   /tmp/RtmpygAM95/view-1ce15d96cb13.html
 ```

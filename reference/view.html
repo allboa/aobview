@@ -180,7 +180,8 @@ an object with an <code><a href="https://arrow.apache.org/nanoarrow/latest/r/ref
 <code>OGRFeatureSet</code> from 'gdalraster'; a 'terra' object (<a href="view-terra.html">view-terra</a>); a
 string, WKT text or the path, URL or GDAL data source name of a raster
 or vector source (see Strings); a matrix or array with <code>extent</code> and
-<code>crs</code> (<a href="view-matrix.html">view-matrix</a>); or a list of them (<a href="view-layers.html">view-layers</a>).</p></dd>
+<code>crs</code> (<a href="view-matrix.html">view-matrix</a>); a 'stars' object or <code>stars_proxy</code>
+(<a href="view-stars.html">view-stars</a>); or a list of them (<a href="view-layers.html">view-layers</a>).</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -332,7 +333,9 @@ one; for any other data frame the geometry column is the first that 'wk'
 can handle, or the one named by <code>geometry</code>. The CRS travels with the
 geometry (<code><a href="https://paleolimbot.github.io/wk/reference/wk_crs.html" class="external-link">wk::wk_crs()</a></code>). A terra <code>SpatVector</code> is read from terra's own
 WKB (see <a href="view-terra.html">view-terra</a>). A matrix or array with an <code>extent</code> and <code>crs</code> is
-drawn as a raster (see <a href="view-matrix.html">view-matrix</a>). A <code><a href="https://paleolimbot.github.io/wk/reference/grd.html" class="external-link">wk::grd()</a></code> is not drawn yet.</p>
+drawn as a raster (see <a href="view-matrix.html">view-matrix</a>), and so is a 'stars' object or
+<code>stars_proxy</code> on a regular grid (see <a href="view-stars.html">view-stars</a>). A <code><a href="https://paleolimbot.github.io/wk/reference/grd.html" class="external-link">wk::grd()</a></code> is not
+drawn yet.</p>
 <p><strong>Strings.</strong> A single string is WKT text or the name of a data source,
 by this rule: a string that names a file that exists, or starts with a
 URL scheme (<code>https://</code>, <code>s3://</code>, ...) or <code>/vsi</code>, is a data source; any
@@ -467,7 +470,8 @@ legend and no popup is unchanged by these features.</p>
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="view_crs.html">view_crs()</a></code> for the default view CRS; <a href="view-terra.html">view-terra</a> for 'terra'
 rasters and vectors; <a href="view-matrix.html">view-matrix</a> for a matrix or array with an extent
-and CRS; <a href="view-layers.html">view-layers</a> for several layers in one view.</p></div>
+and CRS; <a href="view-stars.html">view-stars</a> for 'stars' rasters; <a href="view-layers.html">view-layers</a> for several
+layers in one view.</p></div>
     </div>
 
     <div class="section level2">

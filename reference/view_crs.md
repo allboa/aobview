@@ -24,9 +24,11 @@ view_crs(x, ..., extent, crs)
   object, say), an Arrow stream or table (read once, here: see Arrow
   streams in
   [`view()`](https://allboa.github.io/aobview/reference/view.md)), an
-  `OGRFeatureSet`, a 'terra' `SpatRaster` or `SpatVector`, a string (WKT
-  text, or the path, URL or data source name of a raster or vector
-  source: see Strings in
+  `OGRFeatureSet`, a 'terra' `SpatRaster` or `SpatVector`, a 'stars'
+  object or `stars_proxy`
+  ([view-stars](https://allboa.github.io/aobview/reference/view-stars.md)),
+  a string (WKT text, or the path, URL or data source name of a raster
+  or vector source: see Strings in
   [`view()`](https://allboa.github.io/aobview/reference/view.md)), a
   list of them, or a matrix or array with `extent` and `crs`.
 
@@ -68,10 +70,12 @@ has no code, its WKT.
     carree), which the scene spec allows. Web Mercator is not used: it
     cannot show the poles, and a tiled Mercator basemap is a non-goal.
 
-For a raster the bounding box is the grid's extent, so a lon/lat grid
-from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031. A
-matrix or array has no CRS of its own: `view_crs(m, extent = , crs = )`
-applies the rule to the `crs` and `extent` given for it (see
+For a raster (a `SpatRaster`, a 'stars' object or proxy, read from its
+dimensions alone) the bounding box is the grid's extent, so a lon/lat
+grid from 90S to 40S, whose northern edge is at 40S, is drawn in
+EPSG:3031. A matrix or array has no CRS of its own:
+`view_crs(m, extent = , crs = )` applies the rule to the `crs` and
+`extent` given for it (see
 [view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)).
 
 For a list of objects (see

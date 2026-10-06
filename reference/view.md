@@ -114,6 +114,8 @@ view(
   raster or vector source (see Strings); a matrix or array with `extent`
   and `crs`
   ([view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md));
+  a 'stars' object or `stars_proxy`
+  ([view-stars](https://allboa.github.io/aobview/reference/view-stars.md));
   or a list of them
   ([view-layers](https://allboa.github.io/aobview/reference/view-layers.md)).
 
@@ -285,7 +287,9 @@ CRS travels with the geometry
 A terra `SpatVector` is read from terra's own WKB (see
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)).
 A matrix or array with an `extent` and `crs` is drawn as a raster (see
-[view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)).
+[view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)),
+and so is a 'stars' object or `stars_proxy` on a regular grid (see
+[view-stars](https://allboa.github.io/aobview/reference/view-stars.md)).
 A [`wk::grd()`](https://paleolimbot.github.io/wk/reference/grd.html) is
 not drawn yet.
 
@@ -475,6 +479,8 @@ for the default view CRS;
 for 'terra' rasters and vectors;
 [view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)
 for a matrix or array with an extent and CRS;
+[view-stars](https://allboa.github.io/aobview/reference/view-stars.md)
+for 'stars' rasters;
 [view-layers](https://allboa.github.io/aobview/reference/view-layers.md)
 for several layers in one view.
 

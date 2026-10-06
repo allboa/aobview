@@ -63,12 +63,13 @@ view_add(
   a list, nothing (per-layer arguments go to `view_add()`). For
   `view_add()`, the arguments
   [`view()`](https://allboa.github.io/aobview/reference/view.md),
-  [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
-  or
+  [view-terra](https://allboa.github.io/aobview/reference/view-terra.md),
   [view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)
+  or
+  [view-stars](https://allboa.github.io/aobview/reference/view-stars.md)
   take for `x`'s class, such as `fill` or `zcol` for `sf` data,
-  `geometry` for a stream, `palette` for a `SpatRaster`, or `extent` and
-  `crs` for a matrix.
+  `geometry` for a stream, `palette` for a `SpatRaster` or a 'stars'
+  object, or `extent` and `crs` for a matrix.
 
 - crs:
 
@@ -121,16 +122,20 @@ Elements may be any vector input
 [`view()`](https://allboa.github.io/aobview/reference/view.md) takes
 (geometry 'wk' can handle, a data frame with such a column, `sf`
 included, an Arrow stream or table, an `OGRFeatureSet`), 'terra'
-`SpatRaster` or `SpatVector` objects, and strings (WKT text, or the
-path, URL or data source name of a raster or vector source: see Strings
-in [`view()`](https://allboa.github.io/aobview/reference/view.md)), in
-any mix of CRSs. A matrix or array is not one, since it has no extent or
-CRS of its own: add it with `view_add(v, m, extent = , crs = )`, where
-`crs` is the grid's CRS, not the view's (see
+`SpatRaster` or `SpatVector` objects, 'stars' objects and proxies (see
+[view-stars](https://allboa.github.io/aobview/reference/view-stars.md)),
+and strings (WKT text, or the path, URL or data source name of a raster
+or vector source: see Strings in
+[`view()`](https://allboa.github.io/aobview/reference/view.md)), in any
+mix of CRSs. A matrix or array is not one, since it has no extent or CRS
+of its own: add it with `view_add(v, m, extent = , crs = )`, where `crs`
+is the grid's CRS, not the view's (see
 [view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)).
 Each is drawn as
-[`view()`](https://allboa.github.io/aobview/reference/view.md) or
+[`view()`](https://allboa.github.io/aobview/reference/view.md),
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
+or
+[view-stars](https://allboa.github.io/aobview/reference/view-stars.md)
 draws it on its own, with its default style, and reprojected to the view
 CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
 [`aobcore::cog_plan()`](https://rdrr.io/pkg/aobcore/man/cog_plan.html)'s
