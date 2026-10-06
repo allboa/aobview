@@ -7,7 +7,13 @@ in the data's own CRS is preferred to a reprojection, so the rule is:
 ## Usage
 
 ``` r
-view_crs(x)
+view_crs(x, ...)
+
+# S3 method for class 'matrix'
+view_crs(x, ..., extent, crs)
+
+# S3 method for class 'array'
+view_crs(x, ..., extent, crs)
 ```
 
 ## Arguments
@@ -21,8 +27,18 @@ view_crs(x)
   `OGRFeatureSet`, a 'terra' `SpatRaster` or `SpatVector`, a string (WKT
   text, or the path, URL or data source name of a raster or vector
   source: see Strings in
-  [`view()`](https://allboa.github.io/aobview/reference/view.md)), or a
-  list of them.
+  [`view()`](https://allboa.github.io/aobview/reference/view.md)), a
+  list of them, or a matrix or array with `extent` and `crs`.
+
+- ...:
+
+  Not used, except by the matrix and array methods.
+
+- extent, crs:
+
+  For a matrix or array, which has no CRS of its own: the grid's extent
+  and CRS, as for
+  [view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md).
 
 ## Value
 
@@ -53,7 +69,10 @@ has no code, its WKT.
     cannot show the poles, and a tiled Mercator basemap is a non-goal.
 
 For a raster the bounding box is the grid's extent, so a lon/lat grid
-from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.
+from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031. A
+matrix or array has no CRS of its own: `view_crs(m, extent = , crs = )`
+applies the rule to the `crs` and `extent` given for it (see
+[view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)).
 
 For a list of objects (see
 [view-layers](https://allboa.github.io/aobview/reference/view-layers.md))

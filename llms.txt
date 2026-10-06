@@ -79,6 +79,9 @@ explains the pieces.
 - [`view(`*`<SpatRaster>`*`)`](https://allboa.github.io/aobview/reference/view-terra.md)
   [`view(`*`<SpatVector>`*`)`](https://allboa.github.io/aobview/reference/view-terra.md)
   : View a terra raster or vector
+- [`view(`*`<matrix>`*`)`](https://allboa.github.io/aobview/reference/view-matrix.md)
+  [`view(`*`<array>`*`)`](https://allboa.github.io/aobview/reference/view-matrix.md)
+  : View a matrix or array as a raster
 - [`view(`*`<list>`*`)`](https://allboa.github.io/aobview/reference/view-layers.md)
   [`view_add()`](https://allboa.github.io/aobview/reference/view-layers.md)
   : View several layers in one page

@@ -111,7 +111,10 @@ view(
   an `OGRFeatureSet` from 'gdalraster'; a 'terra' object
   ([view-terra](https://allboa.github.io/aobview/reference/view-terra.md));
   a string, WKT text or the path, URL or GDAL data source name of a
-  raster or vector source (see Strings); or a list of them
+  raster or vector source (see Strings); a matrix or array with `extent`
+  and `crs`
+  ([view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md));
+  or a list of them
   ([view-layers](https://allboa.github.io/aobview/reference/view-layers.md)).
 
 - ...:
@@ -281,8 +284,10 @@ CRS travels with the geometry
 ([`wk::wk_crs()`](https://paleolimbot.github.io/wk/reference/wk_crs.html)).
 A terra `SpatVector` is read from terra's own WKB (see
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)).
+A matrix or array with an `extent` and `crs` is drawn as a raster (see
+[view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)).
 A [`wk::grd()`](https://paleolimbot.github.io/wk/reference/grd.html) is
-not drawn yet: a grid belongs on the raster path.
+not drawn yet.
 
 **Strings.** A single string is WKT text or the name of a data source,
 by this rule: a string that names a file that exists, or starts with a
@@ -468,6 +473,8 @@ a view with no legend and no popup is unchanged by these features.
 for the default view CRS;
 [view-terra](https://allboa.github.io/aobview/reference/view-terra.md)
 for 'terra' rasters and vectors;
+[view-matrix](https://allboa.github.io/aobview/reference/view-matrix.md)
+for a matrix or array with an extent and CRS;
 [view-layers](https://allboa.github.io/aobview/reference/view-layers.md)
 for several layers in one view.
 

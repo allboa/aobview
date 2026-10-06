@@ -58,7 +58,7 @@ so the rule is:"></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>The default view CRS for spatial data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/allboa/aobview/blob/main/R/view-crs.R" class="external-link"><code>R/view-crs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/allboa/aobview/blob/main/R/view-crs.R" class="external-link"><code>R/view-crs.R</code></a>, <a href="https://github.com/allboa/aobview/blob/main/R/view-matrix.R" class="external-link"><code>R/view-matrix.R</code></a></small>
       <div class="d-none name"><code>view_crs.Rd</code></div>
     </div>
 
@@ -70,7 +70,13 @@ so the rule is:</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">view_crs</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">view_crs</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'matrix'</span></span>
+<span><span class="fu">view_crs</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">extent</span>, <span class="va">crs</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'array'</span></span>
+<span><span class="fu">view_crs</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">extent</span>, <span class="va">crs</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -82,8 +88,17 @@ so the rule is:</p>
 (an <code>sf</code> object, say), an Arrow stream or table (read once, here: see
 Arrow streams in <code><a href="view.html">view()</a></code>), an <code>OGRFeatureSet</code>, a 'terra' <code>SpatRaster</code>
 or <code>SpatVector</code>, a string (WKT text, or the path, URL or data source
-name of a raster or vector source: see Strings in <code><a href="view.html">view()</a></code>), or a list
-of them.</p></dd>
+name of a raster or vector source: see Strings in <code><a href="view.html">view()</a></code>), a list of
+them, or a matrix or array with <code>extent</code> and <code>crs</code>.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Not used, except by the matrix and array methods.</p></dd>
+
+
+<dt id="arg-extent-crs">extent, crs<a class="anchor" aria-label="anchor" href="#arg-extent-crs"></a></dt>
+<dd><p>For a matrix or array, which has no CRS of its own:
+the grid's extent and CRS, as for <a href="view-matrix.html">view-matrix</a>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -109,7 +124,10 @@ and 60N, where a polar view turns the map away from north-up; south of
 carree), which the scene spec allows. Web Mercator is not used: it
 cannot show the poles, and a tiled Mercator basemap is a non-goal.</p></li>
 </ol><p>For a raster the bounding box is the grid's extent, so a lon/lat grid
-from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031.</p>
+from 90S to 40S, whose northern edge is at 40S, is drawn in EPSG:3031. A
+matrix or array has no CRS of its own: <code>view_crs(m, extent = , crs = )</code>
+applies the rule to the <code>crs</code> and <code>extent</code> given for it (see
+<a href="view-matrix.html">view-matrix</a>).</p>
 <p>For a list of objects (see <a href="view-layers.html">view-layers</a>) the rule is applied once to
 the whole list: the CRS of the first object with a projected CRS is kept;
 when every object is in lon/lat, rules 2 to 4 apply to their combined
