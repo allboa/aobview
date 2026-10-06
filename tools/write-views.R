@@ -119,6 +119,25 @@ if (requireNamespace("gdalraster", quietly = TRUE)) {
        file = file.path(out, "array-rgb-in-3031.html"))
 }
 
+# stars (#38): a stars_proxy over the local COG in EPSG:3031, drawn from
+# that file as a SpatRaster read from it is, and a lon/lat stars object in
+# memory over the South Pole, 90S to 40S, drawn in EPSG:3031 through a
+# temporary COG (gdalraster writes it).
+if (requireNamespace("stars", quietly = TRUE) && requireNamespace("gdalraster", quietly = TRUE)) {
+  sst_proxy <- stars::read_stars(system.file("extdata", "polar_3031.tif", package = "aobcore"),
+                                 proxy = TRUE)
+  view(sst_proxy, palette = "ice", name = "sst",
+       file = file.path(out, "stars-proxy-cog-in-3031.html"))
+
+  bb <- sf::st_bbox(c(xmin = -180, xmax = 180, ymin = -90, ymax = -40),
+                    crs = sf::st_crs("OGC:CRS84"))
+  field_s <- stars::st_as_stars(bb, nx = 360, ny = 50, values = 0)
+  xy <- expand.grid(x = seq(-179.5, 179.5, by = 1), y = seq(-40.5, -89.5, by = -1))
+  field_s[[1]][] <- cos(xy$y * pi / 25) + 0.5 * sin(xy$x * pi / 30)
+  view(field_s, palette = "ocean", name = "field",
+       file = file.path(out, "stars-lonlat-field-in-3031.html"))
+}
+
 # terra, all in EPSG:3031 (the default for lon/lat data south of 40S and
 # for a raster already in 3031).
 if (requireNamespace("terra", quietly = TRUE)) {
