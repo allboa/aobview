@@ -82,8 +82,10 @@ either form to fix it.
 }
 \details{
 Elements may be any vector input \code{\link[=view]{view()}} takes (geometry 'wk' can
-handle, or a data frame with such a column, \code{sf} included) and 'terra'
-\code{SpatRaster} or \code{SpatVector} objects, in any mix of CRSs. Each is drawn
+handle, or a data frame with such a column, \code{sf} included), 'terra'
+\code{SpatRaster} or \code{SpatVector} objects, and strings (WKT text, or the
+path, URL or data source name of a raster or vector source: see Strings
+in \code{\link[=view]{view()}}), in any mix of CRSs. Each is drawn
 as \code{\link[=view]{view()}} or \link{view-terra} draws it on its own, with its default style,
 and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
 densified first), rasters by \code{\link[aobcore:cog_plan]{aobcore::cog_plan()}}'s meshes.
@@ -98,8 +100,9 @@ argument to it is an error.
 
 \strong{Names.} List names become layer labels and, made valid and unique,
 layer ids. An unnamed element takes the expression that gave it in a
-call such as \code{view(list(coast, r))}, else \code{x[[i]]}. When an id is taken,
-\verb{_2}, \verb{_3}, ... is appended.
+call such as \code{view(list(coast, r))} (a string literal is named as
+\code{\link[=view]{view()}} names it: its base name, or the WKT text), else \code{x[[i]]}. When
+an id is taken, \verb{_2}, \verb{_3}, ... is appended.
 
 \strong{Initial view.} The union of the layers' extents in the view CRS,
 clipped to the view's domain (\code{\link[aobcore:crs_domain]{aobcore::crs_domain()}}, carried as the

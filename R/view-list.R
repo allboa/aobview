@@ -21,8 +21,10 @@
 #' either form to fix it.
 #'
 #' Elements may be any vector input [view()] takes (geometry 'wk' can
-#' handle, or a data frame with such a column, `sf` included) and 'terra'
-#' `SpatRaster` or `SpatVector` objects, in any mix of CRSs. Each is drawn
+#' handle, or a data frame with such a column, `sf` included), 'terra'
+#' `SpatRaster` or `SpatVector` objects, and strings (WKT text, or the
+#' path, URL or data source name of a raster or vector source: see Strings
+#' in [view()]), in any mix of CRSs. Each is drawn
 #' as [view()] or [view-terra] draws it on its own, with its default style,
 #' and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
 #' densified first), rasters by [aobcore::cog_plan()]'s meshes.
@@ -37,8 +39,9 @@
 #'
 #' **Names.** List names become layer labels and, made valid and unique,
 #' layer ids. An unnamed element takes the expression that gave it in a
-#' call such as `view(list(coast, r))`, else `x[[i]]`. When an id is taken,
-#' `_2`, `_3`, ... is appended.
+#' call such as `view(list(coast, r))` (a string literal is named as
+#' [view()] names it: its base name, or the WKT text), else `x[[i]]`. When
+#' an id is taken, `_2`, `_3`, ... is appended.
 #'
 #' **Initial view.** The union of the layers' extents in the view CRS,
 #' clipped to the view's domain ([aobcore::crs_domain()], carried as the
@@ -164,13 +167,15 @@ add_list <- function(x, v, labels) {
 check_list <- function(x, labels) {
   if (!length(x)) stop("The list has nothing to view.", call. = FALSE)
   ok <- vapply(x, function(el) {
-    inherits(el, c("SpatRaster", "SpatVector")) || is.data.frame(el) || wk::is_handleable(el)
+    inherits(el, c("SpatRaster", "SpatVector")) || is.data.frame(el) || wk::is_handleable(el) ||
+      is_string(el)
   }, TRUE)
   if (!all(ok)) {
     i <- which(!ok)[1]
     stop("List element ", i, " (", labels[i], ") is a ", paste(class(x[[i]]), collapse = "/"),
          "; a list for view() holds geometry that wk can read, data frames with such a ",
-         "column (sf included), and terra SpatRaster and SpatVector objects.", call. = FALSE)
+         "column (sf included), terra SpatRaster and SpatVector objects, and strings ",
+         "(WKT text, or a path, URL or data source name).", call. = FALSE)
   }
   invisible(x)
 }
@@ -183,7 +188,8 @@ in_element <- function(i, label, expr) {
 }
 
 ## Layer names for a list's elements: its names; else, for an element of a
-## call such as list(coast, r), the argument's expression; else "x[[i]]".
+## call such as list(coast, r), the argument's expression (a string
+## literal as string_name() names it); else "x[[i]]".
 list_labels <- function(x, expr) {
   n <- length(x)
   nms <- names(x) %||% rep("", n)
@@ -196,7 +202,10 @@ list_labels <- function(x, expr) {
   whole <- deparse_name(expr)
   vapply(seq_len(n), function(i) {
     if (nzchar(nms[i])) return(nms[i])
-    if (!is.null(args)) return(deparse_name(args[[i]]))
+    if (!is.null(args)) {
+      a <- args[[i]]
+      return(if (is_string(a)) string_name(a, a) else deparse_name(a))
+    }
     paste0(whole, "[[", i, "]]")
   }, "")
 }

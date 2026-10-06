@@ -1,5 +1,22 @@
 # aobview 0.0.0.9000
 
+* `view()` takes a string (#39, allboa/design decision 0011): WKT text, or
+  the path, URL or GDAL data source name of a raster or vector source. A
+  string that names a file that exists, or starts with a URL scheme or
+  `/vsi`, is a data source; any other string wk parses as WKT is geometry
+  (an `SRID=code;` prefix gives it that CRS); a string that is neither is
+  probed as a data source. A data source is read with gdalraster (still in
+  Suggests; a clear error names it when it is missing): a COG, local or
+  remote, is planned as a `SpatRaster` read from one is, a remote one
+  referenced by URL and never copied; another raster is read through GDAL
+  into a temporary COG by the `view-gdal.R` route, whatever its size; a
+  vector source is read with `aobcore::gdal_vector_stream()`, which
+  densifies and reprojects in GDAL, and drawn with its attributes as any
+  data frame is. `layer` picks the band or the vector layer; the other
+  arguments are those of the route taken. Strings also go in a list for
+  `view()` and to `view_add()`, and `view_crs()` reads them. A string
+  literal is named by its base name (or the WKT text).
+
 * Views in Shiny apps (allboa/design decision 0009): `aobviewOutput()` and
   `renderAobview()` (shiny in Suggests), with aobview's own output binding.
   The scene travels as the render value over the Shiny session, and the

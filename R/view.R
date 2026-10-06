@@ -26,6 +26,30 @@
 #' WKB (see [view-terra]). A [wk::grd()] is not drawn yet: a grid belongs on
 #' the raster path.
 #'
+#' **Strings.** A single string is WKT text or the name of a data source,
+#' by this rule: a string that names a file that exists, or starts with a
+#' URL scheme (`https://`, `s3://`, ...) or `/vsi`, is a data source; any
+#' other string that 'wk' parses as WKT is geometry, as [wk::wkt()] reads
+#' it (an `SRID=code;` prefix gives it that EPSG CRS; plain WKT has none,
+#' which is an error: give it one as `wk::wkt(x, crs = )`); and a string
+#' that is neither is probed as a data source, an error when GDAL cannot
+#' open it. A data source is read with 'gdalraster' (in Suggests; an error
+#' says so when it is not installed; WKT text needs no package). A Cloud
+#' Optimized GeoTIFF,
+#' local or remote, is drawn as a tiled raster exactly as a `SpatRaster`
+#' read from one is (see [view-terra]): a remote COG is referenced by its
+#' URL, never copied. Another raster GDAL opens (not tiled, no overviews, a
+#' VRT, a tile service) is read through GDAL into a temporary COG, as a
+#' `SpatRaster` too large for 'terra' to write is (see Datasets too large to
+#' write whole in [view-terra]), whatever its size. A vector source
+#' (GeoJSON, GeoPackage, GeoParquet, FlatGeobuf, a shapefile, ...) is read
+#' with [aobcore::gdal_vector_stream()], which densifies and reprojects in
+#' GDAL, and drawn as any data frame is, with its attributes. `layer`
+#' picks the raster band or the vector layer. The other arguments are
+#' those of the route taken: for WKT text and a vector source the vector
+#' arguments here, and for a raster [view-terra]'s `palette`, `range`,
+#' `rgb` and `legend` and [aobcore::cog_plan()]'s, all through `...`.
+#'
 #' 'aobcore' does not reproject, so `x` is transformed to the view CRS here
 #' by 'PROJ' ([wk::wk_transform()] with [PROJ::proj_trans_create()]). When
 #' `x` is in lon/lat and the view CRS differs, lines and polygon edges are
@@ -117,9 +141,15 @@
 #'
 #' @param x A spatial object: a geometry vector 'wk' can handle, or a data
 #'   frame with such a column (an `sf` data frame, say); a 'terra' object
-#'   ([view-terra]); or a list of them ([view-layers]).
+#'   ([view-terra]); a string, WKT text or the path, URL or GDAL data
+#'   source name of a raster or vector source (see Strings); or a list of
+#'   them ([view-layers]).
 #' @param ... Not used by the vector methods: an argument caught here (a
-#'   misspelled one, say) is an error.
+#'   misspelled one, say) is an error. For a string, the arguments of the
+#'   route taken (see Strings).
+#' @param layer For a string naming a data source: the band of a raster to
+#'   draw through the palette (a number, 1 by default), or the layer of a
+#'   vector source to read (its name or number, the first by default).
 #' @param geometry For a data frame, the name of its geometry column.
 #'   `NULL` (the default) takes the `sf` geometry column, else the first
 #'   column 'wk' can handle.
@@ -191,6 +221,9 @@
 #' v0 <- view(line)
 #' v0$scene$view$crs
 #'
+#' # WKT text, with its CRS as an SRID prefix.
+#' view("SRID=4326;LINESTRING (0 -60, 90 -60)")$scene$view$crs
+#'
 #' # A data frame with a geometry column.
 #' bases <- data.frame(base = c("Casey", "Davis"))
 #' bases$geom <- wk::xy(c(110.53, 77.97), c(-66.28, -68.58), crs = "OGC:CRS84")
@@ -221,6 +254,14 @@
 #'            popup = c("GAR_Name", "GAR_Long_Label", "GAR_Start_Date", "GAR_Size"))
 #' v7 <- view_add(v7, coast, popup = FALSE)
 #' vapply(v7$scene$legends[[1]]$classes, function(cl) cl$label, "")
+#' @examplesIf requireNamespace("gdalraster", quietly = TRUE) && !inherits(try(gdalraster::srs_to_wkt("EPSG:3031"), silent = TRUE), "try-error")
+#' # The same areas by their path: read through GDAL, no 'sf' needed.
+#' areas <- system.file("extdata", "ccamlr_statistical_areas.geojson", package = "aobview")
+#' v8 <- view(areas, crs = "EPSG:3031", zcol = "GAR_Name", legend = FALSE)
+#' v8$scene$layers[[1]]$kind
+#' # A COG by its path (or URL): a tiled raster, as for a SpatRaster.
+#' v9 <- view(system.file("extdata", "polar_3031.tif", package = "aobcore"))
+#' v9$scene$layers[[1]]$kind
 #' \dontrun{
 #' v2
 #' v3
@@ -306,7 +347,8 @@ new_view <- function(crs, transport = "auto") {
 }
 
 ## Append x's layers to view v, above those already there. Methods: vector
-## input here (default), SpatRaster and SpatVector in view-terra.R. Each returns v with
+## input here (default), SpatRaster and SpatVector in view-terra.R, a
+## string in view-string.R. Each returns v with
 ## its scene extended and the layers' extents (view CRS units) recorded.
 add_layers <- function(x, v, name, ...) {
   UseMethod("add_layers")
@@ -819,7 +861,8 @@ no_method_message <- function(x) {
   paste0("view() has no method for class ", paste(class(x), collapse = "/"),
          "; it draws geometry that wk can read (sfc, wkb, wkt, xy, rct, geos, ...), ",
          "data frames with such a column (sf included), terra SpatRaster and ",
-         "SpatVector objects, and lists of them.")
+         "SpatVector objects, a string (WKT text, or the path, URL or GDAL data source ",
+         "name of a raster or vector source), and lists of them.")
 }
 
 ## Transform wkb g from CRS `src` to the view CRS with PROJ, densifying

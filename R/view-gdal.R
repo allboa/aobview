@@ -18,11 +18,8 @@
 temp_cog_block <- 512L
 
 ## When x is read unchanged from one GDAL dataset whose full grid makes more
-## tiles than the plan can take, how to read it: list(dsn, bands, cog, window,
-## size, factor), where `cog` holds the dataset's facts in the shape of
-## aobcore::cog_info() that the colour and grid checks read, `window` is the
-## source window (xoff, yoff, xsize, ysize) and `size` the size it is read
-## at. Else NULL. `crs` is the view CRS; `plan_args` are the arguments for
+## tiles than the plan can take, how to read it (see gdal_source()), else
+## NULL. `crs` is the view CRS; `plan_args` are the arguments for
 ## aobcore::cog_plan() (`extent`, `units_per_pixel` and `max_tiles` are
 ## used).
 raster_gdal_source <- function(x, crs, plan_args) {
@@ -33,18 +30,32 @@ raster_gdal_source <- function(x, crs, plan_args) {
   bands <- as.integer(src$bands)
   info <- tryCatch(gdal_facts(dsn, bands), error = function(e) NULL)
   if (is.null(info) || !same_grid(x, info) || !same_nodata(x, info)) return(NULL)
+  gdal_source(info, bands, crs, plan_args, whole = FALSE)
+}
+
+## How to read GDAL dataset `info` (from gdal_facts()) into a temporary
+## COG: list(dsn, bands, cog, window, size, factor), where `cog` is `info`
+## (in the shape of aobcore::cog_info() that the colour and grid checks
+## read), `window` is the source window (xoff, yoff, xsize, ysize) and
+## `size` the size it is read at. With `whole = FALSE`, NULL when the full
+## grid's COG fits the plan (terra writes it then); with `whole = TRUE` the
+## dataset is always read this way (a dataset viewed by name has no terra
+## to write it), at full resolution when it fits.
+gdal_source <- function(info, bands, crs, plan_args, whole) {
   max_tiles <- plan_arg(plan_args, "max_tiles")
   if (!is.numeric(max_tiles) || length(max_tiles) != 1L || is.na(max_tiles) ||
       !(max_tiles >= 1)) {
-    return(NULL)  # aobcore::cog_plan() says what is wrong with it
+    ## aobcore::cog_plan() says what is wrong with it.
+    if (!whole) return(NULL)
+    max_tiles <- plan_arg(list(), "max_tiles")
   }
   dim <- info$levels[[1]]$dim
-  if (cog_tiles(dim[1], dim[2]) <= max_tiles) return(NULL)
+  if (!whole && cog_tiles(dim[1], dim[2]) <= max_tiles) return(NULL)
   window <- gdal_window(info, crs, plan_args$extent)
   factor <- read_factor(info, window, crs, plan_args, max_tiles)
   size <- pmax(1, ceiling(window[3:4] / factor))
-  list(dsn = dsn, bands = bands, cog = info, window = window, size = size, factor = factor,
-       max_tiles = max_tiles, extent_given = !is.null(plan_args$extent))
+  list(dsn = info$dsn, bands = bands, cog = info, window = window, size = size,
+       factor = factor, max_tiles = max_tiles, extent_given = !is.null(plan_args$extent))
 }
 
 ## A cog_plan() argument as given, or its default.
@@ -175,11 +186,15 @@ gdal_temp_cog <- function(gs, bands, rgb, name) {
   } else {
     "Passing `extent` (or a larger `max_tiles`) shows more detail."
   }
-  message("\"", name, "\" is read through GDAL from a dataset of ", n(full), " cells, ",
-          if (gs$factor > 1) paste0("at 1/", n(gs$factor), " resolution ") else "",
-          if (part) paste0("over ", n(gs$window[3:4]), " cells ") else "",
-          "(", n(gs$size), "): its full grid is more than `max_tiles` ",
-          "(", gs$max_tiles, ") can draw. ", hint)
+  ## Nothing to say when the full grid fits the plan (a dataset viewed by
+  ## name, read whole or over `extent`).
+  if (cog_tiles(full[1], full[2]) > gs$max_tiles) {
+    message("\"", name, "\" is read through GDAL from a dataset of ", n(full), " cells, ",
+            if (gs$factor > 1) paste0("at 1/", n(gs$factor), " resolution ") else "",
+            if (part) paste0("over ", n(gs$window[3:4]), " cells ") else "",
+            "(", n(gs$size), "): its full grid is more than `max_tiles` ",
+            "(", gs$max_tiles, ") can draw. ", hint)
+  }
   args <- c("-of", "COG", "-co", paste0("BLOCKSIZE=", temp_cog_block),
             "-srcwin", format(gs$window, scientific = FALSE, trim = TRUE),
             "-outsize", format(gs$size, scientific = FALSE, trim = TRUE),

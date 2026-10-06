@@ -163,13 +163,7 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
   need_terra()
   need_gdalraster()
   check_raster(x)
-  if (!is.null(rgb) && !(isTRUE(rgb) || isFALSE(rgb))) {
-    stop("`rgb` must be NULL, TRUE or FALSE.", call. = FALSE)
-  }
-  if (!is.null(palette) &&
-      (!is.character(palette) || length(palette) != 1L || is.na(palette) || !nzchar(palette))) {
-    stop("`palette` must be a single palette name.", call. = FALSE)
-  }
+  check_raster_style(rgb, palette)
   if (isTRUE(rgb) && !terra::nlyr(x) %in% 3:4) {
     stop("`rgb = TRUE` needs 3 or 4 layers; `x` has ", terra::nlyr(x), ".", call. = FALSE)
   }
@@ -208,12 +202,23 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
       aobcore::cog_info(src$dsn, band = src$bands[i])
     }
   }
+  add_cog_layer(v, cog, name, ..., palette = palette, range = range,
+                rgb = if (colour) bands else FALSE, legend = legend, temp = temp)
+}
 
+## Plan COG `cog` for view v and add it as a tiled raster layer `name`:
+## the tail of every raster route (a SpatRaster above, a string in
+## view-string.R). `rgb` is FALSE for one band through the palette, or the
+## bands of a colour image. `temp` is the COG when it is a temporary one
+## this view wrote, or NULL. `...` goes to aobcore::cog_plan().
+add_cog_layer <- function(v, cog, name, ..., palette = NULL, range = NULL, rgb = FALSE,
+                          legend = TRUE, temp = NULL) {
   ## An embedded layer carries its planned tiles' bytes in the scene, so a
   ## temporary COG is not needed once the layer is added. A served layer's
   ## temporary COG is kept, for the server to own and delete when it stops.
   keep <- FALSE
   if (!is.null(temp)) on.exit(if (!keep) unlink(temp$dsn), add = TRUE)
+  s <- v$scene
   plan <- aobcore::cog_plan(cog, s$view$crs, ...)
   ## Embed or serve, from the plan's tile byte lengths, before any tile
   ## byte is read (decision 0006).
@@ -222,8 +227,7 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
   id <- unique_id(layer_id(name), s, c("", "_vertices", "_indices"))
   s <- aobcore::scene_add_tiled_raster(s, id, plan,
                                        palette = palette %||% "viridis", range = range,
-                                       rgb = if (colour) bands else FALSE,
-                                       embed = chosen$embed, label = name)
+                                       rgb = rgb, embed = chosen$embed, label = name)
   if (!is.null(temp) && isFALSE(chosen$embed)) {
     keep <- TRUE
     v$pending$own <- c(v$pending$own, temp$dsn)
@@ -232,8 +236,19 @@ add_layers.SpatRaster <- function(x, v, name, ..., layer = NULL, rgb = NULL, pal
   v$extents[[id]] <- plan_extent(s$layers[[length(s$layers)]]$plan)
   ## A palette raster's ramp: written as a legend only when the scene is
   ## 0.5 (see add_legends()).
-  if (!colour) v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend)))
+  if (isFALSE(rgb)) v$keys <- c(v$keys, list(list(layer = id, palette = TRUE, legend = legend)))
   v
+}
+
+check_raster_style <- function(rgb, palette) {
+  if (!is.null(rgb) && !(isTRUE(rgb) || isFALSE(rgb))) {
+    stop("`rgb` must be NULL, TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.null(palette) &&
+      (!is.character(palette) || length(palette) != 1L || is.na(palette) || !nzchar(palette))) {
+    stop("`palette` must be a single palette name.", call. = FALSE)
+  }
+  invisible()
 }
 
 ## ---- internals -------------------------------------------------------------
@@ -434,8 +449,11 @@ need_terra <- function() {
 }
 
 need_gdalraster <- function() {
-  if (!requireNamespace("gdalraster", quietly = TRUE)) {
+  if (!has_gdalraster()) {
     stop("view() of a SpatRaster needs the 'gdalraster' package (for aobcore's COG reader).",
          call. = FALSE)
   }
 }
+
+## Wrapped so tests can stand in for a missing gdalraster.
+has_gdalraster <- function() requireNamespace("gdalraster", quietly = TRUE)

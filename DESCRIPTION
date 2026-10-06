@@ -8,8 +8,10 @@ Description: A convenience front end for 'allonboard' map scenes: 'view(x)'
     coordinate reference system or a polar view chosen for them, through
     the lean core package 'aobcore'. Vector data are read through 'wk' (any
     geometry it can handle, or a data frame with such a column, 'sf'
-    included) and reprojected with 'PROJ'. This is an early skeleton; the package
-    name is a placeholder.
+    included) and reprojected with 'PROJ'; a string is WKT text or the
+    path, URL or data source name of a raster or vector source, read with
+    'gdalraster'. This is an early skeleton; the package name is a
+    placeholder.
 License: MIT + file LICENSE
 URL: https://allboa.github.io/aobview/, https://github.com/allboa/aobview
 BugReports: https://github.com/allboa/aobview/issues
