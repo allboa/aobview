@@ -25,7 +25,11 @@
 #' `selected(v)` gives the selected rows themselves: `x[rows, ]` of the
 #' data frame (`sf` included) or `SpatVector` that was viewed, or `x[rows]`
 #' of a bare geometry vector, with every column of `x`, not only those of
-#' the popup. `source`
+#' the popup. A stream (an Arrow stream or table, a DuckDB result; see Arrow
+#' streams in [view()]) cannot be read again, so the view keeps the data
+#' frame it was read into, every column with the geometry as [wk::wkb()] in
+#' its CRS, and `selected()` gives rows of that: the selected rows' indices
+#' into the stream are their row names, and `selection(v)$row`. `source`
 #' names the object when the view has several: it defaults to the only one
 #' with selected rows, and is an error naming them when several have
 #' selected rows. With nothing selected it gives zero rows of the view's

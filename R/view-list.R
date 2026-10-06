@@ -21,11 +21,15 @@
 #' either form to fix it.
 #'
 #' Elements may be any vector input [view()] takes (geometry 'wk' can
-#' handle, or a data frame with such a column, `sf` included) and 'terra'
-#' `SpatRaster` or `SpatVector` objects, in any mix of CRSs. Each is drawn
-#' as [view()] or [view-terra] draws it on its own, with its default style,
-#' and reprojected to the view CRS: vectors by 'PROJ' (lon/lat edges
-#' densified first), rasters by [aobcore::cog_plan()]'s meshes.
+#' handle, a data frame with such a column, `sf` included, an Arrow stream
+#' or table, an `OGRFeatureSet`) and 'terra' `SpatRaster` or `SpatVector`
+#' objects, in any mix of CRSs. Each is drawn as [view()] or [view-terra]
+#' draws it on its own, with its default style, and reprojected to the view
+#' CRS: vectors by 'PROJ' (lon/lat edges densified first), rasters by
+#' [aobcore::cog_plan()]'s meshes. A stream is read once, before the view
+#' CRS is chosen; one whose geometry has no CRS is taken to be in `crs`,
+#' which `view()` of the list must then be given, or in the view's CRS for
+#' `view_add()` (see Arrow streams in [view()]).
 #'
 #' **View CRS.** `crs` when given; otherwise [view_crs()] of the whole list:
 #' the CRS of the first element with a projected CRS, or, when every element
@@ -54,7 +58,7 @@
 #' @param ... For `view()` of a list, nothing (per-layer arguments go to
 #'   `view_add()`). For `view_add()`, the arguments [view()] or
 #'   [view-terra] take for `x`'s class, such as `fill` or `zcol` for `sf`
-#'   data or `palette` for a `SpatRaster`.
+#'   data, `geometry` for a stream, or `palette` for a `SpatRaster`.
 #' @param crs The view CRS, as for [view()]. `NULL` uses [view_crs()] of
 #'   the list.
 #' @param name The page title. For a list, defaults to the layer labels
@@ -102,6 +106,7 @@ view.list <- function(x, ..., crs = NULL, name = NULL, file = NULL,
   theme <- match.arg(theme)
   transport <- check_transport(transport)
   labels <- list_labels(x, substitute(x))
+  x <- materialise_streams(x, labels, crs)
   v <- new_view(crs %||% view_crs_list(x, labels), transport)
   on.exit(drop_pending(v), add = TRUE)
   v <- add_list(x, v, labels)
@@ -129,6 +134,7 @@ view_add <- function(v, x, ..., name = NULL, file = NULL, theme = NULL,
   if (is_plain_list(x)) {
     check_dots(..., what = "a list")
     labels <- list_labels(x, substitute(x))
+    x <- materialise_streams(x, labels, v$scene$view$crs)
     v <- add_list(x, v, labels)
     name <- name %||% paste(labels, collapse = ", ")
   } else {
@@ -164,13 +170,15 @@ add_list <- function(x, v, labels) {
 check_list <- function(x, labels) {
   if (!length(x)) stop("The list has nothing to view.", call. = FALSE)
   ok <- vapply(x, function(el) {
-    inherits(el, c("SpatRaster", "SpatVector")) || is.data.frame(el) || wk::is_handleable(el)
+    inherits(el, c("SpatRaster", "SpatVector")) || is.data.frame(el) ||
+      wk::is_handleable(el) || is_stream_input(el)
   }, TRUE)
   if (!all(ok)) {
     i <- which(!ok)[1]
     stop("List element ", i, " (", labels[i], ") is a ", paste(class(x[[i]]), collapse = "/"),
          "; a list for view() holds geometry that wk can read, data frames with such a ",
-         "column (sf included), and terra SpatRaster and SpatVector objects.", call. = FALSE)
+         "column (sf included), Arrow streams and tables, and terra SpatRaster and ",
+         "SpatVector objects.", call. = FALSE)
   }
   invisible(x)
 }

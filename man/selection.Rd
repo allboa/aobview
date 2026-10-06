@@ -57,7 +57,11 @@ has zero rows when nothing is selected.
 \code{selected(v)} gives the selected rows themselves: \code{x[rows, ]} of the
 data frame (\code{sf} included) or \code{SpatVector} that was viewed, or \code{x[rows]}
 of a bare geometry vector, with every column of \code{x}, not only those of
-the popup. \code{source}
+the popup. A stream (an Arrow stream or table, a DuckDB result; see Arrow
+streams in \code{\link[=view]{view()}}) cannot be read again, so the view keeps the data
+frame it was read into, every column with the geometry as \code{\link[wk:wkb]{wk::wkb()}} in
+its CRS, and \code{selected()} gives rows of that: the selected rows' indices
+into the stream are their row names, and \code{selection(v)$row}. \code{source}
 names the object when the view has several: it defaults to the only one
 with selected rows, and is an error naming them when several have
 selected rows. With nothing selected it gives zero rows of the view's

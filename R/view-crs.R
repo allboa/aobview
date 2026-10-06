@@ -32,8 +32,9 @@
 #' to [view()]. Whether a CRS is lon/lat is read by 'PROJ'.
 #'
 #' @param x Geometry 'wk' can handle or a data frame with such a column
-#'   (an `sf` object, say), a 'terra' `SpatRaster` or `SpatVector`, or a
-#'   list of them.
+#'   (an `sf` object, say), an Arrow stream or table (read once, here: see
+#'   Arrow streams in [view()]), an `OGRFeatureSet`, a 'terra' `SpatRaster`
+#'   or `SpatVector`, or a list of them.
 #' @return A CRS for [aobcore::scene()]: an `"authority:code"` string such
 #'   as `"EPSG:3031"`, or, when the data's CRS has no code, its WKT.
 #' @export

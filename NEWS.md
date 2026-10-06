@@ -1,5 +1,21 @@
 # aobview 0.0.0.9000
 
+* `view()` takes Arrow streams and tables, DuckDB results and
+  `GDALVector$fetch()` output (#40, allboa/design decision 0011). A
+  `nanoarrow_array_stream`, or anything with an
+  `as_nanoarrow_array_stream()` method (an arrow `Table`,
+  `RecordBatchReader` or `Dataset`, a duckdb result fetched as Arrow, a
+  gdalraster layer's `getArrowStream()`), is read once, batch by batch,
+  into a data frame of its rows and viewed as one: the geometry column is
+  the first with a GeoArrow extension type, else GDAL's `ogc.wkb` column,
+  else the WKB or WKT column `geometry` names, and its CRS comes from the
+  GeoArrow metadata, or `crs` when it has none. `selected()` on a stream
+  gives rows of the data frame it was read into, their stream row indices
+  as row names. An `OGRFeatureSet` from gdalraster's `GDALVector$fetch()`
+  is viewed as a data frame, its WKB (or WKT) column wrapped as `wk::wkb()`
+  with the layer's SRS. `view_add()` and lists take the same inputs. No
+  new Imports: arrow, DBI, duckdb and geoarrow join Suggests for the tests.
+
 * Views in Shiny apps (allboa/design decision 0009): `aobviewOutput()` and
   `renderAobview()` (shiny in Suggests), with aobview's own output binding.
   The scene travels as the render value over the Shiny session, and the
